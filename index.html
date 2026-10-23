@@ -732,7 +732,7 @@ window.claude={use:async n=>{
     const blob=data instanceof Blob?new Blob([data],{type:MIME[ext]||data.type}):new Blob([data],{type:MIME[ext]||"application/octet-stream"});return shareOrDownload(filename,blob)}};
   return null}};
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
-if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 addEventListener("load",()=>setTimeout(()=>{try{window.loadXLSX&&loadXLSX().catch(()=>{})}catch(_){}},4000));
 </script>
 <script>window.loadXLSX=()=>window.XLSX?Promise.resolve():(window.__xl||(window.__xl=new Promise((ok,no)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>{window.__xlsxWrap&&window.__xlsxWrap();ok()};s.onerror=()=>{window.__xl=null;no()};document.head.appendChild(s)})));</script>
