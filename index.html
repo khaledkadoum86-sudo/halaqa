@@ -587,6 +587,9 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
 .list .row.is-p::before{background:#BFDCCB}.list .row.is-j::before{background:#EEDDA5}.list .row.is-a::before{background:#EBC3BD}
 .facebtn{display:flex;flex-direction:column;align-items:center;gap:4px;background:rgb(255 255 255 / .14);border:1px solid rgb(255 255 255 / .25);color:#fff;border-radius:16px;padding:10px 22px;font-weight:700;font-size:.9rem;margin-bottom:6px}
 .facebtn:active{background:rgb(255 255 255 / .3)}
+.faceonly{min-height:70vh;justify-content:center;cursor:pointer}
+.faceicon{color:#fff;opacity:.95;margin:18px 0 6px}
+.pinlink{background:none;border:0;color:#9CC2FF;font-weight:700;padding:10px;margin-top:24px}
 </style>
 </head>
 <body>
@@ -1347,7 +1350,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 2.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1473,13 +1476,17 @@ async function faceEnroll(){
   }catch(e){toast(e&&e.name==="NotAllowedError"?"أُلغي التفعيل":"تعذّر تفعيل بصمة الوجه على هذا الجهاز");return false}
 }
 let faceBusy=false;
+let faceCtl=null;
 async function faceUnlock(){
-  const id=faceCred();if(!id||faceBusy)return;faceBusy=true;
+  const id=faceCred();if(!id)return;
+  if(faceCtl){try{faceCtl.abort()}catch(_){}}
+  const ctl=new AbortController();faceCtl=ctl;faceBusy=true;
+  await new Promise(r=>setTimeout(r,30));
   try{
-    const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,
+    const a=await navigator.credentials.get({signal:ctl.signal,publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,
       allowCredentials:[{type:"public-key",id:unb64(id),transports:["internal","hybrid"]}],userVerification:"required",timeout:60000}});
     if(a&&LOCK.mode==="unlock"){LOCK.fails=0;hideLock()}
-  }catch(_){}finally{faceBusy=false}
+  }catch(_){}finally{if(faceCtl===ctl){faceBusy=false;faceCtl=null}}
 }
 const _renderLock2=renderLock;
 renderLock=function(){_renderLock2();
@@ -1508,6 +1515,26 @@ document.addEventListener("click",async e=>{
   else if(e.target.closest("#faceOff")){await LDB.doc(FACE_PATH).delete();toast("أُوقفت بصمة الوجه");openLockSettings();addFaceSection()}
 });
 document.getElementById("lockBtn").addEventListener("click",()=>setTimeout(addFaceSection,0));
+
+// ---- Face ID first: whole lock screen is one big tap target ----
+let usePin=false;
+const _renderLock3=renderLock;
+renderLock=function(){
+  if(LOCK.mode==="unlock"&&faceCred()&&!usePin){
+    const el=document.getElementById("lock");
+    el.innerHTML=`<div class="lockinner faceonly">${lockLogo()?`<img src="${lockLogo()}" alt="">`:""}<h2>سجل متابعة الطلبة</h2>
+      <div class="faceicon"><svg viewBox="0 0 24 24" width="74" height="74" aria-hidden="true"><path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2M9 9.5v1M15 9.5v1M12 9.5v3.5h-1M9.5 15.5c1.4 1.2 3.6 1.2 5 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="lockmsg" id="faceMsg">المس الشاشة للفتح ببصمة الوجه</div>
+      <button type="button" class="pinlink" id="usePinBtn">استخدام الرمز السري</button></div>`;
+    return;
+  }
+  _renderLock3();
+};
+document.getElementById("lock").addEventListener("click",e=>{
+  if(e.target.closest("#usePinBtn")){usePin=true;renderLock();return}
+  if(LOCK.mode==="unlock"&&faceCred()&&!usePin&&e.target.closest(".faceonly")){const m=document.getElementById("faceMsg");if(m)m.textContent="جارٍ التحقق…";faceUnlock().then(()=>{const mm=document.getElementById("faceMsg");if(mm&&LOCK.mode==="unlock")mm.textContent="المس الشاشة للمحاولة مرة أخرى"})}
+});
+const _hideLock3=hideLock;hideLock=function(){usePin=false;_hideLock3()};
 </script>
 
 </body>
