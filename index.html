@@ -413,6 +413,7 @@ body.locked{overflow:hidden}
 
 <style>
 .bksteps{margin:10px 0 4px;padding-inline-start:20px;color:var(--ink);line-height:1.9}
+.cloudbtn{background:var(--blue-bg);color:var(--blue);border-color:var(--blue)}
 .bknote{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--gold-bg);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
 .bknote span{flex:1 1 200px}
 .setsec{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
@@ -427,7 +428,7 @@ body.locked{overflow:hidden}
   <div class="wrap">
     <div class="top">
       <div class="brand"><h1>سجل متابعة الطلبة</h1><small id="countLbl"></small></div>
-      <span style="display:flex;align-items:center;gap:10px"><span class="sync" id="sync">جارٍ الاتصال…</span><button type="button" class="lockbtn" id="lockBtn" aria-label="الرمز السري"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 017 0V11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>الإعدادات</span></button></span>
+      <span style="display:flex;align-items:center;gap:10px"><span class="sync" id="sync">جارٍ الاتصال…</span><button type="button" class="lockbtn cloudbtn" id="cloudBtn" aria-label="نسخ احتياطي إلى iCloud"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 18h10.5a4 4 0 00.6-7.95A6 6 0 006.3 9.2 4.5 4.5 0 007 18zM12 10v6M9.5 13.5L12 16l2.5-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>نسخ إلى iCloud</span></button><button type="button" class="lockbtn" id="lockBtn" aria-label="الرمز السري"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 017 0V11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>الإعدادات</span></button></span>
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-today" data-v="today" aria-selected="true"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11.5l2 2 4-4M5 4h14a1 1 0 011 1v15a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1zM8 2v4M16 2v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>حصة اليوم</span></button>
@@ -1245,6 +1246,8 @@ document.addEventListener("click",async e=>{
   if(e.target.closest("#bkPromptLater")){try{localStorage.setItem(BK_SNOOZE,String(Date.now()+864e5))}catch(_){}document.getElementById("modal").hidden=true}
 });
 const _hideLock=hideLock;hideLock=function(){_hideLock();setTimeout(maybeBackupPrompt,600)};
+
+document.getElementById("cloudBtn").addEventListener("click",()=>doBackup());
 </script>
 
 </body>
