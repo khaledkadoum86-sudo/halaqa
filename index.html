@@ -420,7 +420,8 @@ body.locked{overflow:hidden}
 /* ---- iPad: use the whole screen ---- */
 html.ipad,html.ipad body{min-height:100%}
 html.ipad .wrap{max-width:none;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
-html.ipad .banner img{height:clamp(220px,32vh,340px)}
+html.ipad .banner img{height:260px}
+@media (orientation:landscape){html.ipad .banner img{height:220px}}
 html.ipad main{padding-block:20px 40px}
 html.ipad .brand h1{display:none}
 html.ipad .stats{gap:14px}
@@ -1350,7 +1351,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.0</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.1</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
