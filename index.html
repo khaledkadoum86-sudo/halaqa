@@ -591,6 +591,11 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
 .faceonly{min-height:70vh;justify-content:center;cursor:pointer}
 .faceicon{color:#fff;opacity:.95;margin:18px 0 6px}
 .pinlink{background:none;border:0;color:#9CC2FF;font-weight:700;padding:10px;margin-top:24px}
+.repopts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;margin:12px 0 8px}
+.repck{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:600;color:var(--ink)}
+.repck input{width:20px;height:20px;accent-color:var(--accent)}
+#repText{width:100%;min-height:220px;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:15px;line-height:1.7;background:var(--surface-2);color:var(--ink);resize:vertical}
+.btn.wa{background:#25D366;border-color:#25D366;color:#fff;min-height:48px;font-size:1rem}
 </style>
 </head>
 <body>
@@ -623,6 +628,7 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
         <option value="all">الكل</option><option value="p">الحاضرون</option><option value="j">حضور جزئي</option><option value="a">الغائبون</option><option value="none">غير مسجَّل</option>
       </select>
       <button class="btn" id="allPresent">الباقي حاضر</button>
+      <button class="btn" id="reportBtn">📤 تقرير اليوم</button>
     </div>
     <div id="bkNote"></div>
     <div class="strip" id="dayStrip" aria-label="أيام الشهر"></div>
@@ -1351,7 +1357,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.1</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.2</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1536,6 +1542,55 @@ document.getElementById("lock").addEventListener("click",e=>{
   if(LOCK.mode==="unlock"&&faceCred()&&!usePin&&e.target.closest(".faceonly")){const m=document.getElementById("faceMsg");if(m)m.textContent="جارٍ التحقق…";faceUnlock().then(()=>{const mm=document.getElementById("faceMsg");if(mm&&LOCK.mode==="unlock")mm.textContent="المس الشاشة للمحاولة مرة أخرى"})}
 });
 const _hideLock3=hideLock;hideLock=function(){usePin=false;_hideLock3()};
+
+// ---- daily report for the WhatsApp group ----
+const REP_KEY="halaqa.repopts";
+function repOpts(){try{return Object.assign({mem:true,partial:true,absent:false,present:false},JSON.parse(localStorage.getItem(REP_KEY)||"{}"))}catch(_){return{mem:true,partial:true,absent:false,present:false}}}
+const thw=n=>n===1?"ثمن واحد":n===2?"ثمنان":n<=10?n+" أثمان":n+" ثمنًا";
+function buildReport(o){
+  const d=S.date,dd=dayData(d),list=active(),x=parse(d);
+  const P_=list.filter(s=>dd.att[s.id]===P),J_=list.filter(s=>dd.att[s.id]===J),A_=list.filter(s=>dd.att[s.id]===A);
+  const mem=list.filter(s=>(Number(dd.th[s.id])||0)>0).sort((a,b)=>(Number(dd.th[b.id])||0)-(Number(dd.th[a.id])||0));
+  const tot=list.reduce((t,s)=>t+(Number(dd.th[s.id])||0),0);
+  const L=[];
+  L.push(`📋 *تقرير حصة ${DAYN[x.getDay()]} ${x.getDate()} ${MON[x.getMonth()]} ${x.getFullYear()}*`);
+  const t=teacherName();if(t)L.push(`المعلم: ${t}`);
+  L.push("");
+  L.push(`✅ الحضور: ${P_.length}`);
+  if(J_.length)L.push(`🟡 حضور جزئي: ${J_.length}`);
+  L.push(`❌ الغياب: ${A_.length}`);
+  L.push(`📖 مجموع الحفظ اليوم: ${tot?thw(tot):"لا يوجد"}${tot>=8?` (${hizb(tot)})`:""}`);
+  const names=a=>a.map(s=>"• "+s.name).join("\n");
+  if(o.mem&&mem.length){L.push("");L.push("🌟 *الحافظون اليوم:*");L.push(mem.map(s=>`• ${s.name} — ${thw(Number(dd.th[s.id]))}`).join("\n"))}
+  if(o.present&&P_.length){L.push("");L.push("✅ *الحاضرون:*");L.push(names(P_))}
+  if(o.partial&&J_.length){L.push("");L.push("🟡 *حضور جزئي:*");L.push(names(J_))}
+  if(o.absent&&A_.length){L.push("");L.push("❌ *الغائبون:*");L.push(names(A_))}
+  L.push("");L.push("بارك الله في الجميع 🌿");
+  return L.join("\n");
+}
+function openReport(){
+  const o=repOpts(),md=document.getElementById("modal");
+  const ck=(k,label)=>`<label class="repck"><input type="checkbox" data-rep="${k}" ${o[k]?"checked":""}> ${label}</label>`;
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="تقرير اليوم">
+    <h3>تقرير اليوم</h3><div class="note">${fmtDate(S.date)} · يمكنك تعديل النص قبل الإرسال.</div>
+    <div class="repopts">${ck("mem","الحافظون اليوم")}${ck("partial","أسماء الحضور الجزئي")}${ck("absent","أسماء الغائبين")}${ck("present","أسماء الحاضرين")}</div>
+    <textarea id="repText" dir="rtl" rows="12">${esc(buildReport(o))}</textarea>
+    <div class="lockset">
+      <button class="btn wa" type="button" id="repWa">إرسال إلى واتساب</button>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="repCopy" style="flex:1">نسخ النص</button><button class="btn" type="button" id="repShare" style="flex:1">مشاركة…</button></div>
+      <button class="btn" type="button" data-act="close">إغلاق</button>
+    </div></div></div>`;
+  md.hidden=false;
+}
+document.getElementById("reportBtn").addEventListener("click",()=>{if(!active().length){toast("لا يوجد طلبة بعد");return}openReport()});
+document.addEventListener("change",e=>{const k=e.target.dataset&&e.target.dataset.rep;if(!k)return;const o=repOpts();o[k]=e.target.checked;try{localStorage.setItem(REP_KEY,JSON.stringify(o))}catch(_){}
+  const ta=document.getElementById("repText");if(ta)ta.value=buildReport(o)});
+document.addEventListener("click",async e=>{
+  const ta=document.getElementById("repText");if(!ta)return;
+  if(e.target.closest("#repWa")){location.href="https://wa.me/?text="+encodeURIComponent(ta.value)}
+  else if(e.target.closest("#repCopy")){try{await navigator.clipboard.writeText(ta.value);toast("نُسخ التقرير، الصقه في المجموعة")}catch(_){ta.select();toast("حدّد النص وانسخه")}}
+  else if(e.target.closest("#repShare")){try{await navigator.share({text:ta.value})}catch(_){}}
+});
 </script>
 
 </body>
