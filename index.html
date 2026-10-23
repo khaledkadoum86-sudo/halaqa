@@ -579,6 +579,12 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
 .list .row .pa button.on-a,.cellpa .cp.a.on{color:var(--a-txt)}
 .list .row .pa button.on-p,.list .row .pa button.on-j,.list .row .pa button.on-a,.cellpa .cp.on{box-shadow:0 1px 2px rgb(15 30 51 / .08);font-weight:800}
 .list .row.is-p::before{background:#9FCDB2}.list .row.is-j::before{background:#E8CF7E}.list .row.is-a::before{background:#E3A9A1}
+/* even calmer pastels */
+:root{--p-solid:#E4F1E9;--j-solid:#FAF1D6;--a-solid:#F8E5E2;--p-txt:#4B7A62;--j-txt:#8A733A;--a-txt:#9A5952}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--p-solid:#1E3530;--j-solid:#38321E;--a-solid:#3A2422;--p-txt:#9CCBB2;--j-txt:#DCC488;--a-txt:#E0A9A2}}
+:root[data-theme="dark"]{--p-solid:#1E3530;--j-solid:#38321E;--a-solid:#3A2422;--p-txt:#9CCBB2;--j-txt:#DCC488;--a-txt:#E0A9A2}
+.list .row .pa button.on-p,.list .row .pa button.on-j,.list .row .pa button.on-a,.cellpa .cp.on{box-shadow:none;font-weight:700}
+.list .row.is-p::before{background:#BFDCCB}.list .row.is-j::before{background:#EEDDA5}.list .row.is-a::before{background:#EBC3BD}
 </style>
 </head>
 <body>
@@ -1339,7 +1345,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 2.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 2.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
