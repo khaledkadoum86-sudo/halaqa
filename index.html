@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="سجل الطلبة">
-<meta name="theme-color" content="#0e5a4f">
+<meta name="theme-color" content="#1E3A5F">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -468,6 +468,23 @@ html.ipad .sheet{max-width:640px}
 #allPresent{background:var(--surface);color:var(--accent);border-color:var(--line)}
 .cloudbtn{background:var(--surface);color:var(--accent);border-color:var(--line)}
 .bknote{background:var(--surface);border-color:var(--line);border-inline-start:4px solid var(--gold)}
+:root{--bg:#F5F7FA;--surface:#FFFFFF;--surface-2:#EEF2F6;--line:#DCE3EA;--ink:#0F1E33;--muted:#64748B;--accent:#1E3A5F;--accent-ink:#FFFFFF;--gold:#2F6FD6;--gold-bg:#E8F0FD;--present:#17714A;--present-bg:#E6F3EC;--absent:#B42318;--absent-bg:#FCEBEA;--yellow:#E0AA12;--yellow-bg:#FFF6DA;--yellow-ink:#3A2C00;--yellow-text:#8A6400;--blue:#2F6FD6;--blue-bg:#E8F0FD;--gridline:#C5D0DC}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0B1220;--surface:#111A2B;--surface-2:#172338;--line:#24324A;--ink:#E6ECF5;--muted:#93A3B8;--accent:#9DBEF0;--accent-ink:#0B1220;--gold:#8AB6FF;--gold-bg:#1A2A45;--present:#5CCB91;--present-bg:#12301F;--absent:#F08A80;--absent-bg:#3A1A18;--yellow:#F0C64A;--yellow-bg:#3A3110;--yellow-ink:#2A2200;--yellow-text:#F0C64A;--blue:#8AB6FF;--blue-bg:#1A2A45;--gridline:#2E3F5C;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B1220;--surface:#111A2B;--surface-2:#172338;--line:#24324A;--ink:#E6ECF5;--muted:#93A3B8;--accent:#9DBEF0;--accent-ink:#0B1220;--gold:#8AB6FF;--gold-bg:#1A2A45;--present:#5CCB91;--present-bg:#12301F;--absent:#F08A80;--absent-bg:#3A1A18;--yellow:#F0C64A;--yellow-bg:#3A3110;--yellow-ink:#2A2200;--yellow-text:#F0C64A;--blue:#8AB6FF;--blue-bg:#1A2A45;--gridline:#2E3F5C;color-scheme:dark}
+/* navy palette details */
+.lockscreen{background:linear-gradient(170deg,#1E3A5F,#0E1F36)}
+.lockinner img{box-shadow:0 0 0 3px #9CC2FF,0 6px 20px rgb(0 0 0 / .35)}
+#forgotBtn,.locklinks button{color:#9CC2FF}
+.brand h1,.banner-txt b{color:var(--accent)}
+.banner-txt .teacher{color:var(--gold)}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.btn.primary,#exportBtn{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dchip.on{background:var(--accent);border-color:var(--accent)}
+.dchip.td{border-color:var(--gold)}
+.chip b,.grid td.tot,.stat.t b,.grid td .t{color:var(--gold)}
+.day .tb{background:var(--gold)}
+.avatar{background:var(--surface-2);color:var(--accent)}
+.list,.stat{box-shadow:0 1px 2px rgb(15 30 51 / .05),0 4px 14px rgb(15 30 51 / .04)}
 </style>
 </head>
 <body>
@@ -1228,7 +1245,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 1.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 1.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
