@@ -414,6 +414,30 @@ body.locked{overflow:hidden}
 <style>
 .bksteps{margin:10px 0 4px;padding-inline-start:20px;color:var(--ink);line-height:1.9}
 .cloudbtn{background:var(--blue-bg);color:var(--blue);border-color:var(--blue)}
+/* ---- iPad: use the whole screen ---- */
+html.ipad,html.ipad body{min-height:100%}
+html.ipad .wrap{max-width:none;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+html.ipad .banner img{height:clamp(220px,32vh,340px)}
+html.ipad main{padding-block:20px 40px}
+html.ipad .brand h1{display:none}
+html.ipad .stats{gap:14px}
+html.ipad .stat b{font-size:1.8rem}
+html.ipad .tab{font-size:1.05rem;padding:12px 20px}
+html.ipad .row .name{font-size:1.3rem}
+html.ipad .pa button{width:54px;height:46px;font-size:1.15rem}
+html.ipad .step button,html.ipad .step input{height:44px}
+html.ipad .step button{width:40px}
+html.ipad .gridwrap.split{max-height:none}
+html.ipad .sheet{max-width:640px}
+@media (min-width:1000px){
+  html.ipad #todayList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.ipad #todayList .hd{display:none}
+  html.ipad #todayList .row{border-top:1px solid var(--line);border-left:1px solid var(--line)}
+  html.ipad #todayList .empty{grid-column:1/-1}
+  html.ipad #stuList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.ipad #stuList .lhead{grid-column:1/-1}
+  html.ipad #stuList .scard{border-left:1px solid var(--line)}
+}
 .bknote{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--gold-bg);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
 .bknote span{flex:1 1 200px}
 .setsec{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
@@ -548,6 +572,7 @@ if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 try{if(/iPhone|iPod/.test(navigator.userAgent))document.documentElement.classList.add("ios")}catch(_){}
+try{if(/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1))document.documentElement.classList.add("ipad")}catch(_){}
 const DAYN=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const MON=["جانفي","فيفري","مارس","أفريل","ماي","جوان","جويلية","أوت","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const STUDY=[0,1,2,3,4]; // الأحد → الخميس
