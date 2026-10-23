@@ -485,6 +485,29 @@ html.ipad .sheet{max-width:640px}
 .day .tb{background:var(--gold)}
 .avatar{background:var(--surface-2);color:var(--accent)}
 .list,.stat{box-shadow:0 1px 2px rgb(15 30 51 / .05),0 4px 14px rgb(15 30 51 / .04)}
+/* ---- very soft status colors ---- */
+:root{--present:#4E8068;--present-bg:#E8F2EC;--present-line:#BCD8C8;--absent:#A0554E;--absent-bg:#F6E8E6;--absent-line:#E3C3BF;--yellow:#D6C48A;--yellow-bg:#F7F1DE;--yellow-line:#E5D7A8;--yellow-text:#7D6A33;--yellow-ink:#5E4F22}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--present:#8CC0A5;--present-bg:#1C2E26;--present-line:#2F4A3D;--absent:#D6A09A;--absent-bg:#33221F;--absent-line:#4F3330;--yellow:#CDB97A;--yellow-bg:#302A18;--yellow-line:#4A4126;--yellow-text:#D9C68A;--yellow-ink:#D9C68A}}
+:root[data-theme="dark"]{--present:#8CC0A5;--present-bg:#1C2E26;--present-line:#2F4A3D;--absent:#D6A09A;--absent-bg:#33221F;--absent-line:#4F3330;--yellow:#CDB97A;--yellow-bg:#302A18;--yellow-line:#4A4126;--yellow-text:#D9C68A;--yellow-ink:#D9C68A}
+.list .row .pa button.on-p,.pa button.on-p{background:var(--present-bg);color:var(--present);border:1.5px solid var(--present-line)}
+.list .row .pa button.on-j,.pa button.on-j{background:var(--yellow-bg);color:var(--yellow-text);border:1.5px solid var(--yellow-line)}
+.list .row .pa button.on-a,.pa button.on-a{background:var(--absent-bg);color:var(--absent);border:1.5px solid var(--absent-line)}
+.cp.p,.cp.j,.cp.a{background:var(--surface);border-color:var(--line);color:var(--muted)}
+.cp.p.on{background:var(--present-bg);color:var(--present);border-color:var(--present-line)}
+.cp.j.on{background:var(--yellow-bg);color:var(--yellow-text);border-color:var(--yellow-line)}
+.cp.a.on{background:var(--absent-bg);color:var(--absent);border-color:var(--absent-line)}
+.day.p{background:var(--present-bg);color:var(--present);border-color:var(--present-line)}
+.day.j{background:var(--yellow-bg);color:var(--yellow-text);border-color:var(--yellow-line)}
+.day.a{background:var(--absent-bg);color:var(--absent);border-color:var(--absent-line)}
+.grid td.p{background:var(--present-bg);color:var(--present)}
+.grid td.j{background:var(--yellow-bg);color:var(--yellow-text)}
+.grid td.a{background:var(--absent-bg);color:var(--absent)}
+.list .row.is-p::before{background:var(--present-line)}
+.list .row.is-j::before{background:var(--yellow-line)}
+.list .row.is-a::before{background:var(--absent-line)}
+.lg.p{background:var(--present-line)}.lg.j{background:var(--yellow-line)}.lg.a{background:var(--absent-line)}
+.stat.p b{color:var(--present)}.stat.j b{color:var(--yellow-text)}.stat.a b{color:var(--absent)}
+.dchip.rec::after{background:var(--present-line)}
 </style>
 </head>
 <body>
@@ -1245,7 +1268,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 1.8</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 1.9</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
