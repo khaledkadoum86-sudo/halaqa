@@ -412,6 +412,7 @@ body.locked{overflow:hidden}
 </style>
 
 <style>
+.bksteps{margin:10px 0 4px;padding-inline-start:20px;color:var(--ink);line-height:1.9}
 .bknote{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--gold-bg);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
 .bknote span{flex:1 1 200px}
 .setsec{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
@@ -1222,6 +1223,28 @@ document.getElementById("lock").addEventListener("click",e=>{
   try{localStorage.removeItem("halaqa.db.v1")}catch(_){}
   location.reload();
 });
+
+// ---- weekly backup prompt: shown right after unlocking when a backup is due ----
+const BK_SNOOZE="halaqa.bksnooze";
+function backupDue(){if(!S.students.length)return false;const at=bkAt();if(at&&Date.now()-at<7*864e5)return false;
+  let sn=0;try{sn=+localStorage.getItem(BK_SNOOZE)||0}catch(_){}return Date.now()>sn}
+function maybeBackupPrompt(){
+  if(!backupDue()||!document.getElementById("modal").hidden||!document.getElementById("lock").hidden)return;
+  const at=bkAt(),days=at?Math.floor((Date.now()-at)/864e5):null;
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="النسخة الاحتياطية">
+    <h3>حان وقت النسخة الاحتياطية</h3>
+    <div class="note">${at?`آخر نسخة قبل ${days} يومًا.`:"لم تحفظ أي نسخة بعد."} احفظ نسخة في iCloud حتى لا تضيع بيانات طلبتك.</div>
+    <ol class="bksteps"><li>اضغط «احفظ في iCloud الآن».</li><li>اختر «حفظ في الملفات».</li><li>اختر <b>iCloud Drive</b> ثم «حفظ».</li></ol>
+    <div class="lockset"><button class="btn primary" type="button" id="bkPromptGo">احفظ في iCloud الآن</button><button class="btn" type="button" id="bkPromptLater">ذكّرني غدًا</button></div>
+  </div></div>`;
+  md.hidden=false;
+}
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#bkPromptGo")){document.getElementById("modal").hidden=true;await doBackup();return}
+  if(e.target.closest("#bkPromptLater")){try{localStorage.setItem(BK_SNOOZE,String(Date.now()+864e5))}catch(_){}document.getElementById("modal").hidden=true}
+});
+const _hideLock=hideLock;hideLock=function(){_hideLock();setTimeout(maybeBackupPrompt,600)};
 </script>
 
 </body>
