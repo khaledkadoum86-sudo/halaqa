@@ -442,6 +442,8 @@ html.ipad .sheet{max-width:640px}
   html.ipad #stuList .scard{border-left:1px solid var(--line)}
 }
 .banner-txt .teacher{display:block;margin-top:2px;font-family:var(--names);font-weight:700;color:var(--gold);font-size:1rem}
+.bdsel{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr) minmax(0,1.1fr);gap:6px}
+.bdsel select{min-height:44px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 6px;color:var(--ink);font-weight:500}
 .bknote{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--gold-bg);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
 .bknote span{flex:1 1 200px}
 .setsec{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
@@ -597,7 +599,7 @@ function shiftStudy(s,dir){const d=parse(s);do{d.setDate(d.getDate()+dir)}while(
 function studyDays(mk){const [y,m]=mk.split("-").map(Number);const out=[];const d=new Date(y,m-1,1);
   while(d.getMonth()===m-1){if(isStudy(d))out.push(iso(d));d.setDate(d.getDate()+1)}return out}
 function age(s){const b=parse(s),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--;return a}
-const dmy=s=>{if(!s)return "";const [y,m,d]=s.split("-");return d+"/"+m+"/"+y};
+const dmy=s=>{if(!s)return "";const [y,m,d]=s.split("-").map(Number);return d+" "+MON[m-1]+" "+y};
 function hizb(n){if(!n)return "0";const h=Math.floor(n/8),t=n%8;
   if(!h)return n+" ثمن";return h+" حزب"+(t?" و"+t+" ثمن":"")}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
@@ -824,7 +826,7 @@ function openInfo(id){
       <label for="f-nm" class="wide">اسم ولقب الطالب<input type="text" id="f-nm" class="nameinput" value="${esc(s.name||"")}" ${S.canWrite?"":"disabled"} autocomplete="off"></label>
       <label for="f-fn">رقم الملف<input type="text" id="f-fn" dir="ltr" value="${esc(s.fileNo||"")}" ${S.canWrite?"":"disabled"} autocomplete="off"></label>
       <div class="bd wide"><b>الميلاد</b>
-      <label for="f-bd">تاريخ الميلاد<input type="date" id="f-bd" value="${esc(s.birthDate||"")}" ${S.canWrite?"":"disabled"}></label>
+      <label for="f-bd-d">تاريخ الميلاد${bdPicker(s.birthDate)}</label>
       <label for="f-bp">مكان الميلاد<input type="text" id="f-bp" value="${esc(s.birthPlace||"")}" ${S.canWrite?"":"disabled"} placeholder="مثال: الجلفة" autocomplete="off"></label>
       </div>
       <label for="f-ph">رقم الهاتف<input type="tel" id="f-ph" dir="ltr" inputmode="tel" ${S.contacts.length?'list="contactsList"':""} value="${esc(s.phone||"")}" ${S.canWrite?"":"disabled"} placeholder="0X XX XX XX XX" autocomplete="off"></label>
@@ -832,7 +834,7 @@ function openInfo(id){
       ${S.contacts.length?`<datalist id="contactsList">${S.contacts.flatMap(c=>c.tels.map(t=>`<option value="${esc(t)}" label="${esc(c.name)}"></option>`)).join("")}</datalist><span class="note wide" style="margin-top:-4px">اضغط على خانة الهاتف لاختيار رقم من جهات الاتصال المستوردة.</span>`:""}
       <label for="f-ad" class="wide">العنوان الشخصي<input type="text" id="f-ad" value="${esc(s.address||"")}" ${S.canWrite?"":"disabled"} autocomplete="off"></label>
       <div class="wide" style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
-        <span class="note">${s.birthDate?"العمر: "+age(s.birthDate)+" سنة":""}</span>
+        <span class="note" id="ageLbl">${s.birthDate?"العمر: "+age(s.birthDate)+" سنة":""}</span>
         <span style="display:flex;gap:8px"><span class="note" id="infoState" style="align-self:center">${S.canWrite?"يُحفظ تلقائيًا":"للعرض فقط"}</span><button class="btn" type="button" data-act="record" data-id="${id}">السجل</button><button class="btn" type="button" data-act="close">إغلاق</button></span>
       </div>
       <div class="wide dangerzone"><button class="btn ${s.active===false?"ok":"danger"}" type="button" data-act="stoptoggle" data-id="${id}" ${S.canWrite?"":"disabled"}>${s.active===false?"إرجاع الطالب إلى الحلقة":"إيقاف الطالب"}</button><span class="note">${s.active===false?"":"الطالب الموقوف لا يظهر في حصة اليوم، ويبقى سجله محفوظًا."}</span></div>
@@ -905,7 +907,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementB
 // Student info saves itself while typing (one write at a time, coalesced).
 let infoTimer=null,infoBusy=false,infoDirty=null;
 function infoSnapshot(){const f=document.getElementById("infoForm");if(!f)return null;const g=k=>document.getElementById(k).value.trim();
-  const data={fileNo:g("f-fn"),birthDate:g("f-bd"),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
+  const data={fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
   const nm=g("f-nm"); if(nm)data.name=nm;
   return {id:f.dataset.id,data}}
 function setInfoState(t){const el=document.getElementById("infoState");if(el)el.textContent=t}
@@ -1208,7 +1210,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 1.5</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 1.6</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1294,6 +1296,23 @@ if(typeof XLSX!=="undefined"||true){const _bas=()=>window.XLSX&&XLSX.utils&&XLSX
   const wrap=()=>{if(!_bas()||XLSX.utils.__tWrapped)return;const orig=XLSX.utils.book_append_sheet;
     XLSX.utils.book_append_sheet=function(wb,ws,name){const t=teacherName();if(t&&ws&&!ws.__t){wb.Props=Object.assign({},wb.Props,{Author:t,Title:"سجل متابعة الطلبة — "+t})}return orig.apply(this,arguments)};XLSX.utils.__tWrapped=true};
   wrap();addEventListener("load",wrap)}
+
+// ---- birth date as day / month name / year ----
+function bdPicker(v){
+  const [yy,mm,dd]=(v||"").split("-").map(Number),dis=S.canWrite?"":"disabled",nowY=new Date().getFullYear();
+  const opt=(val,txt,sel)=>`<option value="${val}"${sel?" selected":""}>${txt}</option>`;
+  let d=opt("","اليوم",!dd);for(let i=1;i<=31;i++)d+=opt(i,i,i===dd);
+  let m=opt("","الشهر",!mm);MON.forEach((n,i)=>m+=opt(i+1,n,i+1===mm));
+  let y=opt("","السنة",!yy);for(let i=nowY;i>=1940;i--)y+=opt(i,i,i===yy);
+  return `<span class="bdsel"><select id="f-bd-d" ${dis} aria-label="اليوم">${d}</select><select id="f-bd-m" ${dis} aria-label="الشهر">${m}</select><select id="f-bd-y" ${dis} aria-label="السنة">${y}</select></span>`;
+}
+function bdValue(){
+  const d=+(document.getElementById("f-bd-d")||{}).value,m=+(document.getElementById("f-bd-m")||{}).value,y=+(document.getElementById("f-bd-y")||{}).value;
+  if(!d||!m||!y)return "";
+  const last=new Date(y,m,0).getDate();return y+"-"+pad(m)+"-"+pad(Math.min(d,last));
+}
+
+document.addEventListener("change",e=>{if(!/^f-bd-/.test(e.target.id||""))return;const v=bdValue(),l=document.getElementById("ageLbl");if(l)l.textContent=v?"العمر: "+age(v)+" سنة":""});
 </script>
 
 </body>
