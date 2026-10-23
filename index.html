@@ -650,7 +650,7 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
       </div>
       <span class="sbox"><input type="search" id="mq" placeholder="ابحث عن طالب…"><button type="button" class="sclear" data-for="mq" aria-label="مسح البحث" hidden>✕</button></span>
       <select id="sortBy" aria-label="الترتيب">
-        <option value="n">حسب الرقم</option><option value="tot">الأكثر حفظًا</option><option value="rate">الأعلى حضورًا</option><option value="low">الأقل حضورًا</option>
+        <option value="n">أبجديًا</option><option value="num">حسب الرقم</option><option value="tot">الأكثر حفظًا</option><option value="rate">الأعلى حضورًا</option><option value="low">الأقل حضورًا</option>
       </select>
       <button class="btn primary" id="exportBtn">تصدير Excel</button>
     </div>
@@ -762,7 +762,9 @@ function dayData(date){
   const base=S.days[date]||{};const p=S.pending[date]||{};
   return {att:Object.assign({},base.att||{},p.att||{}),th:Object.assign({},base.th||{},p.th||{})};
 }
-const active=()=>S.students.filter(s=>s.active!==false).sort((a,b)=>a.n-b.n);
+const COLL=(()=>{try{return new Intl.Collator("ar",{sensitivity:"base",ignorePunctuation:true})}catch(_){return{compare:(a,b)=>a<b?-1:a>b?1:0}}})();
+const byName=(a,b)=>COLL.compare(norm(a.name||""),norm(b.name||""))||a.n-b.n;
+const active=()=>S.students.filter(s=>s.active!==false).sort(byName);
 
 // One write in flight per day doc; edits made meanwhile are coalesced.
 const inflight={},timers={};
@@ -885,7 +887,8 @@ function renderMonth(){
   const q=norm(S.mq);
   let rows=list.filter(s=>!q||norm(s.name).includes(q)||String(s.n)===q);
   const r=x=>x==null?-1:x;
-  if(S.sortBy==="tot")rows.sort((a,b)=>per[b.id].t-per[a.id].t);
+  if(S.sortBy==="num")rows.sort((a,b)=>a.n-b.n);
+  else if(S.sortBy==="tot")rows.sort((a,b)=>per[b.id].t-per[a.id].t);
   else if(S.sortBy==="rate")rows.sort((a,b)=>r(per[b.id].rate)-r(per[a.id].rate));
   else if(S.sortBy==="low")rows.sort((a,b)=>(per[a.id].rate??101)-(per[b.id].rate??101));
   const today=iso(new Date());
@@ -927,8 +930,8 @@ function renderStudents(){
   if(!S.studentsLoaded){box.innerHTML=`<div class="empty">جارٍ التحميل…</div>`;return}
   const q=norm(S.sq||"");
   const match=s=>!q||norm(s.name).includes(q)||String(s.n)===q||String(s.fileNo||"").includes(q)||String(s.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""));
-  const on=S.students.filter(s=>s.active!==false&&match(s)).sort((a,b)=>a.n-b.n);
-  const off=S.students.filter(s=>s.active===false&&match(s)).sort((a,b)=>a.n-b.n);
+  const on=S.students.filter(s=>s.active!==false&&match(s)).sort(byName);
+  const off=S.students.filter(s=>s.active===false&&match(s)).sort(byName);
   if(!on.length&&!off.length){box.innerHTML=`<div class="empty">${q?"لا يوجد طالب يطابق البحث.":"لا يوجد طلبة بعد. أضف أول طالب من الخانة أعلاه."}</div>`;return}
   box.innerHTML=`<div class="lhead"><span>الطلبة الحاليون</span><b class="num">${on.length}</b></div>`+on.map(stuCard).join("")+
     (off.length?`<div class="lhead off"><span>الطلبة الموقوفون</span><b class="num">${off.length}</b></div>`+off.map(stuCard).join(""):"");
@@ -1361,7 +1364,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.4</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.5</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
