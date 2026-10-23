@@ -605,6 +605,8 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
 .basmala .b1{font-size:1.7rem;font-weight:700;line-height:1.9}
 .basmala .b2{font-size:1.15rem;color:var(--muted);line-height:1.9}
 html.ipad .basmala .b1{font-size:1.9rem}
+.addrow{display:flex;margin-bottom:14px}
+.addbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;font-size:1rem}
 </style>
 </head>
 <body>
@@ -671,10 +673,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
       <select id="stuOrder" aria-label="ترتيب الطلبة"><option value="name">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option></select>
     </div>
     <input type="file" id="vcfIn" accept=".vcf,text/vcard,text/x-vcard,text/directory" hidden>
-    <form class="addform" id="addForm">
-      <input type="text" id="newName" placeholder="اسم ولقب الطالب الجديد" autocomplete="off">
-      <button class="btn primary" type="submit">إضافة طالب</button>
-    </form>
+    <div class="addrow"><button class="btn primary addbtn" type="button" id="addStuBtn"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>إضافة طالب</button></div>
     <div class="list" id="stuList"></div>
     <div class="stutools"><label class="linkbtn" id="vcfBtn" for="vcfIn"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 3h12a2 2 0 012 2v14a2 2 0 01-2 2H5zM12 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 16a4 4 0 018 0M3 7h2M3 12h2M3 17h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>استيراد أرقام الهاتف من جهات الاتصال</label></div>
     <p class="note">الطالب الموقوف لا يظهر في حصة اليوم ولا في الجدول، ويبقى سجله محفوظًا ويمكن إرجاعه في أي وقت.</p>
@@ -1115,7 +1114,7 @@ document.getElementById("stuList").addEventListener("change",async e=>{
   const id=e.target.closest(".srow").dataset.id,v=e.target.value.trim(); if(!v)return;
   try{await S.db.doc("students/"+id).update({name:v});toast("حُفظ الاسم")}catch(_){toast("تعذّر الحفظ")}
 });
-document.getElementById("addForm").addEventListener("submit",async e=>{
+(document.getElementById("addForm")||document.createElement("form")).addEventListener("submit",async e=>{
   e.preventDefault(); const inp=document.getElementById("newName"),v=inp.value.trim(); if(!v||!S.db)return;
   if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
   const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1;
@@ -1380,7 +1379,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 3.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1635,6 +1634,45 @@ setTimeout(refreshCloud,500);setInterval(refreshCloud,15000);
 document.getElementById("stuOrder").value=ORDER;
 document.getElementById("stuOrder").addEventListener("change",e=>setOrder(e.target.value));
 (function(){const sb=document.getElementById("sortBy");sb.value=ORDER==="name"?"n":ORDER;S.sortBy=sb.value})();
+
+// ---- add a student with all details in one form ----
+function openNewStudent(){
+  if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
+  const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1;
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="إضافة طالب">
+    <h3>إضافة طالب جديد</h3><div class="note">الرقم التسلسلي ${n}</div>
+    <form class="info" id="newForm" style="margin-top:14px" autocomplete="off">
+      <label for="f-nm" class="wide">اسم ولقب الطالب *<input type="text" id="f-nm" class="nameinput" placeholder="مثال: بن علي محمد"></label>
+      <label for="f-fn">رقم الملف<input type="text" id="f-fn" dir="ltr"></label>
+      <div class="bd wide"><b>الميلاد</b>
+        <label for="f-bd-d">تاريخ الميلاد${bdPicker("")}</label>
+        <label for="f-bp">مكان الميلاد<input type="text" id="f-bp" placeholder="مثال: الجلفة"></label>
+      </div>
+      <label for="f-ph">رقم الهاتف<input type="tel" id="f-ph" dir="ltr" inputmode="tel" ${S.contacts.length?'list="contactsList"':""} placeholder="0X XX XX XX XX"></label>
+      ${S.contacts.length?`<datalist id="contactsList">${S.contacts.flatMap(c=>c.tels.map(t=>`<option value="${esc(t)}" label="${esc(c.name)}"></option>`)).join("")}</datalist>`:""}
+      <label for="f-ad" class="wide">العنوان الشخصي<input type="text" id="f-ad"></label>
+      <div class="wide lockset" style="margin-top:6px">
+        <button class="btn primary" type="submit" id="newSave">حفظ الطالب</button>
+        <button class="btn" type="button" data-act="close">إلغاء</button>
+      </div>
+      <span class="note wide" id="newMsg"></span>
+    </form>
+  </div></div>`;
+  md.hidden=false;
+  setTimeout(()=>{const i=document.getElementById("f-nm");if(i)try{i.focus()}catch(_){}},250);
+}
+document.getElementById("addStuBtn").addEventListener("click",openNewStudent);
+document.getElementById("modal").addEventListener("submit",async e=>{
+  if(e.target.id!=="newForm")return;e.preventDefault();
+  const g=k=>(document.getElementById(k)||{value:""}).value.trim();
+  const name=g("f-nm");if(!name){document.getElementById("newMsg").textContent="اكتب اسم الطالب أولًا.";document.getElementById("f-nm").focus();return}
+  if(S.students.some(s=>norm(s.name)===norm(name))&&!e.target.dataset.dup){e.target.dataset.dup="1";document.getElementById("newMsg").textContent="يوجد طالب بنفس الاسم. اضغط «حفظ الطالب» مرة أخرى إذا كان طالبًا آخر.";return}
+  const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1,id="s"+Date.now().toString(36);
+  const data={n,name,active:true,fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
+  try{await S.db.doc("students/"+id).set(data);document.getElementById("modal").hidden=true;toast("أُضيف "+name)}
+  catch(_){document.getElementById("newMsg").textContent="تعذّر الحفظ، حاول مرة أخرى."}
+});
 </script>
 
 </body>
