@@ -585,6 +585,8 @@ html.ios .row.is-a .pa button:not(.on-a),html.ios .row.is-p .pa button:not(.on-p
 :root[data-theme="dark"]{--p-solid:#1E3530;--j-solid:#38321E;--a-solid:#3A2422;--p-txt:#9CCBB2;--j-txt:#DCC488;--a-txt:#E0A9A2}
 .list .row .pa button.on-p,.list .row .pa button.on-j,.list .row .pa button.on-a,.cellpa .cp.on{box-shadow:none;font-weight:700}
 .list .row.is-p::before{background:#BFDCCB}.list .row.is-j::before{background:#EEDDA5}.list .row.is-a::before{background:#EBC3BD}
+.facebtn{display:flex;flex-direction:column;align-items:center;gap:4px;background:rgb(255 255 255 / .14);border:1px solid rgb(255 255 255 / .25);color:#fff;border-radius:16px;padding:10px 22px;font-weight:700;font-size:.9rem;margin-bottom:6px}
+.facebtn:active{background:rgb(255 255 255 / .3)}
 </style>
 </head>
 <body>
@@ -1345,7 +1347,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 2.8</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 2.9</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1448,6 +1450,64 @@ function bdValue(){
 }
 
 document.addEventListener("change",e=>{if(!/^f-bd-/.test(e.target.id||""))return;const v=bdValue(),l=document.getElementById("ageLbl");if(l)l.textContent=v?"العمر: "+age(v)+" سنة":""});
+
+// ---- Face ID unlock (WebAuthn passkey on this device) ----
+const FACE_PATH="data/users/me/faceid";
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const faceCred=()=>{try{const d=LDB.dump()[FACE_PATH];return d&&d.id||""}catch(_){return ""}};
+let faceAvail=false;
+(async()=>{try{faceAvail=!!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(_){faceAvail=false}})();
+async function faceEnroll(){
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      rp:{name:"سجل الطلبة",id:location.hostname},
+      user:{id:crypto.getRandomValues(new Uint8Array(16)),name:"سجل الطلبة",displayName:"سجل متابعة الطلبة"},
+      pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"preferred"},
+      timeout:60000}});
+    if(!cred)throw 0;
+    await LDB.doc(FACE_PATH).set({id:b64(cred.rawId),at:Date.now()});
+    toast("تم تفعيل الفتح ببصمة الوجه");return true;
+  }catch(e){toast(e&&e.name==="NotAllowedError"?"أُلغي التفعيل":"تعذّر تفعيل بصمة الوجه على هذا الجهاز");return false}
+}
+let faceBusy=false;
+async function faceUnlock(){
+  const id=faceCred();if(!id||faceBusy)return;faceBusy=true;
+  try{
+    const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,
+      allowCredentials:[{type:"public-key",id:unb64(id),transports:["internal","hybrid"]}],userVerification:"required",timeout:60000}});
+    if(a&&LOCK.mode==="unlock"){LOCK.fails=0;hideLock()}
+  }catch(_){}finally{faceBusy=false}
+}
+const _renderLock2=renderLock;
+renderLock=function(){_renderLock2();
+  if(LOCK.mode!=="unlock"||!faceCred())return;
+  const kp=document.querySelector("#lock .keypad");if(!kp||document.getElementById("faceBtn"))return;
+  const b=document.createElement("button");b.type="button";b.id="faceBtn";b.className="facebtn";
+  b.innerHTML='<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2M9 9.5v1M15 9.5v1M12 9.5v3.5h-1M9.5 15.5c1.4 1.2 3.6 1.2 5 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الفتح ببصمة الوجه</span>';
+  kp.parentNode.insertBefore(b,kp);
+};
+document.getElementById("lock").addEventListener("click",e=>{if(e.target.closest("#faceBtn"))faceUnlock()});
+// try Face ID straight away when the lock screen opens (iOS may ask for a tap instead)
+const _showLock2=showLock;
+showLock=function(mode,after){_showLock2(mode,after);if(mode==="unlock"&&faceCred())setTimeout(faceUnlock,350)};
+// settings section
+function addFaceSection(){if(document.getElementById("faceSec"))return;
+  const lockset=[...document.querySelectorAll("#modal .setsec")].find(s=>/الرمز السري/.test(s.textContent));
+  if(!lockset)return;
+  const sec=document.createElement("div");sec.className="setsec";sec.id="faceSec";
+  const on=!!faceCred();
+  sec.innerHTML=`<b>بصمة الوجه</b><span class="note">${faceAvail?(on?"مفعّلة: يفتح التطبيق ببصمة الوجه، والرمز السري يبقى احتياطيًا.":"افتح التطبيق ببصمة الوجه بدل كتابة الرمز."):"بصمة الوجه غير متاحة هنا. افتح التطبيق من أيقونة الشاشة الرئيسية في Safari."}</span>
+    <div class="lockset">${faceAvail?(on?`<button class="btn" type="button" id="faceOff">إيقاف بصمة الوجه</button>`:`<button class="btn primary" type="button" id="faceOn">تفعيل الفتح ببصمة الوجه</button>`):""}</div>`;
+  lockset.after(sec);
+};
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#faceOn")){if(await faceEnroll()){openLockSettings();addFaceSection()}}
+  else if(e.target.closest("#faceOff")){await LDB.doc(FACE_PATH).delete();toast("أُوقفت بصمة الوجه");openLockSettings();addFaceSection()}
+});
+document.getElementById("lockBtn").addEventListener("click",()=>setTimeout(addFaceSection,0));
 </script>
 
 </body>
