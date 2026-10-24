@@ -1676,46 +1676,53 @@ async function buildCard(id,mk,note){
   const s=S.students.find(x=>x.id===id);const {days,per}=monthStats(mk);const st=per[id]||{p:0,a:0,j:0,t:0,rate:null};
   const [y,m]=mk.split("-").map(Number),W=1080,PAD=48,td=iso(new Date());
   try{await Promise.all([document.fonts.load("700 40px Cairo"),document.fonts.load("600 30px Cairo"),document.fonts.load("700 40px Amiri")])}catch(_){}
-  const cols=7,cw=(W-2*PAD-(cols-1)*14)/cols,ch=118,rows=Math.max(1,Math.ceil(days.length/cols));
-  const tmp=document.createElement("canvas").getContext("2d");tmp.font="500 34px "+CF;tmp.direction="rtl";
-  const nl=note&&note.trim()?wrapLines(tmp,note.trim(),W-2*PAD-80):[];const noteH=nl.length?(nl.length*52+90):0;
-  const gridTop=1210,H=gridTop+rows*(ch+14)+40+noteH+160;
+  const cols=7,gap=12,cw=(W-2*PAD-(cols-1)*gap)/cols,ch=146,rows=Math.max(1,Math.ceil(days.length/cols));
+  const tmp=document.createElement("canvas").getContext("2d");tmp.font="600 38px "+CF;tmp.direction="rtl";
+  const nl=note&&note.trim()?wrapLines(tmp,note.trim(),W-2*PAD-90):[];const noteBox=nl.length?nl.length*58+64:0;
+  const gridTop=1232,gridH=rows*(ch+gap),H=gridTop+gridH+(nl.length?noteBox+34:0)+190;
   const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.direction="rtl";
-  x.fillStyle="#F5F7FA";x.fillRect(0,0,W,H);
-  // header with the banner photo
-  const img=document.querySelector(".banner img");x.save();x.beginPath();x.rect(0,0,W,360);x.clip();
-  if(img&&img.complete&&img.naturalWidth){const r=Math.max(W/img.naturalWidth,360/img.naturalHeight),iw=img.naturalWidth*r,ih=img.naturalHeight*r;x.drawImage(img,(W-iw)/2,(360-ih)/2,iw,ih)}else{x.fillStyle="#1E3A5F";x.fillRect(0,0,W,360)}
-  const g=x.createLinearGradient(0,0,0,360);g.addColorStop(0,"rgba(30,58,95,.15)");g.addColorStop(1,"rgba(30,58,95,.92)");x.fillStyle=g;x.fillRect(0,0,W,360);x.restore();
-  x.textAlign="center";x.fillStyle="#fff";x.font="700 54px Amiri,serif";x.fillText("بسم الله الرحمن الرحيم",W/2,200);
-  x.font="700 46px "+CF;x.fillText("بطاقة المتابعة الشهرية",W/2,275);x.font="600 32px "+CF;x.fillStyle="#DCE6F2";x.fillText(MON[m-1]+" "+y,W/2,325);
-  // name
-  x.fillStyle="#fff";rr(x,PAD,390,W-2*PAD,150,28);x.fill();x.strokeStyle="#DDE3EC";x.lineWidth=2;x.stroke();
-  x.fillStyle="#6B7A90";x.font="600 28px "+CF;x.fillText("الطالب",W/2,436);
-  let fs=60;x.font="700 "+fs+"px "+CF;while(x.measureText(s.name).width>W-2*PAD-60&&fs>32){fs-=2;x.font="700 "+fs+"px "+CF}
-  x.fillStyle="#1E3A5F";x.fillText(s.name,W/2,505);
+  const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,"#1B3557");bg.addColorStop(1,"#122A46");x.fillStyle=bg;x.fillRect(0,0,W,H);
+  // header: photo fading into the navy page
+  const img=document.querySelector(".banner img");x.save();x.beginPath();x.rect(0,0,W,340);x.clip();
+  if(img&&img.complete&&img.naturalWidth){const r=Math.max(W/img.naturalWidth,340/img.naturalHeight),iw=img.naturalWidth*r,ih=img.naturalHeight*r;x.drawImage(img,(W-iw)/2,(340-ih)/2,iw,ih)}
+  const g=x.createLinearGradient(0,0,0,340);g.addColorStop(0,"rgba(18,42,70,.25)");g.addColorStop(.55,"rgba(18,42,70,.72)");g.addColorStop(1,"#1B3557");x.fillStyle=g;x.fillRect(0,0,W,340);x.restore();
+  x.textAlign="center";x.fillStyle="#fff";x.font="700 60px Amiri,serif";x.fillText("بسم الله الرحمن الرحيم",W/2,150);
+  x.font="700 54px "+CF;x.fillText("بطاقة المتابعة الشهرية",W/2,232);
+  x.fillStyle="#EBCB7A";x.font="700 40px "+CF;x.fillText(MON[m-1]+" "+y,W/2,292);
+  // student name (white plate, dark text)
+  x.fillStyle="#FFFFFF";rr(x,PAD,360,W-2*PAD,176,30);x.fill();
+  x.fillStyle="#4A5B73";x.font="700 30px "+CF;x.fillText("الطالب",W/2,408);
+  let fs=74;x.font="700 "+fs+"px "+CF;while(x.measureText(s.name).width>W-2*PAD-70&&fs>34){fs-=2;x.font="700 "+fs+"px "+CF}
+  x.fillStyle="#12284A";x.fillText(s.name,W/2,500);
   // attendance tiles
-  const tiles=[["الحضور",st.p,"#E4F1E9","#4B7A62"],["حضور جزئي",st.j,"#FAF1D6","#8A733A"],["الغياب",st.a,"#F8E5E2","#9A5952"],["نسبة الحضور",st.rate==null?"—":st.rate+"%","#E8EEF6","#1E3A5F"]];
-  const tw=(W-2*PAD-3*18)/4;
-  tiles.forEach((t,i)=>{const tx=W-PAD-(i+1)*tw-i*18;x.fillStyle=t[2];rr(x,tx,575,tw,190,26);x.fill();x.fillStyle=t[3];x.textAlign="center";x.font="700 80px "+CF;x.fillText(String(t[1]),tx+tw/2,682);x.font="600 28px "+CF;x.fillText(t[0],tx+tw/2,735)});
-  // memorization
-  x.fillStyle="#1E3A5F";rr(x,PAD,800,W-2*PAD,220,30);x.fill();x.fillStyle="#C9D6E8";x.font="600 30px "+CF;x.textAlign="center";x.fillText("الحفظ هذا الشهر",W/2,850);
-  x.fillStyle="#fff";x.font="700 88px "+CF;x.fillText(st.t?st.t+" ثمن":"—",W/2,945);
-  if(st.t>=8){x.fillStyle="#C9D6E8";x.font="600 30px "+CF;x.fillText("("+hizb(st.t)+")",W/2,995)}
+  const tiles=[["الحضور",st.p,"#D5ECDF","#1F5A3E"],["حضور جزئي",st.j,"#F6E6B0","#6B4E07"],["الغياب",st.a,"#F5D3CE","#8A2F28"],["نسبة الحضور",st.rate==null?"—":st.rate+"%","#DCE7F5","#12284A"]];
+  const tw=(W-2*PAD-3*16)/4;
+  tiles.forEach((t,i)=>{const tx=W-PAD-(i+1)*tw-i*16;x.fillStyle=t[2];rr(x,tx,566,tw,214,28);x.fill();x.fillStyle=t[3];x.textAlign="center";
+    let f=104;x.font="700 "+f+"px "+CF;while(x.measureText(String(t[1])).width>tw-24&&f>50){f-=4;x.font="700 "+f+"px "+CF}
+    x.fillText(String(t[1]),tx+tw/2,682);x.font="700 31px "+CF;x.fillText(t[0],tx+tw/2,745)});
+  // memorisation plate (gold)
+  const gg=x.createLinearGradient(0,810,0,1060);gg.addColorStop(0,"#F0DC9C");gg.addColorStop(1,"#E2C26B");x.fillStyle=gg;rr(x,PAD,810,W-2*PAD,230,32);x.fill();
+  x.fillStyle="#4A3A0E";x.textAlign="center";x.font="700 36px "+CF;x.fillText("الحفظ هذا الشهر",W/2,868);
+  x.fillStyle="#12284A";x.font="700 108px "+CF;x.fillText(st.t?st.t+" ثمن":"—",W/2,978);
+  if(st.t>=8){x.fillStyle="#4A3A0E";x.font="700 34px "+CF;x.fillText("("+hizb(st.t)+")",W/2,1022)}
   // days
-  x.fillStyle="#1E3A5F";x.font="700 34px "+CF;x.textAlign="right";x.fillText("أيام الحصص",W-PAD,1090);
-  const lg=[["حاضر","#E4F1E9"],["جزئي","#FAF1D6"],["غائب","#F8E5E2"],["لم يُسجَّل","#EDEFF3"]];x.font="600 24px "+CF;let lx=W-PAD;x.textAlign="right";
-  lg.forEach(l=>{x.fillStyle=l[1];rr(x,lx-26,1118,26,26,8);x.fill();x.fillStyle="#6B7A90";x.fillText(l[0],lx-38,1141);lx-=26+12+x.measureText(l[0]).width+30});
+  x.fillStyle="#FFFFFF";x.font="700 44px "+CF;x.textAlign="right";x.fillText("أيام الحصص",W-PAD,1118);
+  const lg=[["حاضر","#D5ECDF"],["جزئي","#F6E6B0"],["غائب","#F5D3CE"],["لم يُسجَّل","rgba(255,255,255,.22)"]];x.font="700 28px "+CF;let lx=W-PAD;
+  lg.forEach(l=>{x.fillStyle=l[1];rr(x,lx-32,1160,32,32,9);x.fill();x.fillStyle="#EEF3FA";x.fillText(l[0],lx-46,1188);lx-=32+14+x.measureText(l[0]).width+34});
   x.textAlign="center";
-  days.forEach((d,i)=>{const col=i%cols,row=Math.floor(i/cols),cx=W-PAD-(col+1)*cw-col*14,cy=gridTop+row*(ch+14);const v=dayData(d).att[id],t=Number(dayData(d).th[id])||0,dt=parse(d);
-    const bg=v===P?"#E4F1E9":v===A?"#F8E5E2":v===J?"#FAF1D6":"#EDEFF3",fg=v===P?"#4B7A62":v===A?"#9A5952":v===J?"#8A733A":"#9AA6B6";
-    x.fillStyle=bg;rr(x,cx,cy,cw,ch,18);x.fill();x.fillStyle=fg;x.font="600 22px "+CF;x.fillText(DAYN[dt.getDay()],cx+cw/2,cy+30);
-    x.font="700 38px "+CF;x.fillText(String(dt.getDate()),cx+cw/2,cy+72);x.font="700 24px "+CF;x.fillText(v===P?"ح":v===A?"غ":v===J?"ج":d>td?"":"–",cx+cw/2,cy+104);
-    if(t){x.fillStyle="#1E3A5F";x.beginPath();x.arc(cx+20,cy+ch-20,15,0,7);x.fill();x.fillStyle="#fff";x.font="700 19px "+CF;x.fillText(String(t),cx+20,cy+ch-13)}});
-  let yy=gridTop+rows*(ch+14)+40;
-  if(nl.length){x.fillStyle="#fff";rr(x,PAD,yy,W-2*PAD,nl.length*52+60,26);x.fill();x.strokeStyle="#DDE3EC";x.stroke();x.fillStyle="#1E3A5F";x.font="500 34px "+CF;x.textAlign="right";nl.forEach((l,i)=>x.fillText(l,W-PAD-40,yy+60+i*52));yy+=noteH}
+  days.forEach((d,i)=>{const col=i%cols,row=Math.floor(i/cols),cx=W-PAD-(col+1)*cw-col*gap,cy=gridTop+row*(ch+gap);const dd=dayData(d),v=dd.att[id],t=Number(dd.th[id])||0,dt=parse(d);
+    const rec=v===P||v===A||v===J;
+    const bgc=v===P?"#D5ECDF":v===A?"#F5D3CE":v===J?"#F6E6B0":"rgba(255,255,255,.12)",fg=v===P?"#1F5A3E":v===A?"#8A2F28":v===J?"#6B4E07":"#C9D6E8";
+    x.fillStyle=bgc;rr(x,cx,cy,cw,ch,20);x.fill();x.fillStyle=fg;x.font="700 25px "+CF;x.fillText(DAYN[dt.getDay()],cx+cw/2,cy+36);
+    x.font="700 54px "+CF;x.fillText(String(dt.getDate()),cx+cw/2,cy+91);x.font="700 32px "+CF;x.fillText(v===P?"ح":v===A?"غ":v===J?"ج":d>td?"":"–",cx+cw/2,cy+130);
+    if(t){x.fillStyle="#12284A";x.beginPath();x.arc(cx+24,cy+ch-24,19,0,7);x.fill();x.fillStyle="#EBCB7A";x.font="700 24px "+CF;x.fillText(String(t),cx+24,cy+ch-15)}});
+  let yy=gridTop+gridH+30;
+  if(nl.length){x.fillStyle="rgba(255,255,255,.12)";rr(x,PAD,yy,W-2*PAD,noteBox,28);x.fill();x.strokeStyle="rgba(235,203,122,.7)";x.lineWidth=2.5;x.stroke();
+    x.fillStyle="#FFFFFF";x.font="600 38px "+CF;x.textAlign="right";nl.forEach((l,i)=>x.fillText(l,W-PAD-44,yy+60+i*58));yy+=noteBox+34}
   // footer
-  x.fillStyle="#1E3A5F";x.fillRect(0,H-130,W,130);x.fillStyle="#fff";x.textAlign="center";x.font="700 34px "+CF;
-  const t=teacherName();x.fillText(t?"المعلم: "+t:"سجل متابعة الطلبة",W/2,H-70);x.font="500 26px "+CF;x.fillStyle="#C9D6E8";x.fillText("بارك الله فيه ونفع به",W/2,H-30);
+  x.strokeStyle="rgba(235,203,122,.55)";x.lineWidth=2;x.beginPath();x.moveTo(PAD+120,H-150);x.lineTo(W-PAD-120,H-150);x.stroke();
+  const t=teacherName();x.textAlign="center";x.fillStyle="#FFFFFF";x.font="700 42px "+CF;x.fillText(t?"المعلم: "+t:"سجل متابعة الطلبة",W/2,H-86);
+  x.fillStyle="#EBCB7A";x.font="700 31px "+CF;x.fillText("بارك الله فيه ونفع به",W/2,H-40);
   return c;
 }
 async function openCard(id,mk){
