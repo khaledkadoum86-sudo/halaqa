@@ -1026,7 +1026,7 @@ document.querySelector(".tabs").addEventListener("click",e=>{
   try{localStorage.setItem("halaqa.view",S.view)}catch(_){}
   render();
 });
-function centerDay(){requestAnimationFrame(()=>{const on=document.querySelector("#dayStrip .dchip.on");if(on)try{on.scrollIntoView({block:"nearest",inline:"center"})}catch(_){}})}
+function centerDay(){requestAnimationFrame(()=>{const s=document.getElementById("dayStrip"),on=s&&s.querySelector(".chip.on, .dchip.on");if(!on)return;try{const a=s.getBoundingClientRect(),c=on.getBoundingClientRect();s.scrollTo({left:s.scrollLeft+(c.left+c.width/2)-(a.left+a.width/2),behavior:"smooth"})}catch(_){}})}
 function setDate(d){S.date=d;centerDay();const mk=monthKey(d);if(!S.days||mk!==S.lastSubMonthDate){S.lastSubMonthDate=mk;subscribeMonth()}render()}
 document.getElementById("dayStrip").addEventListener("click",e=>{const b=e.target.closest(".dchip");if(b&&!isFuture(b.dataset.d))setDate(b.dataset.d)});
 document.getElementById("grid").addEventListener("click",e=>{const th=e.target.closest("th[data-d]");if(!th||isFuture(th.dataset.d))return;document.getElementById("tab-today").click();setDate(th.dataset.d)});
@@ -1385,7 +1385,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.6</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.7</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
