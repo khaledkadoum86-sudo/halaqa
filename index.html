@@ -216,7 +216,7 @@ h2{font-family:var(--display);font-size:1.15rem;margin:18px 0 10px;color:var(--i
 .dchip b{font-size:1.15rem;line-height:1.2}
 .dchip.rec::after{content:"";position:absolute;bottom:4px;width:6px;height:6px;border-radius:50%;background:var(--present)}
 .dchip.td{border-color:var(--gold)}
-.dchip.fut{opacity:.55}
+.dchip.fut{opacity:.4;cursor:default}
 .dchip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);opacity:1}
 .dchip.on span{color:var(--accent-ink)}
 .dchip.on.rec::after{background:var(--accent-ink)}
@@ -335,6 +335,8 @@ button,.btn,label.btn{touch-action:manipulation;-webkit-user-select:none;user-se
 .stat{box-shadow:0 1px 2px rgb(16 40 34 / .04)}
 .cellsheet .btn.primary[data-act=close]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);min-width:110px}
 .grid td.cell{cursor:pointer}
+.grid td.cell.fut,.grid th.fut{cursor:default;opacity:.45}
+.grid td.cell.fut:active{filter:none}
 .grid td.cell:active{filter:brightness(.92)}
 .cellpa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
 .cp{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px;border-radius:16px;border:2px solid var(--line);background:var(--surface);font-family:var(--body)}
@@ -848,7 +850,7 @@ function renderToday(){
 }
 function renderTodayInner(){
   document.getElementById("dateLbl").textContent=fmtDate(S.date);
-  document.getElementById("dateIn").value=S.date;
+  document.getElementById("dateIn").value=S.date;document.getElementById("dateIn").max=iso(new Date());
   {const ds=studyDays(monthKey(S.date)),td=iso(new Date()),x0=parse(S.date);
    document.getElementById("dayStrip").innerHTML=`<span class="smon">${MON[x0.getMonth()]}</span>`+ds.map(d=>{const x=parse(d),a=dayData(d).att;
      const rec=Object.values(a).some(isRec);
@@ -912,9 +914,9 @@ function renderMonth(){
   const today=iso(new Date());
   const dds=days.map(d=>dayData(d));
   document.getElementById("grid").innerHTML=
-   `<thead><tr>${days.map(d=>{const x=parse(d);return `<th class="${d===today?"today":""}" data-d="${d}" style="cursor:pointer" title="افتح هذا اليوم"><span class="dname">${DAYN[x.getDay()]}</span>${x.getDate()}</th>`}).join("")}<th>الحفظ الشهري</th><th>الحضور</th><th>جزئي</th><th>الغياب</th><th>النسبة</th></tr></thead>
+   `<thead><tr>${days.map(d=>{const x=parse(d);return `<th class="${d===today?"today":""}${d>today?" fut":""}" data-d="${d}" style="${d>today?"":"cursor:pointer"}" title="${d>today?"":"افتح هذا اليوم"}"><span class="dname">${DAYN[x.getDay()]}</span>${x.getDate()}</th>`}).join("")}<th>الحفظ الشهري</th><th>الحضور</th><th>جزئي</th><th>الغياب</th><th>النسبة</th></tr></thead>
     <tbody>${rows.map(s=>{const st=per[s.id];return `<tr>${
-      dds.map((dd,i)=>{const v=dd.att[s.id],t=Number(dd.th[s.id])||0;return `<td data-s="${s.id}" data-d="${days[i]}" class="cell ${v===P?"p":v===A?"a":v===J?"j":""}">${isRec(v)?v:""}${t?`<span class="t num">${t}</span>`:""}</td>`}).join("")
+      dds.map((dd,i)=>{const v=dd.att[s.id],t=Number(dd.th[s.id])||0;return `<td data-s="${s.id}" data-d="${days[i]}" class="cell${days[i]>today?" fut":""} ${v===P?"p":v===A?"a":v===J?"j":""}">${isRec(v)?v:""}${t?`<span class="t num">${t}</span>`:""}</td>`}).join("")
     }<td class="tot num">${st.t||""}</td><td class="num">${st.p}</td><td class="num">${st.j}</td><td class="num">${st.a}</td><td class="rate num">${st.rate==null?"—":st.rate+"%"}</td></tr>`}).join("")}</tbody>`;
   // Names live in their own table beside the scrolling days, so they never move or vanish.
   document.getElementById("gridNames").innerHTML=
@@ -1026,12 +1028,13 @@ document.querySelector(".tabs").addEventListener("click",e=>{
 });
 function centerDay(){requestAnimationFrame(()=>{const on=document.querySelector("#dayStrip .dchip.on");if(on)try{on.scrollIntoView({block:"nearest",inline:"center"})}catch(_){}})}
 function setDate(d){S.date=d;centerDay();const mk=monthKey(d);if(!S.days||mk!==S.lastSubMonthDate){S.lastSubMonthDate=mk;subscribeMonth()}render()}
-document.getElementById("dayStrip").addEventListener("click",e=>{const b=e.target.closest(".dchip");if(b)setDate(b.dataset.d)});
-document.getElementById("grid").addEventListener("click",e=>{const th=e.target.closest("th[data-d]");if(!th)return;document.getElementById("tab-today").click();setDate(th.dataset.d)});
+document.getElementById("dayStrip").addEventListener("click",e=>{const b=e.target.closest(".dchip");if(b&&!isFuture(b.dataset.d))setDate(b.dataset.d)});
+document.getElementById("grid").addEventListener("click",e=>{const th=e.target.closest("th[data-d]");if(!th||isFuture(th.dataset.d))return;document.getElementById("tab-today").click();setDate(th.dataset.d)});
+const isFuture=d=>d>iso(new Date());
 document.getElementById("prevDay").onclick=()=>setDate(shiftStudy(S.date,-1));
-document.getElementById("nextDay").onclick=()=>setDate(shiftStudy(S.date,1));
+document.getElementById("nextDay").onclick=()=>{const n=shiftStudy(S.date,1);if(!isFuture(n))setDate(n)};
 document.getElementById("dateLbl").onclick=()=>{const i=document.getElementById("dateIn");try{i.showPicker()}catch(_){i.focus()}};
-document.getElementById("dateIn").onchange=e=>{if(e.target.value)setDate(e.target.value)};
+document.getElementById("dateIn").onchange=e=>{if(!e.target.value)return;if(isFuture(e.target.value)){e.target.value=S.date;return}setDate(e.target.value)};
 const syncClear=id=>{const b=document.querySelector(`.sclear[data-for="${id}"]`);if(b)b.hidden=!document.getElementById(id).value};
 document.querySelectorAll(".sclear").forEach(b=>b.addEventListener("click",()=>{const i=document.getElementById(b.dataset.for);i.value="";i.dispatchEvent(new Event("input",{bubbles:true}));i.focus()}));
 document.getElementById("q").addEventListener("input",()=>syncClear("q"));
@@ -1315,7 +1318,7 @@ function openCell(sid,d){
   </div></div>`;
   md.hidden=false;
 }
-document.getElementById("grid").addEventListener("click",e=>{const c=e.target.closest("td[data-s]");if(c)openCell(c.dataset.s,c.dataset.d)});
+document.getElementById("grid").addEventListener("click",e=>{const c=e.target.closest("td[data-s]");if(c&&!isFuture(c.dataset.d))openCell(c.dataset.s,c.dataset.d)});
 document.getElementById("modal").addEventListener("click",e=>{
   const b=e.target.closest("[data-c]"),sh=e.target.closest(".cellsheet");if(!b||!sh)return;
   const sid=sh.dataset.s,d=sh.dataset.d,c=b.dataset.c,dd=dayData(d),v=dd.att[sid];let t=Number(dd.th[sid])||0;
@@ -1382,7 +1385,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.5</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.6</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
