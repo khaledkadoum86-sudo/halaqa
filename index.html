@@ -612,11 +612,15 @@ html.ipad .basmala .b1{font-size:1.9rem}
 .addbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;font-size:1rem}
 /* the banner carries the title on every screen */
 .brand h1{display:none}
+.banner-txt{position:relative}
+.banner-txt{min-height:88px}
+.banner .school-logo{position:absolute;inset-inline-end:16px;top:10px;width:72px!important;height:72px!important;max-width:none;object-fit:cover;border-radius:50%;box-shadow:0 4px 14px rgba(18,40,70,.45)}
+@media (min-width:700px){.banner-txt{min-height:112px}.banner .school-logo{width:96px!important;height:96px!important;top:8px}}
 </style>
 </head>
 <body>
 <div class="banner"><img src="banner.jpg" alt="صحن المسجد والقبة والمئذنتان"><div class="basmala wrap" aria-label="بسم الله الرحمن الرحيم، وصلى الله على سيدنا محمد وءاله"><p class="b1">بسم الله الرحمن الرحيم</p><p class="b2">وصلى الله على سيدنا محمد وءاله</p></div>
-<div class="banner-txt wrap"><b>سجل متابعة الطلبة</b><span>الحضور والحفظ اليومي</span><span class="teacher" id="teacherLine" hidden></span></div></div>
+<div class="banner-txt wrap"><img class="school-logo" src="logo.webp" alt="شعار المدرسة القرآنية" width="86" height="86"><b>سجل متابعة الطلبة</b><span>الحضور والحفظ اليومي</span><span class="teacher" id="teacherLine" hidden></span></div></div>
 <header>
   <div class="wrap">
     <div class="top">
@@ -1384,7 +1388,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 5.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1686,9 +1690,10 @@ async function buildCard(id,mk,note){
   const img=document.querySelector(".banner img");x.save();x.beginPath();x.rect(0,0,W,340);x.clip();
   if(img&&img.complete&&img.naturalWidth){const r=Math.max(W/img.naturalWidth,340/img.naturalHeight),iw=img.naturalWidth*r,ih=img.naturalHeight*r;x.drawImage(img,(W-iw)/2,(340-ih)/2,iw,ih)}
   const g=x.createLinearGradient(0,0,0,340);g.addColorStop(0,"rgba(18,42,70,.25)");g.addColorStop(.55,"rgba(18,42,70,.72)");g.addColorStop(1,"#1B3557");x.fillStyle=g;x.fillRect(0,0,W,340);x.restore();
-  x.textAlign="center";x.fillStyle="#fff";x.font="700 60px Amiri,serif";x.fillText("بسم الله الرحمن الرحيم",W/2,150);
-  x.font="700 54px "+CF;x.fillText("بطاقة المتابعة الشهرية",W/2,232);
-  x.fillStyle="#EBCB7A";x.font="700 40px "+CF;x.fillText(MON[m-1]+" "+y,W/2,292);
+  try{const lg=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src="logo.webp"});x.save();x.shadowColor="rgba(0,0,0,.5)";x.shadowBlur=18;x.drawImage(lg,PAD-14,16,196,196);x.restore()}catch(_){}
+  x.textAlign="center";x.fillStyle="#fff";x.font="700 60px Amiri,serif";x.fillText("بسم الله الرحمن الرحيم",W/2+76,150);
+  x.font="700 54px "+CF;x.fillText("بطاقة المتابعة الشهرية",W/2+76,232);
+  x.fillStyle="#EBCB7A";x.font="700 40px "+CF;x.fillText(MON[m-1]+" "+y,W/2+76,292);
   // student name (white plate, dark text)
   x.fillStyle="#FFFFFF";rr(x,PAD,360,W-2*PAD,176,30);x.fill();
   x.fillStyle="#4A5B73";x.font="700 30px "+CF;x.fillText("الطالب",W/2,408);
