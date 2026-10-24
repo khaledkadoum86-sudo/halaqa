@@ -986,7 +986,7 @@ function openStudent(id){
     <div class="days">${(()=>{const td=iso(new Date());return days.map(d=>{const dd=dayData(d),v=dd.att[id],t=Number(dd.th[id])||0,x=parse(d);
       const cls=v===P?"p":v===A?"a":v===J?"j":d>td?"f":"n";
       return `<button type="button" class="day ${cls}${d===td?" td":""}" data-goto="${d}" title="افتح هذا اليوم"><span>${DAYN[x.getDay()]}</span><b class="num">${x.getDate()}</b><em>${v===P?"حاضر":v===A?"غائب":v===J?"جزئي":d>td?" ":"—"}</em>${t?`<i class="tb num">${t} ثمن</i>`:""}</button>`}).join("")})()}</div>
-    <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" type="button" data-act="info" data-id="${id}">معلومات الطالب</button><button class="btn" type="button" data-act="close">إغلاق</button></div>
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn primary" type="button" data-card="${id}">بطاقة للولي</button><button class="btn" type="button" data-act="info" data-id="${id}">معلومات الطالب</button><button class="btn" type="button" data-act="close">إغلاق</button></div>
   </div></div>`;
   md.hidden=false;
 }
@@ -1384,7 +1384,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.8</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.9</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1665,6 +1665,83 @@ document.addEventListener("click",async e=>{
   else if(e.target.closest("#repCopy")){try{await navigator.clipboard.writeText(ta.value);toast("نُسخ التقرير، الصقه في المجموعة")}catch(_){ta.select();toast("حدّد النص وانسخه")}}
   else if(e.target.closest("#repShare")){if(navigator.share){try{await navigator.share({text:ta.value})}catch(_){}}else{location.href="https://wa.me/?text="+encodeURIComponent(ta.value)}}
 });
+
+
+// ---- parent report card: a clean image for one student, sent privately to the parent ----
+const CARD={id:null,mk:null,note:""};
+const CF="Cairo,'IBM Plex Sans Arabic','Geeza Pro','Arial',sans-serif";
+function wrapLines(ctx,text,maxW){const out=[];String(text).split(/\n/).forEach(par=>{let line="";par.split(/\s+/).filter(Boolean).forEach(w=>{const t=line?line+" "+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t});out.push(line)});return out}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+async function buildCard(id,mk,note){
+  const s=S.students.find(x=>x.id===id);const {days,per}=monthStats(mk);const st=per[id]||{p:0,a:0,j:0,t:0,rate:null};
+  const [y,m]=mk.split("-").map(Number),W=1080,PAD=48,td=iso(new Date());
+  try{await Promise.all([document.fonts.load("700 40px Cairo"),document.fonts.load("600 30px Cairo"),document.fonts.load("700 40px Amiri")])}catch(_){}
+  const cols=7,cw=(W-2*PAD-(cols-1)*14)/cols,ch=118,rows=Math.max(1,Math.ceil(days.length/cols));
+  const tmp=document.createElement("canvas").getContext("2d");tmp.font="500 34px "+CF;tmp.direction="rtl";
+  const nl=note&&note.trim()?wrapLines(tmp,note.trim(),W-2*PAD-80):[];const noteH=nl.length?(nl.length*52+90):0;
+  const gridTop=1210,H=gridTop+rows*(ch+14)+40+noteH+160;
+  const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.direction="rtl";
+  x.fillStyle="#F5F7FA";x.fillRect(0,0,W,H);
+  // header with the banner photo
+  const img=document.querySelector(".banner img");x.save();x.beginPath();x.rect(0,0,W,360);x.clip();
+  if(img&&img.complete&&img.naturalWidth){const r=Math.max(W/img.naturalWidth,360/img.naturalHeight),iw=img.naturalWidth*r,ih=img.naturalHeight*r;x.drawImage(img,(W-iw)/2,(360-ih)/2,iw,ih)}else{x.fillStyle="#1E3A5F";x.fillRect(0,0,W,360)}
+  const g=x.createLinearGradient(0,0,0,360);g.addColorStop(0,"rgba(30,58,95,.15)");g.addColorStop(1,"rgba(30,58,95,.92)");x.fillStyle=g;x.fillRect(0,0,W,360);x.restore();
+  x.textAlign="center";x.fillStyle="#fff";x.font="700 54px Amiri,serif";x.fillText("بسم الله الرحمن الرحيم",W/2,200);
+  x.font="700 46px "+CF;x.fillText("بطاقة المتابعة الشهرية",W/2,275);x.font="600 32px "+CF;x.fillStyle="#DCE6F2";x.fillText(MON[m-1]+" "+y,W/2,325);
+  // name
+  x.fillStyle="#fff";rr(x,PAD,390,W-2*PAD,150,28);x.fill();x.strokeStyle="#DDE3EC";x.lineWidth=2;x.stroke();
+  x.fillStyle="#6B7A90";x.font="600 28px "+CF;x.fillText("الطالب",W/2,436);
+  let fs=60;x.font="700 "+fs+"px "+CF;while(x.measureText(s.name).width>W-2*PAD-60&&fs>32){fs-=2;x.font="700 "+fs+"px "+CF}
+  x.fillStyle="#1E3A5F";x.fillText(s.name,W/2,505);
+  // attendance tiles
+  const tiles=[["الحضور",st.p,"#E4F1E9","#4B7A62"],["حضور جزئي",st.j,"#FAF1D6","#8A733A"],["الغياب",st.a,"#F8E5E2","#9A5952"],["نسبة الحضور",st.rate==null?"—":st.rate+"%","#E8EEF6","#1E3A5F"]];
+  const tw=(W-2*PAD-3*18)/4;
+  tiles.forEach((t,i)=>{const tx=W-PAD-(i+1)*tw-i*18;x.fillStyle=t[2];rr(x,tx,575,tw,190,26);x.fill();x.fillStyle=t[3];x.textAlign="center";x.font="700 80px "+CF;x.fillText(String(t[1]),tx+tw/2,682);x.font="600 28px "+CF;x.fillText(t[0],tx+tw/2,735)});
+  // memorization
+  x.fillStyle="#1E3A5F";rr(x,PAD,800,W-2*PAD,220,30);x.fill();x.fillStyle="#C9D6E8";x.font="600 30px "+CF;x.textAlign="center";x.fillText("الحفظ هذا الشهر",W/2,850);
+  x.fillStyle="#fff";x.font="700 88px "+CF;x.fillText(st.t?st.t+" ثمن":"—",W/2,945);
+  if(st.t>=8){x.fillStyle="#C9D6E8";x.font="600 30px "+CF;x.fillText("("+hizb(st.t)+")",W/2,995)}
+  // days
+  x.fillStyle="#1E3A5F";x.font="700 34px "+CF;x.textAlign="right";x.fillText("أيام الحصص",W-PAD,1090);
+  const lg=[["حاضر","#E4F1E9"],["جزئي","#FAF1D6"],["غائب","#F8E5E2"],["لم يُسجَّل","#EDEFF3"]];x.font="600 24px "+CF;let lx=W-PAD;x.textAlign="right";
+  lg.forEach(l=>{x.fillStyle=l[1];rr(x,lx-26,1118,26,26,8);x.fill();x.fillStyle="#6B7A90";x.fillText(l[0],lx-38,1141);lx-=26+12+x.measureText(l[0]).width+30});
+  x.textAlign="center";
+  days.forEach((d,i)=>{const col=i%cols,row=Math.floor(i/cols),cx=W-PAD-(col+1)*cw-col*14,cy=gridTop+row*(ch+14);const v=dayData(d).att[id],t=Number(dayData(d).th[id])||0,dt=parse(d);
+    const bg=v===P?"#E4F1E9":v===A?"#F8E5E2":v===J?"#FAF1D6":"#EDEFF3",fg=v===P?"#4B7A62":v===A?"#9A5952":v===J?"#8A733A":"#9AA6B6";
+    x.fillStyle=bg;rr(x,cx,cy,cw,ch,18);x.fill();x.fillStyle=fg;x.font="600 22px "+CF;x.fillText(DAYN[dt.getDay()],cx+cw/2,cy+30);
+    x.font="700 38px "+CF;x.fillText(String(dt.getDate()),cx+cw/2,cy+72);x.font="700 24px "+CF;x.fillText(v===P?"ح":v===A?"غ":v===J?"ج":d>td?"":"–",cx+cw/2,cy+104);
+    if(t){x.fillStyle="#1E3A5F";x.beginPath();x.arc(cx+20,cy+ch-20,15,0,7);x.fill();x.fillStyle="#fff";x.font="700 19px "+CF;x.fillText(String(t),cx+20,cy+ch-13)}});
+  let yy=gridTop+rows*(ch+14)+40;
+  if(nl.length){x.fillStyle="#fff";rr(x,PAD,yy,W-2*PAD,nl.length*52+60,26);x.fill();x.strokeStyle="#DDE3EC";x.stroke();x.fillStyle="#1E3A5F";x.font="500 34px "+CF;x.textAlign="right";nl.forEach((l,i)=>x.fillText(l,W-PAD-40,yy+60+i*52));yy+=noteH}
+  // footer
+  x.fillStyle="#1E3A5F";x.fillRect(0,H-130,W,130);x.fillStyle="#fff";x.textAlign="center";x.font="700 34px "+CF;
+  const t=teacherName();x.fillText(t?"المعلم: "+t:"سجل متابعة الطلبة",W/2,H-70);x.font="500 26px "+CF;x.fillStyle="#C9D6E8";x.fillText("بارك الله فيه ونفع به",W/2,H-30);
+  return c;
+}
+async function openCard(id,mk){
+  const s=S.students.find(x=>x.id===id);if(!s)return;CARD.id=id;CARD.mk=mk||S.month;
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="بطاقة ${esc(s.name)}">
+    <h3>بطاقة المتابعة للولي</h3><div class="note">صورة خاصة بهذا الطالب فقط، أرسلها لوليه مباشرة لا في المجموعة.</div>
+    <input type="text" id="cardNote" placeholder="ملاحظة من المعلم للولي (اختياري)" autocomplete="off" style="min-height:44px;width:100%;margin:10px 0" value="${esc(CARD.note)}">
+    <div id="cardBox" style="min-height:120px;text-align:center" class="note">جارٍ تجهيز البطاقة…</div>
+    <div class="lockset" style="margin-top:10px"><button class="btn wa" type="button" id="cardShare">مشاركة البطاقة</button>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="cardSave" style="flex:1">حفظ الصورة</button><button class="btn" type="button" data-act="close" style="flex:1">إغلاق</button></div></div>
+  </div></div>`;md.hidden=false;await drawCard()}
+let _cardT=0;
+async function drawCard(){const box=document.getElementById("cardBox");if(!box||!CARD.id)return;const tk=++_cardT;
+  try{const c=await buildCard(CARD.id,CARD.mk,CARD.note);if(tk!==_cardT)return;c.style.cssText="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)";box.innerHTML="";box.appendChild(c);box._c=c}
+  catch(_){box.textContent="تعذّر تجهيز البطاقة"}}
+function cardBlob(){const c=document.getElementById("cardBox")?._c;return new Promise(ok=>c?c.toBlob(ok,"image/png"):ok(null))}
+function cardName(){const s=S.students.find(x=>x.id===CARD.id);const [y,m]=CARD.mk.split("-").map(Number);return `بطاقة ${s?s.name:""} - ${MON[m-1]} ${y}.png`}
+document.addEventListener("click",async e=>{
+  const o=e.target.closest("[data-card]");if(o){openCard(o.dataset.card,S.month);return}
+  const sh=e.target.closest("#cardShare"),sv=e.target.closest("#cardSave");if(!sh&&!sv)return;
+  const b=await cardBlob();if(!b){toast("البطاقة غير جاهزة بعد");return}
+  try{if(sh)await shareOrDownload(cardName(),b);else{const u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=cardName();document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},5000);toast("حُفظت الصورة")}}
+  catch(err){if(!(err&&err.code==="declined"))toast("تعذّر الإرسال")}
+});
+document.addEventListener("input",e=>{if(e.target.id!=="cardNote")return;CARD.note=e.target.value;clearTimeout(drawCard.t);drawCard.t=setTimeout(drawCard,350)});
 
 // ---- iCloud button: faded when everything is backed up, lit when there are new changes ----
 const CHG_KEY="halaqa.changedAt";
