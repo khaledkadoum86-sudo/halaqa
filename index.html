@@ -1724,7 +1724,7 @@ const b64c=buf=>{const u=new Uint8Array(buf);let s="";for(let i=0;i<u.length;i+=
 const unb64c=s=>{const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u.buffer};
 async function docsBackup(){
   try{
-    const all=await DOCDB.all();if(!all.length){toast("لا توجد وثائق محفوظة بعد");return}
+    const all=await DOCDB.all();if(!all.length){toast("لا توجد وثائق أو ملفات محفوظة بعد");return}
     const names={};S.students.forEach(s=>names[s.id]=s.name);
     const docs=all.map(([k,r])=>({k,name:names[k.split("|")[0]]||"",type:r.type,w:r.w,h:r.h,at:r.at,b64:b64c(r.buf)}));
     const blob=new Blob([JSON.stringify({app:"halaqa-docs",version:1,exportedAt:new Date().toISOString(),docs})],{type:"application/json"});
@@ -1735,7 +1735,7 @@ function addDocBackupSection(){
   if(document.getElementById("docBk"))return;
   const anchor=[...document.querySelectorAll("#modal .setsec")].find(s=>/النسخة الاحتياطية/.test(s.textContent)&&!/التلقائية/.test(s.textContent));if(!anchor)return;
   const sec=document.createElement("div");sec.className="setsec";sec.id="docBk";
-  sec.innerHTML=`<b>نسخة وثائق الطلبة</b><span class="note">شهادات الميلاد والصور وبطاقات التعريف والاستمارات. تُحفظ في ملف منفصل، فاحفظه في مجلد خاص في iCloud ولا ترسله لأحد.</span>
+  sec.innerHTML=`<b>نسخة الوثائق والملفات</b><span class="note">وثائق الطلبة (شهادات الميلاد والصور وبطاقات التعريف والاستمارات) وملفات الأستاذ. تُحفظ في ملف منفصل، فاحفظه في مجلد خاص في iCloud ولا ترسله لأحد.</span>
     <div class="lockset"><button class="btn primary" type="button" id="docsBkBtn">حفظ نسخة الوثائق</button>
     <label class="btn" for="docsRestoreIn" style="text-align:center;cursor:pointer">استعادة نسخة الوثائق</label>
     <input type="file" id="docsRestoreIn" accept=".json,application/json" hidden></div><div class="note" id="docsRestoreMsg"></div>`;
@@ -1764,6 +1764,71 @@ const dst=document.createElement("style");dst.textContent=`
 #docViewer .dvbar span{display:flex;gap:8px}
 #docViewer img{flex:1;min-height:0;width:100%;object-fit:contain}
 `;document.head.appendChild(dst);
+
+// ---- Teacher files («ملفات الأستاذ»): same lock as the app (PIN + Face ID), stored on this device only ----
+const TPFX="teacher|";
+async function teacherList(){
+  const ks=(await DOCDB.keys()).filter(k=>String(k).startsWith(TPFX));const out=[];
+  for(const k of ks){const r=await DOCDB.get(k);if(r)out.push({k,r})}
+  return out.sort((a,b)=>(b.r.at||0)-(a.r.at||0));
+}
+async function openTeacherFiles(){
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="ملفات الأستاذ" id="tfSheet">
+    <h3>ملفات الأستاذ</h3><div class="note">شهاداتك وعقد العمل وجدول الحصص وأي ملف تريده. محفوظة على هذا الجهاز، ولا يفتحها إلا من يفتح التطبيق بالرمز أو ببصمة الوجه.</div>
+    <div id="tfList" style="margin-top:12px"></div>
+    <div class="setsec"><b>إضافة ملف</b>
+      <input type="text" id="tfTitle" placeholder="اسم الملف (اختياري)، مثل: شهادة التخرج" autocomplete="off" style="min-height:44px;width:100%">
+      <div class="lockset"><label class="btn primary" for="tfIn" style="text-align:center;cursor:pointer">اختيار صورة أو ملف PDF</label>
+      <input type="file" id="tfIn" accept="image/*,application/pdf" hidden></div>
+      <span class="note" id="tfMsg"></span></div>
+    <div class="lockset"><button class="btn" type="button" data-act="close">إغلاق</button></div>
+  </div></div>`;
+  md.hidden=false;renderTeacherFiles();
+}
+async function renderTeacherFiles(){
+  const box=document.getElementById("tfList");if(!box)return;
+  const L=await teacherList();
+  box.innerHTML=L.length?L.map(({k,r})=>`<div class="docrow"><span class="dl"><b>${esc(r.title||"ملف")}</b><em>${r.type==="application/pdf"?"PDF":"صورة"} · <bdi>${new Date(r.at).toLocaleDateString("ar-DZ")}</bdi></em></span>
+    <span class="da"><button type="button" class="btn sm" data-tfview="${esc(k)}">عرض</button><button type="button" class="btn sm danger" data-tfdel="${esc(k)}">حذف</button></span></div>`).join(""):`<div class="note">لا توجد ملفات بعد.</div>`;
+}
+document.addEventListener("change",async e=>{
+  if(e.target.id!=="tfIn")return;
+  const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+  const msg=document.getElementById("tfMsg"),ti=document.getElementById("tfTitle");
+  const title=(ti&&ti.value.trim())||f.name.replace(/\.[^.]+$/,"")||"ملف";
+  try{
+    let rec;
+    if(f.type==="application/pdf"||/\.pdf$/i.test(f.name)){
+      if(f.size>25*1024*1024){if(msg)msg.textContent="الملف كبير (أكثر من 25 ميغابايت).";return}
+      rec={buf:await f.arrayBuffer(),type:"application/pdf"};
+    }else{const {blob,w,h}=await shrinkImage(f,2000);rec={buf:await blob.arrayBuffer(),type:"image/jpeg",w,h}}
+    rec.title=title;rec.at=Date.now();
+    await DOCDB.put(TPFX+Date.now().toString(36)+Math.random().toString(36).slice(2,6),rec);
+    if(ti)ti.value="";if(msg)msg.textContent="";toast("حُفظ الملف");renderTeacherFiles();
+  }catch(_){if(msg)msg.textContent="تعذّر حفظ هذا الملف، جرّب ملفاً آخر."}
+});
+document.addEventListener("click",async e=>{
+  const sh=e.target.closest&&e.target.closest("#tfSheet");if(!sh)return;
+  const vw=e.target.closest("[data-tfview]"),dl=e.target.closest("[data-tfdel]");
+  if(vw){
+    const r=await DOCDB.get(vw.dataset.tfview);if(!r)return;
+    const blob=new Blob([r.buf],{type:r.type});if(dvUrl)URL.revokeObjectURL(dvUrl);dvUrl=URL.createObjectURL(blob);
+    const v=document.createElement("div");v.id="docViewer";
+    v.innerHTML=`<div class="dvbar"><b>${esc(r.title||"")}</b><span><button type="button" class="btn" data-dvshare>مشاركة</button><button type="button" class="btn" data-dvclose>إغلاق</button></span></div>${r.type==="application/pdf"?`<iframe src="${dvUrl}" title="${esc(r.title||"")}" style="flex:1;width:100%;border:0;background:#fff"></iframe>`:`<img src="${dvUrl}" alt="${esc(r.title||"")}">`}`;
+    v._blob=blob;v._name=(r.title||"ملف")+(r.type==="application/pdf"?".pdf":".jpg");document.body.appendChild(v);return;
+  }
+  if(dl){
+    if(!dl.dataset.sure){dl.dataset.sure="1";dl.textContent="متأكد؟ اضغط للحذف";setTimeout(()=>{if(dl.isConnected){delete dl.dataset.sure;dl.textContent="حذف"}},3500);return}
+    await DOCDB.del(dl.dataset.tfdel);toast("حُذف الملف");renderTeacherFiles();
+  }
+});
+(function(){
+  const lb=document.getElementById("lockBtn");if(!lb||document.getElementById("teacherFilesBtn"))return;
+  const b=document.createElement("button");b.type="button";b.className="lockbtn";b.id="teacherFilesBtn";b.setAttribute("aria-label","ملفات الأستاذ");
+  b.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>ملفاتي</span>';
+  b.addEventListener("click",openTeacherFiles);lb.before(b);
+})();
 
 // ---- daily report for the WhatsApp group ----
 const REP_KEY="halaqa.repopts2";
