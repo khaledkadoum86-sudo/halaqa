@@ -77,7 +77,8 @@ main{padding-block:16px 48px}
 .datebox{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px}
 .datebox button{border:0;background:var(--surface-2);height:36px;padding-inline:12px;border-radius:8px;font-size:.95rem;white-space:nowrap}
 .datebox .lbl{min-width:140px;text-align:center;font-weight:600;padding-inline:6px}
-.datebox input{border:0;background:transparent;width:0;height:0;padding:0;position:absolute;opacity:0}
+.datebox input{border:0;background:transparent;padding:0;position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;-webkit-appearance:none;appearance:none;font-size:16px}
+.datepick{position:relative}
 input[type=search],input[type=text],select{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
 .sbox{position:relative;flex:1 1 180px;display:flex;min-width:0}
 .sbox input{flex:1;min-width:0;padding-left:40px}
@@ -635,8 +636,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
     <div class="bar">
       <div class="datebox">
         <button id="prevDay" aria-label="اليوم السابق">› السابق</button>
-        <label class="lbl" for="dateIn" id="dateLbl"></label>
-        <input type="date" id="dateIn">
+        <div class="lbl datepick"><span id="dateLbl"></span><input type="date" id="dateIn" aria-label="اختيار تاريخ"></div>
         <button id="nextDay" aria-label="اليوم التالي">التالي ‹</button>
       </div>
       <span class="sbox"><input type="search" id="q" placeholder="ابحث عن طالب…"><button type="button" class="sclear" data-for="q" aria-label="مسح البحث" hidden>✕</button></span>
@@ -1033,7 +1033,6 @@ document.getElementById("grid").addEventListener("click",e=>{const th=e.target.c
 const isFuture=d=>d>iso(new Date());
 document.getElementById("prevDay").onclick=()=>setDate(shiftStudy(S.date,-1));
 document.getElementById("nextDay").onclick=()=>{const n=shiftStudy(S.date,1);if(!isFuture(n))setDate(n)};
-document.getElementById("dateLbl").onclick=()=>{const i=document.getElementById("dateIn");try{i.showPicker()}catch(_){i.focus()}};
 document.getElementById("dateIn").onchange=e=>{if(!e.target.value)return;if(isFuture(e.target.value)){e.target.value=S.date;return}setDate(e.target.value)};
 const syncClear=id=>{const b=document.querySelector(`.sclear[data-for="${id}"]`);if(b)b.hidden=!document.getElementById(id).value};
 document.querySelectorAll(".sclear").forEach(b=>b.addEventListener("click",()=>{const i=document.getElementById(b.dataset.for);i.value="";i.dispatchEvent(new Event("input",{bubbles:true}));i.focus()}));
@@ -1385,7 +1384,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 4.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
