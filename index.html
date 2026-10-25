@@ -1395,7 +1395,7 @@ function backupBlob(){const d=LDB.dump();delete d[SETTINGS_PATH];delete d["meta/
   return new Blob([JSON.stringify({app:"halaqa",version:1,exportedAt:new Date().toISOString(),data:d})],{type:"application/json"})}
 async function doBackup(){
   const today=iso(new Date());
-  try{await shareOrDownload(`نسخة سجل الطلبة ${today}.json`,backupBlob());
+  try{await shareOrDownload(`نسخة سجل الطلبة.json`,backupBlob());
     await LDB.doc("meta/backup").set({at:Date.now()});toast("حُفظت النسخة الاحتياطية");renderBkNote()}
   catch(e){if(!(e&&e.code==="declined"))toast("تعذّر حفظ النسخة")}
 }
@@ -1412,7 +1412,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.0</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.1</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1507,7 +1507,7 @@ function maybeBackupPrompt(){
   md.innerHTML=`<div class="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="النسخة الاحتياطية">
     <h3>حان وقت النسخة الاحتياطية</h3>
     <div class="note">${at?`آخر نسخة قبل ${days} يومًا.`:"لم تحفظ أي نسخة بعد."} احفظ نسخة في iCloud حتى لا تضيع بيانات طلبتك.</div>
-    <ol class="bksteps"><li>اضغط «احفظ في iCloud الآن».</li><li>اختر «حفظ في الملفات».</li><li>اختر <b>iCloud Drive</b> ثم «حفظ».</li></ol>
+    <ol class="bksteps"><li>اضغط «احفظ في iCloud الآن».</li><li>اختر «حفظ في الملفات».</li><li>اختر <b>iCloud Drive</b> ثم «حفظ».</li><li>إذا سألك عن ملف بنفس الاسم، اختر <b>«استبدال»</b> فتبقى آخر نسخة فقط.</li></ol>
     <div class="lockset"><button class="btn primary" type="button" id="bkPromptGo">احفظ في iCloud الآن</button><button class="btn" type="button" id="bkPromptLater">ذكّرني غدًا</button></div>
   </div></div>`;
   md.hidden=false;
@@ -1757,14 +1757,14 @@ async function docsBackup(){
     const names={};S.students.forEach(s=>names[s.id]=s.name);
     const docs=all.map(([k,r])=>({k,name:names[k.split("|")[0]]||"",type:r.type,w:r.w,h:r.h,at:r.at,b64:b64c(r.buf)}));
     const blob=new Blob([JSON.stringify({app:"halaqa-docs",version:1,exportedAt:new Date().toISOString(),docs})],{type:"application/json"});
-    await shareOrDownload(`وثائق الطلبة ${iso(new Date())}.json`,blob);toast("حُفظت نسخة الوثائق");try{localStorage.setItem("halaqa.docsBkAt",String(Date.now()))}catch(_){}
+    await shareOrDownload(`نسخة الوثائق والملفات.json`,blob);toast("حُفظت نسخة الوثائق");try{localStorage.setItem("halaqa.docsBkAt",String(Date.now()))}catch(_){}
   }catch(err){if(!(err&&err.code==="declined"))toast("تعذّر حفظ نسخة الوثائق")}
 }
 function addDocBackupSection(){
   if(document.getElementById("docBk"))return;
   const anchor=[...document.querySelectorAll("#modal .setsec")].find(s=>/النسخة الاحتياطية/.test(s.textContent)&&!/التلقائية/.test(s.textContent));if(!anchor)return;
   const sec=document.createElement("div");sec.className="setsec";sec.id="docBk";
-  sec.innerHTML=`<b>نسخة الوثائق والملفات</b><span class="note">وثائق الطلبة (شهادات الميلاد والصور وبطاقات التعريف والاستمارات) وملفات الأستاذ وصور المدرسة. تُحفظ في ملف منفصل، فاحفظه في مجلد خاص في iCloud ولا ترسله لأحد.</span>
+  sec.innerHTML=`<b>نسخة الوثائق والملفات</b><span class="note">وثائق الطلبة (شهادات الميلاد والصور وبطاقات التعريف والاستمارات) وملفات الأستاذ وصور المدرسة. تُحفظ في ملف منفصل باسم ثابت، فاحفظه في مجلد خاص في iCloud واختر «استبدال» لتبقى آخر نسخة فقط، ولا ترسله لأحد.</span>
     <div class="lockset"><button class="btn primary" type="button" id="docsBkBtn">حفظ نسخة الوثائق</button>
     <label class="btn" for="docsRestoreIn" style="text-align:center;cursor:pointer">استعادة نسخة الوثائق</label>
     <input type="file" id="docsRestoreIn" accept=".json,application/json" hidden></div><div class="note" id="docsRestoreMsg"></div>`;
