@@ -693,11 +693,21 @@ html.ipad .basmala .b1{font-size:1.9rem}
 <div id="lock" class="lockscreen" role="dialog" aria-modal="true" aria-label="القفل"><div class="lockinner"><div class="lockmsg">…</div></div></div>
 
 <script>
+/* Second copy of all data in IndexedDB: if Safari loses or can't write the main copy, the app restores from this one on launch. */
+const MIRROR={db:null,t:null,pend:null,last:0,
+  open(){return this.db||(this.db=new Promise((ok,no)=>{try{const r=indexedDB.open("halaqa-live",1);r.onupgradeneeded=()=>r.result.createObjectStore("m");r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}))},
+  async tx(mode,fn){const d=await this.open();return new Promise((ok,no)=>{const t=d.transaction("m",mode),s=t.objectStore("m");const q=fn(s);t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error)})},
+  get(){return this.tx("readonly",s=>s.get("live"))},
+  queue(data,at){this.pend={json:JSON.stringify(data),at};clearTimeout(this.t);this.t=setTimeout(()=>this.flush(),400)},
+  async flush(){const p=this.pend;if(!p)return;this.pend=null;clearTimeout(this.t);try{await this.tx("readwrite",s=>s.put(p,"live"));this.last=p.at}catch(_){}},
+  async clear(){this.pend=null;clearTimeout(this.t);try{await this.tx("readwrite",s=>s.delete("live"))}catch(_){}}};
+addEventListener("pagehide",()=>MIRROR.flush());
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")MIRROR.flush()});
 /* Local storage engine: same API the app already uses, data stays on this device. */
 const LDB=(()=>{const KEY="halaqa.db.v1";let data={};
   try{data=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(_){data={}}
   const subs=new Set();
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){setTimeout(()=>{try{toast("الذاكرة ممتلئة، احفظ نسخة احتياطية")}catch(_){}} ,0);return false}}
+  function save(){const at=Date.now();try{MIRROR.queue(data,at)}catch(_){}try{localStorage.setItem(KEY,JSON.stringify(data));try{localStorage.setItem(KEY+".at",String(at))}catch(_){}return true}catch(e){setTimeout(()=>{try{toast("الذاكرة ممتلئة، احفظ نسخة احتياطية")}catch(_){}} ,0);return false}}
   function fire(){subs.forEach(f=>{try{f()}catch(_){}})}
   const clone=o=>JSON.parse(JSON.stringify(o));
   function snap(p){return{id:p.split("/").pop(),exists:Object.prototype.hasOwnProperty.call(data,p),data:()=>data[p],metadata:{fromCache:false,hasPendingWrites:false}}}
@@ -719,7 +729,9 @@ const LDB=(()=>{const KEY="halaqa.db.v1";let data={};
       get:async()=>{const docs=q._docs();return{docs,size:docs.length,empty:!docs.length}},
       onSnapshot(n){const f=()=>{const docs=q._docs();n({docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}})};subs.add(f);setTimeout(f,0);return()=>subs.delete(f)}};return q};
     return mk([])}
-  return{doc:ref,collection:coll,dump:()=>clone(data),load:d=>{data=clone(d);save();fire()}};
+  return{doc:ref,collection:coll,dump:()=>clone(data),load:d=>{data=clone(d);save();fire()},
+    _count:()=>Object.keys(data).length,_at:()=>{try{return +localStorage.getItem(KEY+".at")||0}catch(_){return 0}},
+    _restore:d=>{data=d;save()}};
 })();
 async function shareOrDownload(name,blob){
   try{const file=new File([blob],name,{type:blob.type||"application/octet-stream"});
@@ -732,11 +744,17 @@ async function shareOrDownload(name,blob){
 }
 const MIME={xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",json:"application/json"};
 window.claude={use:async n=>{
-  if(n==="db")return LDB;
+  if(n==="db"){await MIRROR_READY;return LDB}
   if(n==="user")return{id:async()=>"me",can:async()=>true,isOwner:()=>true,canEdit:()=>true};
   if(n==="downloads")return{save:async({filename,data})=>{const ext=(filename.split(".").pop()||"").toLowerCase();
     const blob=data instanceof Blob?new Blob([data],{type:MIME[ext]||data.type}):new Blob([data],{type:MIME[ext]||"application/octet-stream"});return shareOrDownload(filename,blob)}};
   return null}};
+const MIRROR_READY=(async()=>{
+  try{const m=await Promise.race([MIRROR.get(),new Promise(r=>setTimeout(()=>r(null),2500))]);
+    if(m&&m.json){MIRROR.last=m.at||0;
+      if(!LDB._count()||(m.at||0)>LDB._at()+2000){const d=JSON.parse(m.json);if(d&&Object.keys(d).length){LDB._restore(d);window.__mirrorRestored=true}}}
+    else if(LDB._count())LDB._restore(LDB.dump());
+  }catch(_){}})();
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
 if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 addEventListener("load",()=>setTimeout(()=>{try{window.loadXLSX&&loadXLSX().catch(()=>{})}catch(_){}},4000));
@@ -1388,7 +1406,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 5.0</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 5.2</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1435,8 +1453,8 @@ document.getElementById("lock").addEventListener("click",e=>{
   if(e.target.closest("#wipeBack")){showLock("unlock");return}
   const b=e.target.closest("#wipeGo");if(!b)return;
   if(!b.dataset.sure){b.dataset.sure="1";b.textContent="متأكد؟ اضغط مرة أخرى للمسح النهائي";return}
-  try{localStorage.removeItem("halaqa.db.v1")}catch(_){}
-  location.reload();
+  try{localStorage.removeItem("halaqa.db.v1");localStorage.removeItem("halaqa.db.v1.at")}catch(_){}
+  MIRROR.clear().finally(()=>location.reload());
 });
 
 // ---- automatic daily snapshots kept inside the app (IndexedDB), last 7 ----
@@ -1733,7 +1751,7 @@ async function docsBackup(){
     const names={};S.students.forEach(s=>names[s.id]=s.name);
     const docs=all.map(([k,r])=>({k,name:names[k.split("|")[0]]||"",type:r.type,w:r.w,h:r.h,at:r.at,b64:b64c(r.buf)}));
     const blob=new Blob([JSON.stringify({app:"halaqa-docs",version:1,exportedAt:new Date().toISOString(),docs})],{type:"application/json"});
-    await shareOrDownload(`وثائق الطلبة ${iso(new Date())}.json`,blob);toast("حُفظت نسخة الوثائق");
+    await shareOrDownload(`وثائق الطلبة ${iso(new Date())}.json`,blob);toast("حُفظت نسخة الوثائق");try{localStorage.setItem("halaqa.docsBkAt",String(Date.now()))}catch(_){}
   }catch(err){if(!(err&&err.code==="declined"))toast("تعذّر حفظ نسخة الوثائق")}
 }
 function addDocBackupSection(){
@@ -1769,6 +1787,81 @@ const dst=document.createElement("style");dst.textContent=`
 #docViewer .dvbar span{display:flex;gap:8px}
 #docViewer img{flex:1;min-height:0;width:100%;object-fit:contain}
 `;document.head.appendChild(dst);
+
+// ---- Data protection: status panel, documents backup reminder, notice after a self-repair ----
+const lsN=k=>{try{return +localStorage.getItem(k)||0}catch(_){return 0}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(_){}};
+(function(){for(const m of ["put","del"]){const f=DOCDB[m].bind(DOCDB);DOCDB[m]=async function(k){const r=await f.apply(null,arguments);lsSet("halaqa.docsChgAt",Date.now());return r}}})();
+async function askPersist(){try{if(navigator.storage&&navigator.storage.persist){if(await navigator.storage.persisted())return true;return await navigator.storage.persist()}}catch(_){}return null}
+const agoTxt=t=>{if(!t)return"";const d=Math.floor((Date.now()-t)/864e5);return d<=0?"اليوم":d===1?"أمس":d===2?"قبل يومين":d<=10?`قبل ${d} أيام`:`قبل ${d} يومًا`};
+async function dataHealth(){
+  const o={};
+  try{o.persist=navigator.storage&&navigator.storage.persisted?await navigator.storage.persisted():null}catch(_){o.persist=null}
+  try{const e=navigator.storage&&navigator.storage.estimate?await navigator.storage.estimate():null;o.used=e&&e.usage||0}catch(_){o.used=0}
+  try{await MIRROR.flush();const m=await MIRROR.get();o.mirror=m&&m.at||0}catch(_){o.mirror=0}
+  try{o.snaps=(await AUTO.keys()).length}catch(_){o.snaps=0}
+  try{o.docs=(await DOCDB.keys()).length}catch(_){o.docs=0}
+  o.bk=bkAt();o.dbk=lsN("halaqa.docsBkAt");o.dchg=lsN("halaqa.docsChgAt");o.chg=changedAt();
+  return o;
+}
+async function renderHealth(){
+  const box=document.getElementById("healthList");if(!box)return;
+  const h=await dataHealth();
+  const row=(ok,t,d)=>`<div class="hrow"><span class="hic ${ok===true?"ok":ok===false?"warn":""}">${ok===true?"✓":ok===false?"!":"•"}</span><span><b>${t}</b><em>${d}</em></span></div>`;
+  const bkOk=!!h.bk&&(Date.now()-h.bk<8*864e5||h.chg<=h.bk);
+  const dOk=!h.docs||(!!h.dbk&&h.dchg<=h.dbk);
+  box.innerHTML=
+    row(h.persist,"حماية من الحذف التلقائي",h.persist?"مفعّلة: لن يحذف الجهاز بيانات التطبيق عند امتلاء الذاكرة.":h.persist===false?"غير مفعّلة بعد. يفعّلها الجهاز عادةً للتطبيقات المضافة إلى الشاشة الرئيسية والمستعملة بانتظام.":"غير متاحة في هذا المتصفح.")+
+    row(!!h.mirror,"نسخة ثانية داخل الجهاز",h.mirror?`تتحدّث مع كل تغيير، وآخر تحديث ${agoTxt(h.mirror)}. إن ضاعت النسخة الأساسية يستعيدها التطبيق وحده عند فتحه.`:"تُنشأ مع أول تغيير تقوم به.")+
+    row(h.snaps>0,"النسخ اليومية التلقائية",h.snaps?`${h.snaps} ${h.snaps===1?"نسخة":"نسخ"} محفوظة (آخر ٧ أيام).`:"تُنشأ تلقائيًا عند استعمال التطبيق.")+
+    row(bkOk,"النسخة الاحتياطية في iCloud",h.bk?`آخر نسخة ${agoTxt(h.bk)}${h.chg>h.bk?"، وعندك تغييرات بعدها.":"، وكل شيء محفوظ."}`:"لم تحفظ نسخة بعد. هذه هي الحماية الوحيدة إن ضاع الجهاز.")+
+    (h.docs?row(dOk,"نسخة الوثائق والملفات",h.dbk?`آخر نسخة ${agoTxt(h.dbk)}${h.dchg>h.dbk?"، وأضفت وثائق بعدها.":"."}`:"لم تحفظ نسخة للوثائق بعد."):"")+
+    `<div class="note" style="margin-top:6px">المساحة المستعملة: <bdi>${(h.used/1048576).toFixed(1)}</bdi> ميغابايت</div>`;
+  const pb=document.getElementById("persistBtn");if(pb)pb.hidden=h.persist!==false;
+  const nb=document.getElementById("healthBk");if(nb)nb.hidden=bkOk;
+  const db=document.getElementById("healthDocs");if(db)db.hidden=dOk;
+}
+function addHealthSection(){
+  const sheet=document.querySelector("#modal .sheet");if(!sheet||document.getElementById("healthSec"))return;
+  const sec=document.createElement("div");sec.className="setsec";sec.id="healthSec";
+  sec.innerHTML=`<b>حماية البيانات</b><div id="healthList" class="note">…</div>
+    <div class="lockset"><button class="btn primary" type="button" id="healthBk" hidden>احفظ في iCloud الآن</button><button class="btn" type="button" id="healthDocs" hidden>احفظ نسخة الوثائق</button><button class="btn" type="button" id="persistBtn" hidden>تفعيل الحماية من الحذف</button></div>`;
+  const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
+  renderHealth();
+}
+const _olsHealth=openLockSettings;openLockSettings=function(){_olsHealth();addHealthSection()};
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#persistBtn")){const r=await askPersist();toast(r?"فُعّلت الحماية":"لم يسمح الجهاز بها الآن، وسيحاول التطبيق مجددًا لاحقًا");renderHealth();return}
+  if(e.target.closest("#healthBk")){await doBackup();renderHealth();return}
+  if(e.target.closest("#healthDocs")){await docsBackup();renderHealth()}
+});
+// documents reminder: new documents not yet in a backup file, and the last one is a week old
+const DBK_SNOOZE="halaqa.dbksnooze";
+function docsDue(){const c=lsN("halaqa.docsChgAt"),b=lsN("halaqa.docsBkAt");return c>b&&Date.now()-b>7*864e5&&Date.now()-c>36e5&&Date.now()>lsN(DBK_SNOOZE)}
+async function maybeDocsPrompt(){
+  if(!docsDue()||!document.getElementById("modal").hidden||!document.getElementById("lock").hidden)return;
+  try{if(!(await DOCDB.keys()).length)return}catch(_){return}
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="نسخة الوثائق">
+    <h3>وثائق جديدة بدون نسخة</h3>
+    <div class="note">أضفت وثائق أو ملفات لم تدخل بعد في نسخة الوثائق. احفظها في مجلد خاص في iCloud حتى لا تضيع إن ضاع الجهاز.</div>
+    <div class="lockset"><button class="btn primary" type="button" id="dbkGo">احفظ نسخة الوثائق</button><button class="btn" type="button" id="dbkLater">ذكّرني بعد ٣ أيام</button></div>
+  </div></div>`;md.hidden=false;
+}
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#dbkGo")){document.getElementById("modal").hidden=true;await docsBackup();return}
+  if(e.target.closest("#dbkLater")){lsSet(DBK_SNOOZE,Date.now()+3*864e5);document.getElementById("modal").hidden=true}
+});
+const _hideLockP=hideLock;hideLock=function(){_hideLockP();askPersist();
+  if(window.__mirrorRestored){window.__mirrorRestored=false;setTimeout(()=>toast("استُعيدت بياناتك تلقائيًا من النسخة الثانية في الجهاز"),400)}
+  setTimeout(maybeDocsPrompt,1600)};
+const hst=document.createElement("style");hst.textContent=`
+#healthList .hrow{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--line)}
+#healthList .hrow span:last-child{display:flex;flex-direction:column;gap:2px}
+#healthList .hrow b{color:var(--ink);font-size:.92rem}#healthList .hrow em{font-style:normal;font-size:.82rem;line-height:1.6}
+#healthList .hic{flex:none;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;background:var(--line);color:var(--muted)}
+#healthList .hic.ok{background:var(--present);color:#fff}#healthList .hic.warn{background:var(--gold);color:#fff}
+`;document.head.appendChild(hst);
 
 // ---- Teacher files («ملفات الأستاذ»): same lock as the app (PIN + Face ID), stored on this device only ----
 const TPFX="teacher|";
