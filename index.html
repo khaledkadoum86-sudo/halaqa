@@ -611,6 +611,14 @@ html.ipad .basmala .b1{font-size:1.9rem}
 .addrow{display:flex;margin-bottom:14px}
 .addbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;font-size:1rem}
 /* the banner carries the title on every screen */
+.stunav{display:flex;align-items:center;gap:8px}
+.brushes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.brush{min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--surface-2);font-weight:700;font-size:.95rem;color:var(--ink)}
+.brush.p{color:var(--p-txt)}.brush.j{color:var(--j-txt)}.brush.a{color:var(--a-txt)}
+.brush.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.brush.p.on{background:var(--p-solid)}.brush.j.on{background:var(--j-solid)}.brush.a.on{background:var(--a-solid)}.brush.t.on,.brush.c.on{background:var(--surface)}
+.day:disabled{opacity:.4}
+
 .brand h1{display:none}
 .banner-txt{position:relative}
 .banner-txt{min-height:88px}
@@ -996,29 +1004,52 @@ function renderStudentsOld(){
    </div>`).join(""):`<div class="empty">لا يوجد طلبة بعد.</div>`;
 }
 
+let STU_BRUSH=P;
 function openStudent(id){
   const s=S.students.find(x=>x.id===id); if(!s)return;
   const {days,per}=monthStats(S.month); const st=per[id]||{p:0,a:0,j:0,t:0,rate:null};
   const [y,m]=S.month.split("-").map(Number);
-  const md=document.getElementById("modal");
-  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(s.name)}">
-    <h3>${esc(s.name)}</h3><div class="note">رقم ${s.n} · ${MON[m-1]} ${y}</div>
-    <div class="stats mini" style="margin-top:12px">
+  const md=document.getElementById("modal"),old=md.querySelector(".stusheet"),sc=old?old.scrollTop:0;
+  const lst=active(),ix=lst.findIndex(x=>x.id===id),prevS=ix>0?lst[ix-1]:null,nextS=ix>=0&&ix<lst.length-1?lst[ix+1]:null;
+  const dis=S.canWrite?"":"disabled",td=iso(new Date());
+  const br=(k,label,cls)=>`<button type="button" class="brush ${cls}${STU_BRUSH===k?" on":""}" data-br="${k}" ${dis}>${label}</button>`;
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet stusheet" role="dialog" aria-modal="true" aria-label="${esc(s.name)}">
+    <div class="stunav"><button type="button" class="btn sm" data-stu="${nextS?nextS.id:""}" ${nextS?"":"disabled"}>‹ التالي</button><span class="note" style="flex:1;text-align:center">${ix+1} / ${lst.length}</span><button type="button" class="btn sm" data-stu="${prevS?prevS.id:""}" ${prevS?"":"disabled"}>السابق ›</button></div>
+    <h3>${esc(s.name)}</h3>
+    <div class="stunav" style="margin-top:2px"><button type="button" class="btn sm" data-mshift="1">‹ الشهر التالي</button><b style="flex:1;text-align:center">${MON[m-1]} ${y}</b><button type="button" class="btn sm" data-mshift="-1">الشهر السابق ›</button></div>
+    <div class="stats mini" style="margin-top:10px">
       <div class="stat p"><b class="num">${st.p}</b><span>حضور</span></div>
-      <div class="stat j"><b class="num">${st.j}</b><span>حضور جزئي</span></div>
+      <div class="stat j"><b class="num">${st.j}</b><span>جزئي</span></div>
       <div class="stat a"><b class="num">${st.a}</b><span>غياب</span></div>
       <div class="stat"><b class="num">${st.rate==null?"—":st.rate+"%"}</b><span>النسبة</span></div>
       <div class="stat t"><b class="num">${st.t}</b><span>${hizb(st.t)}</span></div>
     </div>
-    <div class="legend"><span><i class="lg p"></i>حاضر</span><span><i class="lg j"></i>حضور جزئي</span><span><i class="lg a"></i>غائب</span><span><i class="lg n"></i>غير مسجَّل</span><span><i class="lg t"></i>ثمن محفوظ</span></div>
-    <div class="days">${(()=>{const td=iso(new Date());return days.map(d=>{const dd=dayData(d),v=dd.att[id],t=Number(dd.th[id])||0,x=parse(d);
-      const cls=v===P?"p":v===A?"a":v===J?"j":d>td?"f":"n";
-      return `<button type="button" class="day ${cls}${d===td?" td":""}" data-goto="${d}" title="افتح هذا اليوم"><span>${DAYN[x.getDay()]}</span><b class="num">${x.getDate()}</b><em>${v===P?"حاضر":v===A?"غائب":v===J?"جزئي":d>td?" ":"—"}</em>${t?`<i class="tb num">${t} ثمن</i>`:""}</button>`}).join("")})()}</div>
+    <div class="note" style="margin-top:12px"><b>اختر الأداة ثم اضغط على الأيام:</b></div>
+    <div class="brushes">${br(P,"ح حاضر","p")}${br(J,"ج جزئي","j")}${br(A,"غ غائب","a")}${br("plus","＋ ثمن","t")}${br("minus","− ثمن","t")}${br("clear","مسح","c")}</div>
+    <div class="days">${days.map(d=>{const dd=dayData(d),v=dd.att[id],t=Number(dd.th[id])||0,x=parse(d),fut=d>td;
+      const cls=v===P?"p":v===A?"a":v===J?"j":fut?"f":"n";
+      return `<button type="button" class="day ${cls}${d===td?" td":""}" data-sday="${d}" ${fut?"disabled":""}><span>${DAYN[x.getDay()]}</span><b class="num">${x.getDate()}</b><em>${v===P?"حاضر":v===A?"غائب":v===J?"جزئي":fut?" ":"—"}</em>${t?`<i class="tb num">${t} ثمن</i>`:""}</button>`}).join("")}</div>
+    <div class="note" style="margin-top:10px">أيام لم تُسجَّل: <b class="num">${days.filter(d=>d<=td&&!isRec(dayData(d).att[id])).length}</b></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-fill="${P}" ${dis}>غير المسجَّل ← حاضر</button><button class="btn" type="button" data-fill="${A}" ${dis}>غير المسجَّل ← غائب</button></div>
     <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn primary" type="button" data-card="${id}">بطاقة للولي</button><button class="btn" type="button" data-act="info" data-id="${id}">معلومات الطالب</button><button class="btn" type="button" data-act="close">إغلاق</button></div>
   </div></div>`;
-  md.hidden=false;
+  md.hidden=false;const ns=md.querySelector(".stusheet");if(ns)ns.scrollTop=sc;md.dataset.cur=id;
 }
-
+document.getElementById("modal").addEventListener("click",e=>{
+  const md=document.getElementById("modal"),id=md.dataset.cur;if(!id||!md.querySelector(".stusheet"))return;
+  const bb=e.target.closest("[data-br]");if(bb){STU_BRUSH=bb.dataset.br;openStudent(id);return}
+  const nv=e.target.closest("[data-stu]");if(nv&&nv.dataset.stu){openStudent(nv.dataset.stu);const sh=md.querySelector(".stusheet");if(sh)sh.scrollTop=0;return}
+  const ms=e.target.closest("[data-mshift]");if(ms){shiftMonth(+ms.dataset.mshift);openStudent(id);return}
+  const fl=e.target.closest("[data-fill]");if(fl){const td=iso(new Date());let n=0;
+    studyDays(S.month).forEach(d=>{if(d<=td&&!isRec(dayData(d).att[id])){queue(d,"att",id,fl.dataset.fill);n++}});
+    toast(n?`عُبّئ ${n} يومًا`:"لا توجد أيام غير مسجَّلة");openStudent(id);return}
+  const dy=e.target.closest("[data-sday]");if(dy){const d=dy.dataset.sday;if(d>iso(new Date()))return;
+    const dd=dayData(d),v=dd.att[id];let t=Number(dd.th[id])||0,b=STU_BRUSH;
+    if(b===P||b===J||b===A){if(v===b)queue(d,"att",id,"");else{queue(d,"att",id,b);if(b===A&&t)queue(d,"th",id,null)}}
+    else if(b==="plus"||b==="minus"){t=Math.max(0,t+(b==="plus"?1:-1));queue(d,"th",id,t||null);if(t&&v!==P&&v!==J)queue(d,"att",id,P)}
+    else if(b==="clear"){queue(d,"att",id,"");queue(d,"th",id,null)}
+    openStudent(id);return}
+});
 function openInfo(id){
   const s=S.students.find(x=>x.id===id); if(!s)return;
   const md=document.getElementById("modal");
@@ -1412,7 +1443,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.3</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.4</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
