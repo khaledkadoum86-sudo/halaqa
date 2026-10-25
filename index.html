@@ -619,6 +619,12 @@ html.ipad .basmala .b1{font-size:1.9rem}
 .brush.p.on{background:var(--p-solid)}.brush.j.on{background:var(--j-solid)}.brush.a.on{background:var(--a-solid)}.brush.t.on,.brush.c.on{background:var(--surface)}
 .day:disabled{opacity:.4}
 
+.stat.tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.stat.tap:active{transform:scale(.97)}
+.namelist{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:56vh;overflow:auto}
+.nl{display:flex;align-items:center;gap:10px;min-height:46px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);text-align:right;font-size:1rem;color:var(--ink)}
+.nl span{min-width:26px;color:var(--muted);font-size:.85rem}.nl b{flex:1;font-family:var(--names,inherit)}.nl em{font-style:normal;font-size:.85rem;color:var(--muted);font-weight:700}
+
 .brand h1{display:none}
 .banner-txt{position:relative}
 .banner-txt{min-height:88px}
@@ -895,11 +901,11 @@ function renderTodayInner(){
   let p=0,a=0,j=0,t=0;
   list.forEach(s=>{const v=dd.att[s.id];if(v===P)p++;else if(v===A)a++;else if(v===J)j++;t+=Number(dd.th[s.id])||0});
   document.getElementById("todayStats").innerHTML=
-    `<div class="stat p"><b class="num">${p}</b><span>حاضر</span></div>
-     <div class="stat j"><b class="num">${j}</b><span>حضور جزئي</span></div>
-     <div class="stat a"><b class="num">${a}</b><span>غائب</span></div>
-     <div class="stat"><b class="num">${list.length-p-a-j}</b><span>لم يُسجَّل بعد</span></div>
-     <div class="stat t"><b class="num">${t}</b><span>ثمن محفوظ اليوم</span></div>`;
+    `<div class="stat p tap" data-sl="p" role="button" tabindex="0"><b class="num">${p}</b><span>حاضر</span></div>
+     <div class="stat j tap" data-sl="j" role="button" tabindex="0"><b class="num">${j}</b><span>حضور جزئي</span></div>
+     <div class="stat a tap" data-sl="a" role="button" tabindex="0"><b class="num">${a}</b><span>غائب</span></div>
+     <div class="stat tap" data-sl="none" role="button" tabindex="0"><b class="num">${list.length-p-a-j}</b><span>لم يُسجَّل بعد</span></div>
+     <div class="stat t tap" data-sl="t" role="button" tabindex="0"><b class="num">${t}</b><span>ثمن محفوظ اليوم</span></div>`;
   const box=document.getElementById("todayList");
   if(!S.studentsLoaded){box.innerHTML=`<div class="empty">${S.db?"جارٍ تحميل قائمة الطلبة…":"سجّل الدخول إلى Claude لفتح السجل وحفظ البيانات."}</div>`;return}
   if(!list.length){box.innerHTML=`<div class="empty">لا يوجد طلبة بعد. أضف أول طالب من تبويب «الطلبة»، أو استعد نسخة احتياطية من زر «الإعدادات» في الأعلى.</div>`;return}
@@ -936,8 +942,8 @@ function renderMonth(){
   document.getElementById("monthStats").innerHTML=
    `<div class="stat"><b class="num">${recorded.length}<small style="font-size:.9rem;color:var(--muted)"> / ${days.length}</small></b><span>حصص مسجَّلة</span></div>
     <div class="stat p"><b class="num">${rateOf(P_,J_,A_)??0}%</b><span>نسبة الحضور</span></div>
-    <div class="stat a"><b class="num">${A_}</b><span>مجموع الغيابات</span></div>
-    <div class="stat t"><b class="num">${T_}</b><span>ثمن محفوظ (${hizb(T_)})</span></div>`;
+    <div class="stat a tap" data-sl="mabs" role="button" tabindex="0"><b class="num">${A_}</b><span>مجموع الغيابات</span></div>
+    <div class="stat t tap" data-sl="mt" role="button" tabindex="0"><b class="num">${T_}</b><span>ثمن محفوظ (${hizb(T_)})</span></div>`;
   const top=list.filter(s=>per[s.id].t>0).sort((a,b)=>per[b.id].t-per[a.id].t).slice(0,5);
   document.getElementById("topBox").innerHTML=top.length?`<div class="top5"><span class="note" style="align-self:center">الأكثر حفظًا:</span>${top.map(s=>`<span class="chip">${esc(s.name)} <b class="num">${per[s.id].t}</b></span>`).join("")}</div>`:"";
   const q=norm(S.mq);
@@ -1443,7 +1449,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.4</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.5</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2827,6 +2833,36 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("input",e=>{if(e.target.id!=="cardNote")return;CARD.note=e.target.value;clearTimeout(drawCard.t);drawCard.t=setTimeout(drawCard,350)});
 
+
+// ---- tap a summary tile to see the names behind the number ----
+function statListData(kind){
+  const lst=active();
+  if(kind==="mabs"||kind==="mt"){
+    const {per}=monthStats(S.month),[y,m]=S.month.split("-").map(Number);
+    const rows=lst.map(s=>({s,v:kind==="mabs"?per[s.id].a:per[s.id].t})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v||byName(a.s,b.s));
+    return {title:(kind==="mabs"?"الغيابات":"الحفظ")+" — "+MON[m-1]+" "+y,rows,fmt:v=>kind==="mabs"?v+" "+(v===1?"غياب":v<=10?"غيابات":"غيابًا"):thw(v)};
+  }
+  const dd=dayData(S.date);
+  const T={p:["الحاضرون",s=>dd.att[s.id]===P],j:["حضور جزئي",s=>dd.att[s.id]===J],a:["الغائبون",s=>dd.att[s.id]===A],none:["لم يُسجَّل بعد",s=>!isRec(dd.att[s.id])],t:["الحافظون",s=>(Number(dd.th[s.id])||0)>0]}[kind];
+  if(!T)return null;
+  let rows=lst.filter(T[1]).map(s=>({s,v:Number(dd.th[s.id])||0}));
+  if(kind==="t")rows.sort((a,b)=>b.v-a.v||byName(a.s,b.s));
+  return {title:T[0]+" — "+fmtDate(S.date),rows,fmt:kind==="t"?(v=>thw(v)):(v=>v>0?thw(v):"")};
+}
+function openStatList(kind){
+  const d=statListData(kind);if(!d)return;const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet statlist" role="dialog" aria-modal="true" aria-label="${esc(d.title)}">
+    <h3>${esc(d.title)}</h3><div class="note">العدد: <b class="num">${d.rows.length}</b></div>
+    <div class="namelist">${d.rows.length?d.rows.map((r,i)=>`<button type="button" class="nl" data-nl="${r.s.id}"><span class="num">${i+1}</span><b>${esc(r.s.name)}</b><em>${esc(d.fmt(r.v))}</em></button>`).join(""):'<div class="empty" style="padding:18px 0">لا أحد</div>'}</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" type="button" id="nlCopy" data-names="${esc(d.rows.map(r=>r.s.name).join("\n"))}" ${d.rows.length?"":"disabled"}>نسخ الأسماء</button><button class="btn primary" type="button" data-act="close">إغلاق</button></div>
+  </div></div>`;md.hidden=false;
+}
+document.addEventListener("click",async e=>{
+  const t=e.target.closest(".stat[data-sl]");if(t){openStatList(t.dataset.sl);return}
+  const n=e.target.closest(".nl[data-nl]");if(n){openStudent(n.dataset.nl);return}
+  const c=e.target.closest("#nlCopy");if(c){try{await navigator.clipboard.writeText(c.dataset.names);toast("نُسخت الأسماء")}catch(_){toast("تعذّر النسخ")}}
+});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches(".stat[data-sl]")){e.preventDefault();openStatList(e.target.dataset.sl)}});
 // ---- iCloud button: faded when everything is backed up, lit when there are new changes ----
 const CHG_KEY="halaqa.changedAt";
 const changedAt=()=>{try{return +localStorage.getItem(CHG_KEY)||0}catch(_){return 0}};
