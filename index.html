@@ -661,7 +661,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
     <div class="bar">
       <div class="datebox">
         <button id="prevMonth" aria-label="الشهر السابق">› السابق</button>
-        <span class="lbl" id="monthLbl"></span>
+        <button type="button" class="lbl" id="monthLbl" aria-label="اختيار الشهر والسنة"></button>
         <button id="nextMonth" aria-label="الشهر التالي">التالي ‹</button>
       </div>
       <span class="sbox"><input type="search" id="mq" placeholder="ابحث عن طالب…"><button type="button" class="sclear" data-for="mq" aria-label="مسح البحث" hidden>✕</button></span>
@@ -1406,7 +1406,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 5.2</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 5.3</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2204,6 +2204,123 @@ const scst=document.createElement("style");scst.textContent=`
 #scanner .scchip.on{background:#fff;color:#0b0f0e;font-weight:700}
 #docViewer{z-index:55}
 `;document.head.appendChild(scst);
+
+// ---- Any month, any year: month/year picker + school-year summary ----
+async function allDays(){try{const s=await S.db.collection("days").get();return s.docs.map(d=>d.data()).filter(x=>x&&x.date)}catch(_){return[]}}
+const hasRec=d=>Object.values(d.att||{}).some(isRec)||Object.values(d.th||{}).some(v=>Number(v)>0);
+async function monthsWithData(){const o={};for(const d of await allDays()){if(!hasRec(d))continue;const k=d.month||monthKey(d.date);o[k]=(o[k]||0)+1}return o}
+const MP={y:null};
+async function openMonthPicker(y){
+  const cur=new Date(),cy=cur.getFullYear(),cm=cur.getMonth()+1,[sy,sm]=S.month.split("-").map(Number);
+  MP.y=y||MP.y||sy;
+  const have=await monthsWithData();
+  const years=[...new Set(Object.keys(have).map(k=>+k.slice(0,4)).concat([cy,sy]))].sort((a,b)=>b-a);
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="اختيار الشهر" id="mpSheet">
+    <h3>اختر الشهر والسنة</h3>
+    <div class="mpyear"><button type="button" class="btn" data-mpy="${MP.y-1}" aria-label="السنة السابقة">›</button><b class="num">${MP.y}</b><button type="button" class="btn" data-mpy="${MP.y+1}" ${MP.y>=cy?"disabled":""} aria-label="السنة التالية">‹</button></div>
+    ${years.length>1?`<div class="mpyears">${years.map(v=>`<button type="button" class="mpyc${v===MP.y?" on":""}" data-mpy="${v}">${v}</button>`).join("")}</div>`:""}
+    <div class="mpgrid">${MON.map((n,i)=>{const k=MP.y+"-"+pad(i+1),fut=MP.y>cy||(MP.y===cy&&i+1>cm),c=have[k]||0;
+      return `<button type="button" class="mpm${k===S.month?" on":""}${c?" has":""}" data-mpm="${k}" ${fut?"disabled":""}><b>${n}</b><em>${c?`${c} ${c===1?"حصة":c===2?"حصتان":c<=10?"حصص":"حصة"}`:"—"}</em></button>`}).join("")}</div>
+    <div class="lockset" style="margin-top:14px">
+      <button type="button" class="btn primary" data-mpsum="${MP.y}">📊 ملخّص السنة الدراسية</button>
+      <button type="button" class="btn" data-mpm="${cy}-${pad(cm)}">الشهر الحالي</button>
+      <button type="button" class="btn" data-act="close">إغلاق</button></div>
+  </div></div>`;
+  md.hidden=false;
+}
+function goMonth(k){S.month=k;subscribeMonth();document.getElementById("modal").hidden=true;
+  if(S.view!=="month")document.getElementById("tab-month")?.click();else render()}
+// school year: September → August; schoolYearOf(date) gives its starting year
+const schoolYearOf=k=>{const [y,m]=k.split("-").map(Number);return m>=9?y:y-1};
+const SY={start:null,data:null};
+async function openYearSummary(start){
+  SY.start=start;const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet wide" role="dialog" aria-modal="true" aria-label="ملخّص السنة الدراسية" id="sySheet"><h3>ملخّص السنة الدراسية</h3><div class="note">جارٍ الحساب…</div></div></div>`;md.hidden=false;
+  const ks=[];for(let i=0;i<12;i++){const d=new Date(start,8+i,1);ks.push(iso(d).slice(0,7))}
+  const days=(await allDays()).filter(d=>ks.includes(d.month||monthKey(d.date))&&hasRec(d));
+  const ids=new Set();days.forEach(d=>{Object.keys(d.att||{}).forEach(i=>ids.add(i));Object.keys(d.th||{}).forEach(i=>{if(Number(d.th[i])>0)ids.add(i)})});
+  const studs=S.students.filter(s=>ids.has(s.id)||(s.active!==false&&days.length)).sort(orderFn());
+  const months=ks.filter(k=>days.some(d=>(d.month||monthKey(d.date))===k));
+  const per={};studs.forEach(s=>{const o={p:0,j:0,a:0,t:0,m:{}};months.forEach(k=>o.m[k]={p:0,j:0,a:0,t:0});per[s.id]=o});
+  const mtot={};months.forEach(k=>mtot[k]={n:0,t:0,p:0,j:0,a:0});
+  for(const d of days){const k=d.month||monthKey(d.date);mtot[k].n++;
+    for(const s of studs){const v=(d.att||{})[s.id],t=Number((d.th||{})[s.id])||0,o=per[s.id],om=o.m[k];
+      if(v===P){o.p++;om.p++;mtot[k].p++}else if(v===J){o.j++;om.j++;mtot[k].j++}else if(v===A){o.a++;om.a++;mtot[k].a++}
+      o.t+=t;om.t+=t;mtot[k].t+=t}}
+  SY.data={ks,months,studs,per,mtot,days:days.length};
+  const sh=document.getElementById("sySheet");if(!sh)return;
+  const mn=k=>MON[+k.slice(5)-1],rt=o=>{const r=rateOf(o.p,o.j,o.a);return r==null?"—":r+"%"};
+  const totT=studs.reduce((t,s)=>t+per[s.id].t,0),allR=rateOf(...["p","j","a"].map(x=>studs.reduce((t,s)=>t+per[s.id][x],0)));
+  sh.innerHTML=`<h3>ملخّص السنة الدراسية</h3>
+    <div class="mpyear"><button type="button" class="btn" data-sy="${start-1}" aria-label="السنة السابقة">›</button><b class="num">${start} / ${start+1}</b><button type="button" class="btn" data-sy="${start+1}" ${start>=schoolYearOf(iso(new Date()).slice(0,7))?"disabled":""} aria-label="السنة التالية">‹</button></div>
+    ${!days.length?`<div class="empty" style="margin-top:14px">لا توجد حصص مسجّلة في هذه السنة الدراسية.</div>`:`
+    <div class="stats mini" style="margin-top:12px">
+      <div class="stat"><b class="num">${days.length}</b><span>حصص مسجّلة</span></div>
+      <div class="stat"><b class="num">${allR==null?"—":allR+"%"}</b><span>نسبة الحضور</span></div>
+      <div class="stat t"><b class="num">${totT}</b><span>${hizb(totT)}</span></div>
+      <div class="stat"><b class="num">${studs.length}</b><span>طالب</span></div></div>
+    <b class="sysub">حسب الشهر</b><span class="note">اضغط على شهر لفتحه.</span>
+    <div class="sytab">${months.map(k=>{const o=mtot[k];return `<button type="button" class="syrow" data-mpm="${k}"><b>${mn(k)} <span class="num">${k.slice(0,4)}</span></b><span>${o.n} ${o.n===1?"حصة":o.n===2?"حصتان":o.n<=10?"حصص":"حصة"}</span><span>${rt(o)}</span><span class="num">${o.t} ثمن</span></button>`}).join("")}</div>
+    <b class="sysub">حسب الطالب</b><span class="note">اضغط على اسم الطالب لترى أشهره.</span>
+    <div class="systu">${studs.map(s=>{const o=per[s.id];return `<details><summary><b>${esc(s.name)}</b><span>ح ${o.p} · ج ${o.j} · غ ${o.a}</span><span>${rt(o)}</span><span class="num">${o.t} ثمن</span></summary>
+      <div class="sym">${months.map(k=>{const q=o.m[k];return `<div><span>${mn(k)}</span><span>ح ${q.p} · ج ${q.j} · غ ${q.a}</span><span>${rt(q)}</span><span class="num">${q.t} ثمن</span></div>`}).join("")}</div></details>`}).join("")}</div>`}
+    <div class="lockset" style="margin-top:14px">${days.length?`<button type="button" class="btn primary" id="syXlsx">تصدير Excel</button>`:""}<button type="button" class="btn" data-act="close">إغلاق</button></div>`;
+}
+async function exportYear(){
+  const D=SY.data;if(!D)return;
+  try{await loadXLSX()}catch(_){toast("تعذّر تحميل أداة Excel، تحقق من الاتصال");return}
+  const mn=k=>MON[+k.slice(5)-1]+" "+k.slice(0,4),rt=o=>{const r=rateOf(o.p,o.j,o.a);return r==null?"":r/100};
+  const head=["الرقم","اسم الطالب","حضور","جزئي","غياب","نسبة الحضور","مجموع الأثمان"].concat(D.months.map(k=>"أثمان "+mn(k)));
+  const rows=D.studs.map(s=>{const o=D.per[s.id];return [s.n||"",s.name,o.p,o.j,o.a,rt(o),o.t].concat(D.months.map(k=>o.m[k].t))});
+  const t=teacherName(),title=[`ملخّص السنة الدراسية ${SY.start}/${SY.start+1}${t?" — "+t:""}`];
+  const ws=XLSX.utils.aoa_to_sheet([title,[],head].concat(rows));
+  ws["!cols"]=[{wch:6},{wch:28}].concat(head.slice(2).map(()=>({wch:12})));
+  for(let r=0;r<rows.length;r++){const c=XLSX.utils.encode_cell({r:r+3,c:5});if(ws[c]&&ws[c].v!=="")ws[c].z="0%"}
+  const ws2=XLSX.utils.aoa_to_sheet([["الشهر","حصص مسجّلة","حضور","جزئي","غياب","نسبة الحضور","مجموع الأثمان"]].concat(D.months.map(k=>{const o=D.mtot[k];return [mn(k),o.n,o.p,o.j,o.a,rt(o),o.t]})));
+  ws2["!cols"]=[{wch:16},{wch:12},{wch:10},{wch:10},{wch:10},{wch:12},{wch:14}];
+  for(let r=0;r<D.months.length;r++){const c=XLSX.utils.encode_cell({r:r+1,c:5});if(ws2[c]&&ws2[c].v!=="")ws2[c].z="0%"}
+  const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
+  XLSX.utils.book_append_sheet(wb,ws,"الطلبة");XLSX.utils.book_append_sheet(wb,ws2,"الأشهر");
+  const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  try{await shareOrDownload(`ملخص السنة الدراسية ${SY.start}-${SY.start+1}${t?" - "+t:""}.xlsx`,new Blob([buf],{type:MIME.xlsx}));toast("تم التصدير")}
+  catch(err){if(!(err&&err.code==="declined"))toast("تعذّر التصدير")}
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("#monthLbl")){openMonthPicker();return}
+  const inSheet=e.target.closest&&e.target.closest("#mpSheet,#sySheet");if(!inSheet)return;
+  const y=e.target.closest("[data-mpy]");if(y){openMonthPicker(+y.dataset.mpy);return}
+  const m=e.target.closest("[data-mpm]");if(m){goMonth(m.dataset.mpm);return}
+  const s=e.target.closest("[data-mpsum]");if(s){const sy=schoolYearOf(S.month);openYearSummary(sy);return}
+  const n=e.target.closest("[data-sy]");if(n){openYearSummary(+n.dataset.sy);return}
+  if(e.target.closest("#syXlsx"))exportYear();
+});
+const yst=document.createElement("style");yst.textContent=`
+#monthLbl{cursor:pointer;background:transparent;font:inherit;font-weight:600;color:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+#monthLbl::after{content:"▾";font-size:.8em;color:var(--muted)}
+.mpyear{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:10px}
+.mpyear b{font-size:1.3rem;min-width:110px;text-align:center}.mpyear .btn{min-width:48px;min-height:44px;font-size:1.2rem}
+.mpyears{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+.mpyc{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font:inherit;font-size:.85rem;color:var(--ink);cursor:pointer}
+.mpyc.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.mpgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.mpm{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;min-height:58px}
+.mpm em{font-style:normal;font-size:.75rem;color:var(--muted)}
+.mpm.has{border-color:var(--accent)}.mpm.has em{color:var(--accent);font-weight:600}
+.mpm.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}.mpm.on em{color:var(--accent-ink)}
+.mpm:disabled{opacity:.35;cursor:default}
+.sysub{display:block;margin-top:16px}
+.sytab,.systu{margin-top:6px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.syrow,.systu summary,.sym>div{display:grid;grid-template-columns:minmax(0,1fr) auto 42px 58px;gap:8px;align-items:center;padding:9px 12px;font-size:.88rem}
+.syrow{width:100%;border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:.88rem;text-align:start;cursor:pointer}
+.sytab .syrow:first-child,.systu details:first-child summary{border-top:0}
+.systu summary{border-top:1px solid var(--line);cursor:pointer;list-style:none;background:var(--surface)}
+.systu summary::-webkit-details-marker{display:none}
+.systu summary b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.systu details[open] summary{background:var(--surface-2)}
+.sym>div{font-size:.8rem;color:var(--muted);border-top:1px dashed var(--line)}
+.syrow span:not(:first-child),.systu summary span,.sym span:not(:first-child){color:var(--muted);text-align:center;white-space:nowrap}
+`;document.head.appendChild(yst);
 
 // ---- daily report for the WhatsApp group ----
 const REP_KEY="halaqa.repopts2";
