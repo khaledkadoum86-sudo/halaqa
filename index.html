@@ -1412,7 +1412,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.2</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.3</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1421,6 +1421,11 @@ function openLockSettings(){
       <label class="btn" for="restoreIn" style="text-align:center;cursor:pointer">استعادة من نسخة احتياطية</label>
       <input type="file" id="restoreIn" accept=".json,application/json" hidden></div>
       <div class="note" id="restoreMsg"></div></div>
+    <div class="setsec"><b>استيراد حضور من الورقة</b><span class="note">يسجّل الحضور من جدول الحضور الورقي: علامة X = حاضر، علامة 0 = غائب.</span>
+      <div class="lockset"><button class="btn" type="button" id="sheetW1">أكتوبر 2026 – الأسبوع الأول (4 إلى 8 أكتوبر)</button>
+      <label class="btn" for="sheetIn" style="text-align:center;cursor:pointer">استيراد من ملف</label>
+      <input type="file" id="sheetIn" accept=".json,application/json" hidden></div>
+      <div class="note" id="sheetMsg"></div></div>
     <div class="setsec"><b>النسخ التلقائية على الجهاز</b><span class="note">يحفظ التطبيق وحده نسخة كل يوم تستعمله فيه ويبقي آخر 7. تحميك من الحذف أو التعديل بالخطأ، لكنها لا تغني عن نسخة iCloud.</span>
       <div id="autoList" class="note">…</div></div>
     <div class="setsec"><b>الرمز السري</b>
@@ -1429,6 +1434,58 @@ function openLockSettings(){
   </div></div>`;
   md.hidden=false;renderAutoList();
 }
+
+/* ---- استيراد حضور من ورقة: X = حاضر ، O = غائب ، - = غير مسجَّل ---- */
+const SHEET_W1={"title": "أكتوبر 2026 – الأسبوع الأول", "dates": ["2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08"], "rows": [[1, "طويل يوسف", "-XOOX"], [2, "داودي عزالدين", "XXXXX"], [3, "خلفون إسلام", "XXXXX"], [4, "بودوخة سيف", "OXOOX"], [5, "خلفون عبد الكريم", "OXXXO"], [6, "غربي عبد الرحمن", "XXXXX"], [7, "صحراوي عبد الرحيم", "OXOXX"], [8, "بن ساسي أنس", "XXOXX"], [9, "بن ساسي محمد رضا", "XXXXX"], [10, "كبيري محمد", "OXXXO"], [11, "بوضياف يحيى", "XXXXO"], [12, "مسعلم عبد الرحيم", "OXOOO"], [13, "نجاري المهدي", "OXXOO"], [14, "رويبح سيف", "OXXOX"], [15, "بن يمينة شرف", "OXXOO"], [16, "برايجي نبراس", "XXXOX"], [17, "برايجي سندس", "XXXXX"], [18, "بن شيحل عالية", "XXXXX"], [19, "بن شيحل مريم", "XXXXX"], [20, "بن شيحل كاميلة", "XXXXX"], [21, "نجاري فريال", "OXXXO"], [22, "بوضياف ليان", "XXXXO"]]};
+let pendingSheet=null;
+function sheetMatch(spec){
+  const tok=x=>norm(x).replace(/[ًٌٍَُِّْ]/g,"").split(/\s+/).map(t=>t.replace(/^ال/,"")).filter(t=>t&&t!=="بن");
+  const stu=S.students.slice(),used=new Set(),out=[];
+  spec.rows.forEach(r=>{
+    const t=tok(r[1]);let best=null,bs=0;
+    stu.forEach(s=>{if(used.has(s.id))return;const u=tok(s.name||"");const c=t.filter(x=>u.includes(x)).length;
+      const sc=c+(s.n===r[0]?0.5:0);if(c>=Math.min(2,t.length)&&sc>bs){bs=sc;best=s}});
+    let flag="";
+    if(!best){const s=stu.find(x=>x.n===r[0]&&!used.has(x.id));if(s){best=s;flag="تحقق"}}
+    if(best){used.add(best.id)}
+    out.push({row:r,stu:best,flag});
+  });
+  return out;
+}
+function openSheetImport(spec){
+  const msg=document.getElementById("sheetMsg");
+  if(!S.studentsLoaded||!S.students.length){msg.textContent="لا توجد قائمة طلبة بعد.";return}
+  const m=sheetMatch(spec);pendingSheet={spec,m};
+  const ok=m.filter(x=>x.stu).length;
+  msg.innerHTML=`<b>${esc(spec.title)}</b> — تم التعرف على ${ok} من ${m.length} طالبًا. راجع الأسماء ثم أكّد.
+    <div style="max-height:240px;overflow:auto;margin:8px 0;font-size:.85rem;text-align:right">${m.map(x=>`<div style="padding:2px 0;${x.stu&&!x.flag?"":"color:#b3261e"}">${x.row[0]}. ${esc(x.row[1])} ← ${x.stu?esc(x.stu.name)+(x.flag?" (تحقق: مطابقة بالرقم فقط)":""):"لم يوجد في التطبيق (سيُتجاوز)"}</div>`).join("")}</div>
+    <button type="button" class="btn primary" id="sheetGo" style="width:100%">تأكيد: تسجيل الحضور والغياب</button>`;
+}
+document.addEventListener("click",e=>{if(e.target.closest("#sheetW1"))openSheetImport(SHEET_W1)});
+document.addEventListener("change",async e=>{
+  if(e.target.id!=="sheetIn")return;const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+  try{const o=JSON.parse(await f.text());if(!o||!Array.isArray(o.rows)||!Array.isArray(o.dates))throw 0;openSheetImport(o)}
+  catch(_){document.getElementById("sheetMsg").textContent="ملف غير صالح."}
+});
+document.addEventListener("click",async e=>{
+  if(!e.target.closest("#sheetGo")||!pendingSheet)return;
+  const {spec,m}=pendingSheet;pendingSheet=null;
+  try{await autoSnap("قبل استيراد الحضور")}catch(_){}
+  let added=0,kept=0;
+  for(let i=0;i<spec.dates.length;i++){
+    const d=spec.dates[i],att={};
+    const cur=(S.days[d]&&S.days[d].att)||{};
+    m.forEach(x=>{if(!x.stu)return;const c=x.row[2][i];if(c!=="X"&&c!=="O")return;
+      const v=c==="X"?P:A;
+      if(isRec(cur[x.stu.id])&&cur[x.stu.id]!==v){kept++;return}
+      if(cur[x.stu.id]===v)return;att[x.stu.id]=v;added++});
+    if(!Object.keys(att).length)continue;
+    const ref=S.db.doc("days/"+d);const sn=await ref.get();
+    if(sn.exists)await ref.update({att});else await ref.set({date:d,month:monthKey(d),att,th:{}});
+  }
+  document.getElementById("modal").hidden=true;
+  toast(`تم تسجيل ${added} خانة`+(kept?` · تُرك ${kept} مسجّلة مسبقًا بقيمة مختلفة`:""));render();
+});
 let pendingRestore=null;
 document.addEventListener("click",e=>{if(e.target.closest("#setBackup"))doBackup()});
 document.addEventListener("change",async e=>{
