@@ -3053,6 +3053,7 @@ function renderSyncSec(){
     <span class="note" role="status">${esc(state)}${SYNC.st.lastOk?` · آخر مزامنة: ${fmtT(SYNC.st.lastOk)}`:""}</span>
     ${SYNC.big?`<span class="note">سجلّ كبير جدًا لم يُرفع: ${esc(SYNC.big)}</span>`:""}
     <div class="lockset"><button class="btn" type="button" id="syNow">مزامنة الآن</button><button class="btn" type="button" id="syOut">تسجيل الخروج</button></div>
+    <button class="btn" type="button" id="syRef">اعتماد بيانات هذا الجهاز كمرجع</button>
     <span class="note">الوثائق والصور الشخصية تبقى على كل جهاز حاليًا، والرمز السري وبصمة الوجه يُضبطان على كل جهاز وحده.</span>`;
 }
 function addSyncSection(){
@@ -3065,7 +3066,7 @@ function addSyncSection(){
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("#syIn,#syNew,#syForgot,#syNow,#syOut");if(!t)return;
+  const t=e.target.closest("#syIn,#syNew,#syForgot,#syNow,#syOut,#syRef");if(!t)return;
   const msg=()=>document.getElementById("syMsg"),say=x=>{const m=msg();if(m)m.textContent=x};
   const em=(document.getElementById("syEm")||{value:""}).value.trim(),pw=(document.getElementById("syPw")||{value:""}).value;
   try{
@@ -3079,6 +3080,11 @@ document.addEventListener("click",async e=>{
       if(!em){say("اكتب بريدك الإلكتروني أولًا ثم اضغط «نسيت كلمة السر».");return}
       await SYNC.auth.sendPasswordResetEmail(em);say("أرسلنا رابط تغيير كلمة السر إلى بريدك.");
     }else if(t.id==="syNow"){SYNC.err="";if(!SYNC.unsub)SYNC.listen();await SYNC.push();toast(SYNC.err||"تمت المزامنة")}
+    else if(t.id==="syRef"){
+      if(!confirm("ستُرفع بيانات هذا الجهاز كلها وتغلب نسخ الأجهزة الأخرى حيث تختلف، وما يوجد في الأجهزة الأخرى وحدها يبقى. متابعة؟"))return;
+      // every record on this device becomes the newest copy
+      const now=Date.now(),d=LDB._raw();for(const p in d){if(SYNC.skip(p))continue;SYNC.st.meta[p]=now;SYNC.dirty.add(p)}
+      SYNC.persist();SYNC.err="";renderSyncSec();await SYNC.push();toast(SYNC.err||"رُفعت بيانات هذا الجهاز")}
     else if(t.id==="syOut"){
       if(!confirm("تسجيل الخروج يوقف المزامنة على هذا الجهاز فقط، وتبقى بياناته محفوظة عليه. متابعة؟"))return;
       await SYNC.push();await SYNC.auth.signOut();toast("أُوقفت المزامنة على هذا الجهاز");
