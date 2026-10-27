@@ -2933,7 +2933,8 @@ document.getElementById("modal").addEventListener("submit",async e=>{
    on its own, with the time it changed. Each device downloads only what changed since
    its last visit. When the same record changed on two devices, the newer change wins.
    Face ID, the PIN and the backup date stay on each device. */
-const FB_CONFIG=null; // ← يُملأ بإعدادات مشروع Firebase
+const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
+  storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
 const SYNC_KEY="halaqa.sync.v1";
 const DEV=(()=>{try{let d=localStorage.getItem("halaqa.dev");if(!d){d=Math.random().toString(36).slice(2,10);localStorage.setItem("halaqa.dev",d)}return d}catch(_){return"x"}})();
