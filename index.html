@@ -718,44 +718,72 @@ const MIRROR={db:null,t:null,pend:null,last:0,
   open(){return this.db||(this.db=new Promise((ok,no)=>{try{const r=indexedDB.open("halaqa-live",1);r.onupgradeneeded=()=>r.result.createObjectStore("m");r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}))},
   async tx(mode,fn){const d=await this.open();return new Promise((ok,no)=>{const t=d.transaction("m",mode),s=t.objectStore("m");const q=fn(s);t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error)})},
   get(){return this.tx("readonly",s=>s.get("live"))},
-  queue(data,at){this.pend={json:JSON.stringify(data),at};clearTimeout(this.t);this.t=setTimeout(()=>this.flush(),400)},
+  queue(json,at){this.pend={json,at};clearTimeout(this.t);this.t=setTimeout(()=>this.flush(),400)},
   async flush(){const p=this.pend;if(!p)return;this.pend=null;clearTimeout(this.t);try{await this.tx("readwrite",s=>s.put(p,"live"));this.last=p.at}catch(_){}},
   async clear(){this.pend=null;clearTimeout(this.t);try{await this.tx("readwrite",s=>s.delete("live"))}catch(_){}}};
 addEventListener("pagehide",()=>MIRROR.flush());
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")MIRROR.flush()});
-/* Local storage engine: same API the app already uses, data stays on this device. */
+/* Local storage engine: same API the app already uses, data stays on this device.
+   Speed: writes made close together are saved to the device in one go (a quarter second later, or at once when
+   the app goes to the background), and each screen is told only about the records it shows. */
 const LDB=(()=>{const KEY="halaqa.db.v1";let data={};
   try{data=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(_){data={}}
   const subs=new Set();
-  function save(){const at=Date.now();try{MIRROR.queue(data,at)}catch(_){}try{localStorage.setItem(KEY,JSON.stringify(data));try{localStorage.setItem(KEY+".at",String(at))}catch(_){}return true}catch(e){setTimeout(()=>{try{toast("الذاكرة ممتلئة، احفظ نسخة احتياطية")}catch(_){}} ,0);return false}}
-  function fire(){subs.forEach(f=>{try{f()}catch(_){}})}
+  const hidden=()=>{try{return document.visibilityState==="hidden"}catch(_){return false}};
+  let saveT=null,dirtyDisk=false;
+  function writeNow(){clearTimeout(saveT);saveT=null;if(!dirtyDisk)return true;dirtyDisk=false;
+    const at=Date.now();let j;try{j=JSON.stringify(data)}catch(_){return false}
+    try{MIRROR.queue(j,at);if(hidden())MIRROR.flush()}catch(_){}
+    try{localStorage.setItem(KEY,j);try{localStorage.setItem(KEY+".at",String(at))}catch(_){}return true}catch(e){setTimeout(()=>{try{toast("الذاكرة ممتلئة، احفظ نسخة احتياطية")}catch(_){}} ,0);return false}}
+  function save(){dirtyDisk=true;if(hidden())return writeNow();if(!saveT)saveT=setTimeout(writeNow,250);return true}
+  addEventListener("pagehide",()=>writeNow());
+  document.addEventListener("visibilitychange",()=>{if(hidden())writeNow()});
+  /* change notifications: gathered, then sent once, only to listeners whose records changed */
+  let changed=new Set(),everything=false,fireT=null;
+  function fireNow(){fireT=null;const ch=changed,all=everything;changed=new Set();everything=false;
+    subs.forEach(s=>{try{if(all||s.want(ch))s.f()}catch(_){}})}
+  function mark(p){if(p==null)everything=true;else changed.add(p);if(!fireT)fireT=setTimeout(fireNow,0)}
   /* tells the device sync which record changed (no-op until sync loads) */
   function hook(p){try{window.SYNCHOOK&&window.SYNCHOOK(p)}catch(_){}}
   const clone=o=>JSON.parse(JSON.stringify(o));
+  /* list of record paths per collection, kept until a record is added or removed there */
+  const idx=new Map();
+  const parentOf=p=>p.slice(0,p.lastIndexOf("/"));
+  function keysIn(p){let a=idx.get(p);if(a)return a;const pre=p+"/",depth=p.split("/").length+1;
+    a=Object.keys(data).filter(k=>k.startsWith(pre)&&k.split("/").length===depth).sort();idx.set(p,a);return a}
+  function addKey(p){if(!(p in data))idx.delete(parentOf(p))}
   function snap(p){return{id:p.split("/").pop(),exists:Object.prototype.hasOwnProperty.call(data,p),data:()=>data[p],metadata:{fromCache:false,hasPendingWrites:false}}}
   function merge(a,b){for(const k in b){const v=b[k];if(v&&typeof v==="object"&&!Array.isArray(v)){if(!a[k]||typeof a[k]!=="object")a[k]={};merge(a[k],v)}else a[k]=v}}
   function ref(p){return{id:p.split("/").pop(),path:p,
     get:async()=>snap(p),
-    set:async d=>{data[p]=clone(d);save();hook(p);setTimeout(fire,0)},
-    update:async d=>{if(!(p in data))throw{code:"invalid_argument",message:"missing"};merge(data[p],clone(d));save();hook(p);setTimeout(fire,0)},
-    delete:async()=>{delete data[p];save();hook(p);setTimeout(fire,0)},
-    onSnapshot(n){const f=()=>n(snap(p));subs.add(f);setTimeout(f,0);return()=>subs.delete(f)},
+    set:async d=>{addKey(p);data[p]=clone(d);save();hook(p);mark(p)},
+    update:async d=>{if(!(p in data))throw{code:"invalid_argument",message:"missing"};merge(data[p],clone(d));save();hook(p);mark(p)},
+    delete:async()=>{if(p in data)idx.delete(parentOf(p));delete data[p];save();hook(p);mark(p)},
+    onSnapshot(n){const s={f:()=>n(snap(p)),want:ch=>ch.has(p)};subs.add(s);setTimeout(s.f,0);return()=>subs.delete(s)},
     collection:q=>coll(p+"/"+q)}}
-  function coll(p){const depth=p.split("/").length+1;
+  function coll(p){const pre=p+"/",depth=p.split("/").length+1;
     const mk=filters=>{const q={
       where:(f,o,v)=>mk(filters.concat([[f,o,v]])),orderBy:()=>q,limit:()=>q,
       doc:id=>ref(p+"/"+(id||("d"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)))),
       add:async d=>{const r=q.doc();await r.set(d);return r},
-      _docs(){return Object.keys(data).filter(k=>k.startsWith(p+"/")&&k.split("/").length===depth)
-        .filter(k=>filters.every(([f,o,v])=>o==="in"?v.includes(data[k][f]):o==="=="?data[k][f]===v:true)).sort().map(snap)},
+      _docs(){const ks=keysIn(p);return(filters.length?ks.filter(k=>{const r=data[k];return filters.every(([f,o,v])=>o==="in"?v.includes(r&&r[f]):o==="=="?(r&&r[f])===v:true)}):ks).map(snap)},
       get:async()=>{const docs=q._docs();return{docs,size:docs.length,empty:!docs.length}},
-      onSnapshot(n){const f=()=>{const docs=q._docs();n({docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}})};subs.add(f);setTimeout(f,0);return()=>subs.delete(f)}};return q};
+      onSnapshot(n){const s={f:()=>{const docs=q._docs();n({docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}})},
+        want:ch=>{for(const k of ch)if(k.startsWith(pre)&&k.split("/").length===depth)return true;return false}};
+        subs.add(s);setTimeout(s.f,0);return()=>subs.delete(s)}};return q};
     return mk([])}
-  return{doc:ref,collection:coll,dump:()=>clone(data),load:d=>{const old=data;data=clone(d);save();for(const k of new Set(Object.keys(old).concat(Object.keys(data))))if(JSON.stringify(old[k])!==JSON.stringify(data[k]))hook(k);fire()},
+  return{doc:ref,collection:coll,dump:()=>clone(data),
+    load:d=>{const old=data;data=clone(d);idx.clear();save();for(const k of new Set(Object.keys(old).concat(Object.keys(data))))if(JSON.stringify(old[k])!==JSON.stringify(data[k]))hook(k);mark(null)},
     _raw:()=>data,
-    _applyRemote:list=>{for(const [p,v] of list){if(v===undefined)delete data[p];else data[p]=v}save();fire()},
+    /* read one record without copying the whole database (do not modify what it returns) */
+    peek:p=>data[p],
+    /* call fn after changes whose paths pass test(set of changed paths) */
+    _watch:(test,fn)=>{const s={f:fn,want:test};subs.add(s);return()=>subs.delete(s)},
+    _flush:()=>writeNow(),
+    _cancel:()=>{clearTimeout(saveT);saveT=null;dirtyDisk=false},
+    _applyRemote:list=>{for(const [p,v] of list){addKey(p);if(v===undefined){idx.delete(parentOf(p));delete data[p]}else data[p]=v;mark(p)}save()},
     _count:()=>Object.keys(data).length,_at:()=>{try{return +localStorage.getItem(KEY+".at")||0}catch(_){return 0}},
-    _restore:d=>{data=d;save()}};
+    _restore:d=>{data=d;idx.clear();save()}};
 })();
 async function shareOrDownload(name,blob){
   try{const file=new File([blob],name,{type:blob.type||"application/octet-stream"});
@@ -777,7 +805,7 @@ const MIRROR_READY=(async()=>{
   try{const m=await Promise.race([MIRROR.get(),new Promise(r=>setTimeout(()=>r(null),2500))]);
     if(m&&m.json){MIRROR.last=m.at||0;
       if(!LDB._count()||(m.at||0)>LDB._at()+2000){const d=JSON.parse(m.json);if(d&&Object.keys(d).length){LDB._restore(d);window.__mirrorRestored=true}}}
-    else if(LDB._count())LDB._restore(LDB.dump());
+    else if(LDB._count())LDB._restore(LDB._raw());
   }catch(_){}})();
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
 if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
@@ -820,7 +848,8 @@ function dayData(date){
   return {att:Object.assign({},base.att||{},p.att||{}),th:Object.assign({},base.th||{},p.th||{})};
 }
 const COLL=(()=>{try{return new Intl.Collator("ar",{sensitivity:"base",ignorePunctuation:true})}catch(_){return{compare:(a,b)=>a<b?-1:a>b?1:0}}})();
-const byName=(a,b)=>COLL.compare(norm(a.name||""),norm(b.name||""))||a.n-b.n;
+const NK=new Map(),nkey=s=>{let v=NK.get(s);if(v===undefined){v=norm(s);if(NK.size>5000)NK.clear();NK.set(s,v)}return v};
+const byName=(a,b)=>COLL.compare(nkey(a.name||""),nkey(b.name||""))||a.n-b.n;
 const FCOLL=(()=>{try{return new Intl.Collator("ar",{numeric:true,sensitivity:"base"})}catch(_){return{compare:(a,b)=>a<b?-1:a>b?1:0}}})();
 const byFile=(a,b)=>{const x=String(a.fileNo||"").trim(),y=String(b.fileNo||"").trim();if(!x&&!y)return byName(a,b);if(!x)return 1;if(!y)return -1;return FCOLL.compare(x,y)||byName(a,b)};
 const byNum=(a,b)=>a.n-b.n;
@@ -931,17 +960,17 @@ function renderTodayInner(){
 }
 
 function monthStats(mk){
-  const days=studyDays(mk), list=active(), per={};
-  list.forEach(s=>{let p=0,a=0,j=0,t=0;days.forEach(d=>{const dd=dayData(d);const v=dd.att[s.id];if(v===P)p++;else if(v===A)a++;else if(v===J)j++;t+=Number(dd.th[s.id])||0});
+  const days=studyDays(mk), list=active(), per={}, dds=days.map(dayData);
+  list.forEach(s=>{let p=0,a=0,j=0,t=0;dds.forEach(dd=>{const v=dd.att[s.id];if(v===P)p++;else if(v===A)a++;else if(v===J)j++;t+=Number(dd.th[s.id])||0});
     per[s.id]={p,a,j,t,rate:rateOf(p,j,a)}});
-  return {days,list,per};
+  return {days,list,per,dds};
 }
 
 function renderMonth(){
   const [y,m]=S.month.split("-").map(Number);
   document.getElementById("monthLbl").textContent=MON[m-1]+" "+y;
-  const {days,list,per}=monthStats(S.month);
-  const recorded=days.filter(d=>{const a=dayData(d).att;return Object.values(a).some(isRec)});
+  const {days,list,per,dds}=monthStats(S.month);
+  const recorded=days.filter((d,i)=>Object.values(dds[i].att).some(isRec));
   let P_=0,A_=0,J_=0,T_=0;list.forEach(s=>{P_+=per[s.id].p;A_+=per[s.id].a;J_+=per[s.id].j;T_+=per[s.id].t});
   document.getElementById("monthStats").innerHTML=
    `<div class="stat"><b class="num">${recorded.length}<small style="font-size:.9rem;color:var(--muted)"> / ${days.length}</small></b><span>حصص مسجَّلة</span></div>
@@ -958,7 +987,6 @@ function renderMonth(){
   else if(S.sortBy==="rate")rows.sort((a,b)=>r(per[b.id].rate)-r(per[a.id].rate));
   else if(S.sortBy==="low")rows.sort((a,b)=>(per[a.id].rate??101)-(per[b.id].rate??101));
   const today=iso(new Date());
-  const dds=days.map(d=>dayData(d));
   document.getElementById("grid").innerHTML=
    `<thead><tr>${days.map(d=>{const x=parse(d);return `<th class="${d===today?"today":""}${d>today?" fut":""}" data-d="${d}" style="${d>today?"":"cursor:pointer"}" title="${d>today?"":"افتح هذا اليوم"}"><span class="dname">${DAYN[x.getDay()]}</span>${x.getDate()}</th>`}).join("")}<th>الحفظ الشهري</th><th>الحضور</th><th>جزئي</th><th>الغياب</th><th>النسبة</th></tr></thead>
     <tbody>${rows.map(s=>{const st=per[s.id];return `<tr>${
@@ -974,7 +1002,9 @@ function syncRows(){
   requestAnimationFrame(()=>{
     const a=[...document.querySelectorAll("#gridNames tr")],b=[...document.querySelectorAll("#grid tr")];
     a.concat(b).forEach(r=>r.style.height="");
-    a.forEach((r,i)=>{const o=b[i];if(!o)return;const h=Math.ceil(Math.max(r.getBoundingClientRect().height,o.getBoundingClientRect().height));r.style.height=o.style.height=h+"px"});
+    // measure every row first, then set heights, so the page is laid out once instead of once per row
+    const hs=a.map((r,i)=>b[i]?Math.ceil(Math.max(r.getBoundingClientRect().height,b[i].getBoundingClientRect().height)):0);
+    a.forEach((r,i)=>{if(b[i])r.style.height=b[i].style.height=hs[i]+"px"});
   });
 }
 window.addEventListener("resize",()=>{if(S.view==="month")syncRows()});
@@ -1426,13 +1456,15 @@ document.getElementById("modal").addEventListener("click",async e=>{
   db.collection("students").onSnapshot(snap=>{
     const first=!S.studentsLoaded;S.students=snap.docs.map(d=>Object.assign({id:d.id},d.data()));S.studentsLoaded=true;render();if(first)centerDay();
   },()=>setSync("انقطع الاتصال، أعد فتح الصفحة"));
+  // other records (school page, teacher name, backup date…) still refresh the screen when they change
+  if(db._watch)db._watch(ch=>{for(const k of ch)if(!k.startsWith("days/")&&!k.startsWith("students/"))return true;return false},()=>render());
   subscribeMonth();
 })();
 
 // ================= standalone extras =================
 const SETTINGS_PATH="data/users/me/settings";
-const bkAt=()=>{try{const d=LDB.dump()["meta/backup"];return d&&d.at||0}catch(_){return 0}};
-function backupBlob(){const d=LDB.dump();delete d[SETTINGS_PATH];delete d["meta/backup"];
+const bkAt=()=>{try{const d=LDB.peek("meta/backup");return d&&d.at||0}catch(_){return 0}};
+function backupBlob(){const d=Object.assign({},LDB._raw());delete d[SETTINGS_PATH];delete d["meta/backup"];
   return new Blob([JSON.stringify({app:"halaqa",version:1,exportedAt:new Date().toISOString(),data:d})],{type:"application/json"})}
 async function doBackup(){
   const today=iso(new Date());
@@ -1453,7 +1485,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.6</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.7</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1557,7 +1589,7 @@ document.getElementById("lock").addEventListener("click",e=>{
   if(e.target.closest("#wipeBack")){showLock("unlock");return}
   const b=e.target.closest("#wipeGo");if(!b)return;
   if(!b.dataset.sure){b.dataset.sure="1";b.textContent="متأكد؟ اضغط مرة أخرى للمسح النهائي";return}
-  try{localStorage.removeItem("halaqa.db.v1");localStorage.removeItem("halaqa.db.v1.at")}catch(_){}
+  try{LDB._cancel();localStorage.removeItem("halaqa.db.v1");localStorage.removeItem("halaqa.db.v1.at")}catch(_){}
   MIRROR.clear().finally(()=>location.reload());
 });
 
@@ -1569,7 +1601,7 @@ const AUTO={db:null,
   async put(k,txt){await this.tx("readwrite",s=>s.put(txt,k))},
   async get(k){return this.tx("readonly",s=>s.get(k))},
   async del(k){await this.tx("readwrite",s=>s.delete(k))}};
-function autoPayload(){const d=LDB.dump();delete d[SETTINGS_PATH];delete d["meta/backup"];delete d["data/users/me/faceid"];return JSON.stringify({app:"halaqa",version:1,data:d})}
+function autoPayload(){const d=Object.assign({},LDB._raw());delete d[SETTINGS_PATH];delete d["meta/backup"];delete d["data/users/me/faceid"];return JSON.stringify({app:"halaqa",version:1,data:d})}
 async function autoSnap(label){
   try{if(!S.students.length)return;const day=iso(new Date());const ks=await AUTO.keys();
     const key=label?label+" "+day+" "+new Date().toTimeString().slice(0,5):day;
@@ -1619,7 +1651,7 @@ const _hideLock=hideLock;hideLock=function(){_hideLock();setTimeout(maybeBackupP
 document.getElementById("cloudBtn").addEventListener("click",()=>doBackup());
 
 // ---- teacher name ----
-const teacherName=()=>{try{const d=LDB.dump()["meta/profile"];return d&&d.teacher||""}catch(_){return ""}};
+const teacherName=()=>{try{const d=LDB.peek("meta/profile");return d&&d.teacher||""}catch(_){return ""}};
 function renderTeacher(){const el=document.getElementById("teacherLine");if(!el)return;const t=teacherName();el.hidden=!t;el.textContent=t?"المعلم: "+t:""}
 let teacherTimer=null;
 document.addEventListener("input",e=>{if(e.target.id!=="teacherIn")return;clearTimeout(teacherTimer);
@@ -1653,7 +1685,7 @@ document.addEventListener("change",e=>{if(!/^f-bd-/.test(e.target.id||""))return
 const FACE_PATH="data/users/me/faceid";
 const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-const faceCred=()=>{try{const d=LDB.dump()[FACE_PATH];return d&&d.id||""}catch(_){return ""}};
+const faceCred=()=>{try{const d=LDB.peek(FACE_PATH);return d&&d.id||""}catch(_){return ""}};
 let faceAvail=false;
 (async()=>{try{faceAvail=!!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(_){faceAvail=false}})();
 async function faceEnroll(){
@@ -2434,7 +2466,7 @@ const SCH_COND=[["good","جيد"],["mid","متوسط"],["bad","تالف"]];
 const SCH_EVT=["نشاط","حفل","مسابقة","زيارة","اجتماع","صيانة","تبرّع","أخرى"];
 const condLb=c=>(SCH_COND.find(x=>x[0]===c)||SCH_COND[0])[1];
 const sid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-function schAll(coll){const p="school/"+coll+"/",d=LDB.dump();return Object.keys(d).filter(k=>k.startsWith(p)).map(k=>Object.assign({id:k.slice(p.length)},d[k]))}
+function schAll(coll){const p="school/"+coll+"/",d=LDB._raw();return Object.keys(d).filter(k=>k.startsWith(p)).map(k=>Object.assign({id:k.slice(p.length)},JSON.parse(JSON.stringify(d[k]))))}
 const schDoc=(coll,id)=>LDB.doc("school/"+coll+"/"+id);
 const fmtD=s=>{if(!s)return"";const x=parse(s);return `${x.getDate()} ${MON[x.getMonth()]} ${x.getFullYear()}`};
 // photos
@@ -2947,8 +2979,10 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
   skip:p=>p.startsWith("data/users/")||p==="meta/backup",
   load(){let s=null;try{s=JSON.parse(localStorage.getItem(SYNC_KEY)||"null")}catch(_){}
     this.st=Object.assign({meta:{},dirty:[],cursor:null,uid:"",email:"",lastOk:0},s||{});this.dirty=new Set(this.st.dirty)},
-  persist(){this.st.dirty=[...this.dirty];try{localStorage.setItem(SYNC_KEY,JSON.stringify(this.st))}catch(_){}},
-  touch(p){if(this.skip(p))return;this.st.meta[p]=Date.now();this.dirty.add(p);this.persist();this.schedule()},
+  persist(){clearTimeout(this.pt);this.pt=null;this.st.dirty=[...this.dirty];try{localStorage.setItem(SYNC_KEY,JSON.stringify(this.st))}catch(_){}},
+  /* many quick edits → one save of the sync list (at once if the app is going to the background) */
+  persistSoon(){if(document.visibilityState==="hidden"){this.persist();return}if(!this.pt)this.pt=setTimeout(()=>this.persist(),300)},
+  touch(p){if(this.skip(p))return;this.st.meta[p]=Date.now();this.dirty.add(p);this.persistSoon();this.schedule()},
   schedule(ms){clearTimeout(this.t);if(this.ready&&this.pulled)this.t=setTimeout(()=>this.push(),ms==null?1500:ms)},
   col(){return this.db.collection("users").doc(this.user.uid).collection("recs")},
   async libs(){
@@ -3031,6 +3065,8 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
     finally{this.pushing=false;if(!failed&&this.dirty.size)this.schedule(300);renderSyncSec()}
   },
 };
+addEventListener("pagehide",()=>{if(SYNC.pt)SYNC.persist()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&SYNC.pt)SYNC.persist()});
 function syncErr(e){const c=(e&&e.code)||"";
   return({"auth/invalid-email":"البريد الإلكتروني غير صحيح.","auth/missing-password":"اكتب كلمة السر.",
     "auth/wrong-password":"كلمة السر غير صحيحة.","auth/invalid-credential":"البريد أو كلمة السر غير صحيحة.","auth/invalid-login-credentials":"البريد أو كلمة السر غير صحيحة.",
@@ -3067,7 +3103,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 6.6"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 6.7"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
