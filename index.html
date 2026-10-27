@@ -2972,7 +2972,8 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
     if(this.st.uid!==u.uid){this.st.uid=u.uid;this.st.cursor=null;this.st.meta={};this.dirty=new Set()}
     this.st.email=u.email||"";
     // records written before sync existed count as "oldest": the account's copy wins, gaps get filled
-    const d=LDB._raw();for(const p in d){if(this.skip(p))continue;if(!(p in this.st.meta)){this.st.meta[p]=0;this.dirty.add(p)}}
+    const lg=this.preferLocal?-1:0;this.preferLocal=false;
+    const d=LDB._raw();for(const p in d){if(this.skip(p))continue;if(!(p in this.st.meta)){this.st.meta[p]=lg;this.dirty.add(p)}}
     this.persist();this.ready=true;this.listen();renderSyncSec();
   },
   listen(){
@@ -2993,6 +2994,9 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
       if(la!=null&&r.at<=la)return; // already have it, or ours is newer
       let v;try{v=r.del?undefined:JSON.parse(r.j)}catch(_){return}
       const loc=LDB._raw()[p];
+      if(la===-1&&this.dirty.has(p)){ // this device is the reference: keep its copy, take only what it lacks
+        const m=(v&&loc&&typeof v==="object"&&typeof loc==="object")?fillGaps(syncClone(loc),v):loc;
+        this.st.meta[p]=Date.now();if(JSON.stringify(m)!==JSON.stringify(loc))apply.push([p,m]);return}
       if(la===0&&this.dirty.has(p)&&v&&loc&&typeof v==="object"&&typeof loc==="object"){
         const m=fillGaps(syncClone(v),loc);
         if(JSON.stringify(m)!==JSON.stringify(v)){this.st.meta[p]=Date.now();apply.push([p,m]);return} // merged copy goes back up
@@ -3013,7 +3017,7 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
       for(let i=0;i<keys.length;i+=400){
         const b=this.db.batch(),sent=[];
         for(const p of keys.slice(i,i+400)){
-          let at=this.st.meta[p];if(!at){at=Date.now();this.st.meta[p]=at}
+          let at=this.st.meta[p];if(!(at>0)){at=Date.now();this.st.meta[p]=at}
           const has=Object.prototype.hasOwnProperty.call(raw,p),j=has?JSON.stringify(raw[p]):null;
           if(j&&j.length>900000){this.big=p;this.dirty.delete(p);continue}
           b.set(this.col().doc(encodeURIComponent(p)),{p,j,del:!has,at,dev:DEV,st:SV()});sent.push([p,at]);
@@ -3044,6 +3048,7 @@ function renderSyncSec(){
   if(!u){el.innerHTML=`<span class="note">سجّل الدخول بنفس الحساب على الآيفون والآيباد والماك، فتظهر بياناتك نفسها على الثلاثة. ابدأ بالجهاز الذي عليه أصحّ البيانات.</span>
     <input type="email" id="syEm" placeholder="البريد الإلكتروني" autocomplete="username" inputmode="email" dir="ltr" value="${esc(SYNC.st.email||"")}" style="min-height:44px;width:100%">
     <input type="password" id="syPw" placeholder="كلمة السر (6 أحرف أو أكثر)" autocomplete="current-password" dir="ltr" style="min-height:44px;width:100%">
+    <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="syPref" style="width:22px;height:22px"> بيانات هذا الجهاز هي الأصح: تغلب عند الدمج، ويُضاف إليها ما ينقصها من الحساب</label>
     <div class="lockset"><button class="btn primary" type="button" id="syIn">دخول</button><button class="btn" type="button" id="syNew">إنشاء حساب (أول مرة فقط)</button></div>
     <button type="button" class="linkbtn" id="syForgot">نسيت كلمة السر</button>
     <div class="note" id="syMsg" role="status">${esc(SYNC.err||"")}</div>`;return}
@@ -3074,7 +3079,7 @@ document.addEventListener("click",async e=>{
     if(t.id==="syIn"||t.id==="syNew"){
       if(!em){say("اكتب بريدك الإلكتروني.");return}
       if(t.id==="syNew"&&!confirm("سيُنشأ حساب المزامنة بهذا البريد. أنشئه مرة واحدة فقط، ثم استعمل «دخول» على الأجهزة الأخرى. متابعة؟"))return;
-      t.disabled=true;say("جارٍ الاتصال…");SYNC.err="";
+      t.disabled=true;say("جارٍ الاتصال…");SYNC.err="";SYNC.preferLocal=!!(document.getElementById("syPref")||{}).checked;
       if(t.id==="syNew")await SYNC.auth.createUserWithEmailAndPassword(em,pw);else await SYNC.auth.signInWithEmailAndPassword(em,pw);
       toast("تم الدخول، بدأت المزامنة");
     }else if(t.id==="syForgot"){
