@@ -729,14 +729,16 @@ const LDB=(()=>{const KEY="halaqa.db.v1";let data={};
   const subs=new Set();
   function save(){const at=Date.now();try{MIRROR.queue(data,at)}catch(_){}try{localStorage.setItem(KEY,JSON.stringify(data));try{localStorage.setItem(KEY+".at",String(at))}catch(_){}return true}catch(e){setTimeout(()=>{try{toast("الذاكرة ممتلئة، احفظ نسخة احتياطية")}catch(_){}} ,0);return false}}
   function fire(){subs.forEach(f=>{try{f()}catch(_){}})}
+  /* tells the device sync which record changed (no-op until sync loads) */
+  function hook(p){try{window.SYNCHOOK&&window.SYNCHOOK(p)}catch(_){}}
   const clone=o=>JSON.parse(JSON.stringify(o));
   function snap(p){return{id:p.split("/").pop(),exists:Object.prototype.hasOwnProperty.call(data,p),data:()=>data[p],metadata:{fromCache:false,hasPendingWrites:false}}}
   function merge(a,b){for(const k in b){const v=b[k];if(v&&typeof v==="object"&&!Array.isArray(v)){if(!a[k]||typeof a[k]!=="object")a[k]={};merge(a[k],v)}else a[k]=v}}
   function ref(p){return{id:p.split("/").pop(),path:p,
     get:async()=>snap(p),
-    set:async d=>{data[p]=clone(d);save();setTimeout(fire,0)},
-    update:async d=>{if(!(p in data))throw{code:"invalid_argument",message:"missing"};merge(data[p],clone(d));save();setTimeout(fire,0)},
-    delete:async()=>{delete data[p];save();setTimeout(fire,0)},
+    set:async d=>{data[p]=clone(d);save();hook(p);setTimeout(fire,0)},
+    update:async d=>{if(!(p in data))throw{code:"invalid_argument",message:"missing"};merge(data[p],clone(d));save();hook(p);setTimeout(fire,0)},
+    delete:async()=>{delete data[p];save();hook(p);setTimeout(fire,0)},
     onSnapshot(n){const f=()=>n(snap(p));subs.add(f);setTimeout(f,0);return()=>subs.delete(f)},
     collection:q=>coll(p+"/"+q)}}
   function coll(p){const depth=p.split("/").length+1;
@@ -749,7 +751,9 @@ const LDB=(()=>{const KEY="halaqa.db.v1";let data={};
       get:async()=>{const docs=q._docs();return{docs,size:docs.length,empty:!docs.length}},
       onSnapshot(n){const f=()=>{const docs=q._docs();n({docs,size:docs.length,empty:!docs.length,docChanges:()=>[],metadata:{}})};subs.add(f);setTimeout(f,0);return()=>subs.delete(f)}};return q};
     return mk([])}
-  return{doc:ref,collection:coll,dump:()=>clone(data),load:d=>{data=clone(d);save();fire()},
+  return{doc:ref,collection:coll,dump:()=>clone(data),load:d=>{const old=data;data=clone(d);save();for(const k of new Set(Object.keys(old).concat(Object.keys(data))))if(JSON.stringify(old[k])!==JSON.stringify(data[k]))hook(k);fire()},
+    _raw:()=>data,
+    _applyRemote:list=>{for(const [p,v] of list){if(v===undefined)delete data[p];else data[p]=v}save();fire()},
     _count:()=>Object.keys(data).length,_at:()=>{try{return +localStorage.getItem(KEY+".at")||0}catch(_){return 0}},
     _restore:d=>{data=d;save()}};
 })();
@@ -1449,7 +1453,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.5</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.6</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2922,6 +2926,169 @@ document.getElementById("modal").addEventListener("submit",async e=>{
   try{await S.db.doc("students/"+id).set(data);document.getElementById("modal").hidden=true;toast("أُضيف "+name)}
   catch(_){document.getElementById("newMsg").textContent="تعذّر الحفظ، حاول مرة أخرى."}
 });
+</script>
+<script>
+/* ================= المزامنة بين الأجهزة (Firebase) =================
+   Every record (student, day, school item…) is sent to the teacher's own Firebase account
+   on its own, with the time it changed. Each device downloads only what changed since
+   its last visit. When the same record changed on two devices, the newer change wins.
+   Face ID, the PIN and the backup date stay on each device. */
+const FB_CONFIG=null; // ← يُملأ بإعدادات مشروع Firebase
+const FB_VER="10.14.1";
+const SYNC_KEY="halaqa.sync.v1";
+const DEV=(()=>{try{let d=localStorage.getItem("halaqa.dev");if(!d){d=Math.random().toString(36).slice(2,10);localStorage.setItem("halaqa.dev",d)}return d}catch(_){return"x"}})();
+const syncClone=o=>JSON.parse(JSON.stringify(o));
+/* fills fields the remote copy lacks with this device's values (used once, on the first merge) */
+function fillGaps(base,loc){for(const k in loc){const a=base[k],b=loc[k];
+  if(!(k in base))base[k]=syncClone(b);
+  else if(a&&b&&typeof a==="object"&&typeof b==="object"&&!Array.isArray(a)&&!Array.isArray(b))fillGaps(a,b)}return base}
+const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pulled:false,pushing:false,unsub:null,t:null,err:"",big:"",started:false,
+  skip:p=>p.startsWith("data/users/")||p==="meta/backup",
+  load(){let s=null;try{s=JSON.parse(localStorage.getItem(SYNC_KEY)||"null")}catch(_){}
+    this.st=Object.assign({meta:{},dirty:[],cursor:null,uid:"",email:"",lastOk:0},s||{});this.dirty=new Set(this.st.dirty)},
+  persist(){this.st.dirty=[...this.dirty];try{localStorage.setItem(SYNC_KEY,JSON.stringify(this.st))}catch(_){}},
+  touch(p){if(this.skip(p))return;this.st.meta[p]=Date.now();this.dirty.add(p);this.persist();this.schedule()},
+  schedule(ms){clearTimeout(this.t);if(this.ready&&this.pulled)this.t=setTimeout(()=>this.push(),ms==null?1500:ms)},
+  col(){return this.db.collection("users").doc(this.user.uid).collection("recs")},
+  async libs(){
+    const add=n=>new Promise((ok,no)=>{const s=document.createElement("script");s.src=`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-${n}-compat.js`;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+    if(!window.firebase)await add("app");
+    if(!firebase.auth)await add("auth");
+    if(!firebase.firestore)await add("firestore");
+  },
+  async start(){
+    if(!FB_CONFIG||this.started)return;this.started=true;
+    try{await this.libs()}catch(_){this.started=false;this.err="لا يوجد اتصال بالإنترنت، ستبدأ المزامنة عند عودته.";renderSyncSec();return}
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    this.auth=firebase.auth();this.db=firebase.firestore();
+    this.auth.onAuthStateChanged(u=>this.onUser(u));
+  },
+  async onUser(u){
+    if(this.unsub){this.unsub();this.unsub=null}
+    this.user=u;this.ready=false;this.pulled=false;
+    if(!u){renderSyncSec();return}
+    try{await MIRROR_READY}catch(_){}
+    if(this.st.uid!==u.uid){this.st.uid=u.uid;this.st.cursor=null;this.st.meta={};this.dirty=new Set()}
+    this.st.email=u.email||"";
+    // records written before sync existed count as "oldest": the account's copy wins, gaps get filled
+    const d=LDB._raw();for(const p in d){if(this.skip(p))continue;if(!(p in this.st.meta)){this.st.meta[p]=0;this.dirty.add(p)}}
+    this.persist();this.ready=true;this.listen();renderSyncSec();
+  },
+  listen(){
+    if(!this.ready||this.unsub)return;
+    const c=this.st.cursor,TS=firebase.firestore.Timestamp;
+    this.unsub=this.col().where("st",">",c?new TS(c[0],c[1]):new TS(0,0)).onSnapshot(
+      snap=>this.onSnap(snap),
+      e=>{this.unsub=null;this.err=syncErr(e);renderSyncSec();setTimeout(()=>this.listen(),15000)});
+  },
+  onSnap(snap){
+    const apply=[];let max=this.st.cursor;
+    snap.docChanges().forEach(ch=>{
+      if(ch.type==="removed")return;
+      const r=ch.doc.data();if(!r||!r.st||!r.p)return;
+      const s=[r.st.seconds,r.st.nanoseconds];if(!max||s[0]>max[0]||(s[0]===max[0]&&s[1]>max[1]))max=s;
+      const p=r.p;if(this.skip(p))return;
+      const la=this.st.meta[p];
+      if(la!=null&&r.at<=la)return; // already have it, or ours is newer
+      let v;try{v=r.del?undefined:JSON.parse(r.j)}catch(_){return}
+      const loc=LDB._raw()[p];
+      if(la===0&&this.dirty.has(p)&&v&&loc&&typeof v==="object"&&typeof loc==="object"){
+        const m=fillGaps(syncClone(v),loc);
+        if(JSON.stringify(m)!==JSON.stringify(v)){this.st.meta[p]=Date.now();apply.push([p,m]);return} // merged copy goes back up
+      }
+      this.st.meta[p]=r.at;this.dirty.delete(p);apply.push([p,v]);
+    });
+    if(apply.length)LDB._applyRemote(apply);
+    this.st.cursor=max;this.st.lastOk=Date.now();this.err="";this.persist();
+    if(!this.pulled){this.pulled=true;this.schedule(200)}
+    if(apply.length)setSync("متزامن ✓");
+    renderSyncSec();
+  },
+  async push(){
+    if(!this.ready||!this.pulled||this.pushing||!this.dirty.size)return;
+    this.pushing=true;let failed=false;
+    try{
+      const raw=LDB._raw(),keys=[...this.dirty],SV=firebase.firestore.FieldValue.serverTimestamp;
+      for(let i=0;i<keys.length;i+=400){
+        const b=this.db.batch(),sent=[];
+        for(const p of keys.slice(i,i+400)){
+          let at=this.st.meta[p];if(!at){at=Date.now();this.st.meta[p]=at}
+          const has=Object.prototype.hasOwnProperty.call(raw,p),j=has?JSON.stringify(raw[p]):null;
+          if(j&&j.length>900000){this.big=p;this.dirty.delete(p);continue}
+          b.set(this.col().doc(encodeURIComponent(p)),{p,j,del:!has,at,dev:DEV,st:SV()});sent.push([p,at]);
+        }
+        if(sent.length)await b.commit();
+        for(const [p,at] of sent)if(this.st.meta[p]===at)this.dirty.delete(p);
+        this.persist();
+      }
+      this.err="";this.st.lastOk=Date.now();this.persist();setSync("متزامن ✓");
+    }catch(e){failed=true;this.err=syncErr(e);setSync("سيتزامن عند عودة الاتصال");setTimeout(()=>this.push(),20000)}
+    finally{this.pushing=false;if(!failed&&this.dirty.size)this.schedule(300);renderSyncSec()}
+  },
+};
+function syncErr(e){const c=(e&&e.code)||"";
+  return({"auth/invalid-email":"البريد الإلكتروني غير صحيح.","auth/missing-password":"اكتب كلمة السر.",
+    "auth/wrong-password":"كلمة السر غير صحيحة.","auth/invalid-credential":"البريد أو كلمة السر غير صحيحة.","auth/invalid-login-credentials":"البريد أو كلمة السر غير صحيحة.",
+    "auth/user-not-found":"لا يوجد حساب بهذا البريد. اضغط «إنشاء حساب» أول مرة.","auth/email-already-in-use":"هذا البريد له حساب مسبقًا. اضغط «دخول».",
+    "auth/weak-password":"كلمة السر قصيرة، اجعلها 6 أحرف أو أكثر.","auth/network-request-failed":"لا يوجد اتصال بالإنترنت.",
+    "auth/too-many-requests":"محاولات كثيرة، انتظر قليلًا ثم أعد المحاولة.","auth/operation-not-allowed":"الدخول بالبريد غير مفعّل في مشروع Firebase.",
+    "permission-denied":"قواعد الحماية في Firebase تمنع الوصول. راجع خطوة القواعد.","unavailable":"لا يوجد اتصال بالإنترنت، ستتم المزامنة عند عودته."})[c]||"تعذّرت المزامنة، ستتم إعادة المحاولة."}
+const fmtT=t=>{const d=new Date(t),n=new Date();const hm=d.toLocaleTimeString("ar-DZ",{hour:"2-digit",minute:"2-digit"});
+  return d.toDateString()===n.toDateString()?"اليوم "+hm:d.toLocaleDateString("ar-DZ")+" "+hm};
+function renderSyncSec(){
+  const el=document.getElementById("syncBody");if(!el)return;
+  if(!FB_CONFIG){el.innerHTML=`<span class="note">لم تُجهَّز المزامنة بعد.</span>`;return}
+  if(!SYNC.auth){el.innerHTML=`<span class="note">${esc(SYNC.err||"جارٍ التحميل…")}</span>`;return}
+  const u=SYNC.user;
+  if(!u){el.innerHTML=`<span class="note">سجّل الدخول بنفس الحساب على الآيفون والآيباد والماك، فتظهر بياناتك نفسها على الثلاثة. ابدأ بالجهاز الذي عليه أصحّ البيانات.</span>
+    <input type="email" id="syEm" placeholder="البريد الإلكتروني" autocomplete="username" inputmode="email" dir="ltr" value="${esc(SYNC.st.email||"")}" style="min-height:44px;width:100%">
+    <input type="password" id="syPw" placeholder="كلمة السر (6 أحرف أو أكثر)" autocomplete="current-password" dir="ltr" style="min-height:44px;width:100%">
+    <div class="lockset"><button class="btn primary" type="button" id="syIn">دخول</button><button class="btn" type="button" id="syNew">إنشاء حساب (أول مرة فقط)</button></div>
+    <button type="button" class="linkbtn" id="syForgot">نسيت كلمة السر</button>
+    <div class="note" id="syMsg" role="status">${esc(SYNC.err||"")}</div>`;return}
+  const n=SYNC.dirty.size;
+  const state=!SYNC.pulled?"جارٍ تنزيل البيانات…":SYNC.err?SYNC.err:n?`جارٍ رفع ${n} تعديلًا…`:"كل التعديلات متزامنة ✓";
+  el.innerHTML=`<span class="note">الحساب: <b dir="ltr">${esc(u.email||"")}</b></span>
+    <span class="note" role="status">${esc(state)}${SYNC.st.lastOk?` · آخر مزامنة: ${fmtT(SYNC.st.lastOk)}`:""}</span>
+    ${SYNC.big?`<span class="note">سجلّ كبير جدًا لم يُرفع: ${esc(SYNC.big)}</span>`:""}
+    <div class="lockset"><button class="btn" type="button" id="syNow">مزامنة الآن</button><button class="btn" type="button" id="syOut">تسجيل الخروج</button></div>
+    <span class="note">الوثائق والصور الشخصية تبقى على كل جهاز حاليًا، والرمز السري وبصمة الوجه يُضبطان على كل جهاز وحده.</span>`;
+}
+function addSyncSection(){
+  const sheet=document.querySelector("#modal .sheet");if(!sheet||document.getElementById("syncSec"))return;
+  const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
+  sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
+  const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 6.6"}
+  renderSyncSec();if(!SYNC.started)SYNC.start();
+}
+const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("#syIn,#syNew,#syForgot,#syNow,#syOut");if(!t)return;
+  const msg=()=>document.getElementById("syMsg"),say=x=>{const m=msg();if(m)m.textContent=x};
+  const em=(document.getElementById("syEm")||{value:""}).value.trim(),pw=(document.getElementById("syPw")||{value:""}).value;
+  try{
+    if(t.id==="syIn"||t.id==="syNew"){
+      if(!em){say("اكتب بريدك الإلكتروني.");return}
+      if(t.id==="syNew"&&!confirm("سيُنشأ حساب المزامنة بهذا البريد. أنشئه مرة واحدة فقط، ثم استعمل «دخول» على الأجهزة الأخرى. متابعة؟"))return;
+      t.disabled=true;say("جارٍ الاتصال…");SYNC.err="";
+      if(t.id==="syNew")await SYNC.auth.createUserWithEmailAndPassword(em,pw);else await SYNC.auth.signInWithEmailAndPassword(em,pw);
+      toast("تم الدخول، بدأت المزامنة");
+    }else if(t.id==="syForgot"){
+      if(!em){say("اكتب بريدك الإلكتروني أولًا ثم اضغط «نسيت كلمة السر».");return}
+      await SYNC.auth.sendPasswordResetEmail(em);say("أرسلنا رابط تغيير كلمة السر إلى بريدك.");
+    }else if(t.id==="syNow"){SYNC.err="";if(!SYNC.unsub)SYNC.listen();await SYNC.push();toast(SYNC.err||"تمت المزامنة")}
+    else if(t.id==="syOut"){
+      if(!confirm("تسجيل الخروج يوقف المزامنة على هذا الجهاز فقط، وتبقى بياناته محفوظة عليه. متابعة؟"))return;
+      await SYNC.push();await SYNC.auth.signOut();toast("أُوقفت المزامنة على هذا الجهاز");
+    }
+  }catch(err){t.disabled=false;say(syncErr(err));SYNC.err="";}
+});
+addEventListener("online",()=>{if(!SYNC.started)SYNC.start();else{SYNC.listen();SYNC.schedule(500)}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")SYNC.push();else if(SYNC.ready){SYNC.listen();SYNC.schedule(500)}});
+SYNC.load();
+window.SYNCHOOK=p=>SYNC.touch(p);
+if(FB_CONFIG)setTimeout(()=>SYNC.start(),300);
 </script>
 
 </body>
