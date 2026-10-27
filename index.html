@@ -3054,6 +3054,7 @@ function renderSyncSec(){
     ${SYNC.big?`<span class="note">سجلّ كبير جدًا لم يُرفع: ${esc(SYNC.big)}</span>`:""}
     <div class="lockset"><button class="btn" type="button" id="syNow">مزامنة الآن</button><button class="btn" type="button" id="syOut">تسجيل الخروج</button></div>
     <button class="btn" type="button" id="syRef">اعتماد بيانات هذا الجهاز كمرجع</button>
+    <button class="btn" type="button" id="syChk">فحص المزامنة</button><div class="note" id="syChkOut" style="white-space:pre-line;direction:rtl"></div>
     <span class="note">الوثائق والصور الشخصية تبقى على كل جهاز حاليًا، والرمز السري وبصمة الوجه يُضبطان على كل جهاز وحده.</span>`;
 }
 function addSyncSection(){
@@ -3066,7 +3067,7 @@ function addSyncSection(){
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("#syIn,#syNew,#syForgot,#syNow,#syOut,#syRef");if(!t)return;
+  const t=e.target.closest("#syIn,#syNew,#syForgot,#syNow,#syOut,#syRef,#syChk");if(!t)return;
   const msg=()=>document.getElementById("syMsg"),say=x=>{const m=msg();if(m)m.textContent=x};
   const em=(document.getElementById("syEm")||{value:""}).value.trim(),pw=(document.getElementById("syPw")||{value:""}).value;
   try{
@@ -3080,6 +3081,25 @@ document.addEventListener("click",async e=>{
       if(!em){say("اكتب بريدك الإلكتروني أولًا ثم اضغط «نسيت كلمة السر».");return}
       await SYNC.auth.sendPasswordResetEmail(em);say("أرسلنا رابط تغيير كلمة السر إلى بريدك.");
     }else if(t.id==="syNow"){SYNC.err="";if(!SYNC.unsub)SYNC.listen();await SYNC.push();toast(SYNC.err||"تمت المزامنة")}
+    else if(t.id==="syChk"){
+      const out=document.getElementById("syChkOut");out.textContent="جارٍ الفحص…";
+      const snap=await SYNC.col().get(),raw=LDB._raw(),rem={},devs={};
+      snap.forEach(d=>{const r=d.data();if(!r||!r.p)return;rem[r.p]=r;
+        const k=r.dev||"?";const o=devs[k]||(devs[k]={n:0,sk:[]});o.n++;if(r.st)o.sk.push(r.at-r.st.toMillis())});
+      const loc=Object.keys(raw).filter(p=>!SYNC.skip(p)),live=Object.keys(rem).filter(p=>!rem[p].del);
+      const stu=x=>x.filter(p=>p.startsWith("students/")).length,dys=x=>x.filter(p=>p.startsWith("days/")).length;
+      let onlyLoc=0,onlyRem=0,diff=0,remNewer=0;
+      for(const p of loc){const r=rem[p];if(!r||r.del){onlyLoc++;continue}if(r.j!==JSON.stringify(raw[p])){diff++;if(r.at>(SYNC.st.meta[p]||0))remNewer++}}
+      for(const p of live)if(!(p in raw))onlyRem++;
+      const med=a=>{if(!a.length)return 0;a.sort((x,y)=>x-y);return a[a.length>>1]};
+      const dl=Object.entries(devs).map(([k,o])=>`• جهاز ${k}${k===DEV?" (هذا الجهاز)":""}: ${o.n} سجلًا، فارق الساعة ${Math.round(med(o.sk)/60000)} دقيقة`).join("\n");
+      out.textContent=`هذا الجهاز: ${DEV} · الحساب: ${SYNC.user.uid.slice(0,6)}
+على الجهاز: ${loc.length} سجلًا (طلبة ${stu(loc)}، أيام ${dys(loc)})
+في الحساب: ${live.length} سجلًا (طلبة ${stu(live)}، أيام ${dys(live)})
+موجود هنا فقط: ${onlyLoc} · في الحساب فقط: ${onlyRem} · مختلف: ${diff} (الأحدث في الحساب: ${remNewer})
+بانتظار الرفع: ${SYNC.dirty.size} · الاستماع: ${SYNC.unsub?"يعمل":"متوقف"}
+${dl}`;
+    }
     else if(t.id==="syRef"){
       if(!confirm("ستُرفع بيانات هذا الجهاز كلها وتغلب نسخ الأجهزة الأخرى حيث تختلف، وما يوجد في الأجهزة الأخرى وحدها يبقى. متابعة؟"))return;
       // every record on this device becomes the newest copy
