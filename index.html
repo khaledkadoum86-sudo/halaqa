@@ -1335,7 +1335,7 @@ function openLockSettings(){
   </div></div>`;
   md.hidden=false;
 }
-document.getElementById("lockBtn").addEventListener("click",openLockSettings);
+document.getElementById("lockBtn").addEventListener("click",()=>openLockSettings()); // late-bound so every added settings section shows
 document.getElementById("modal").addEventListener("click",e=>{
   const b=e.target.closest("[data-lock]");if(!b)return;const a=b.dataset.lock;document.getElementById("modal").hidden=true;
   if(a==="set")showLock("set");
