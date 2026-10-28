@@ -1,15 +1,19 @@
 import UIKit
 import WebKit
 import LocalAuthentication
+import QuickLook
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/")!
 let appHost = "khaledkadoum86-sudo.github.io"
 private let pageBackground = UIColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1)
 
-final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandlerWithReply {
+final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandlerWithReply, QLPreviewControllerDataSource {
     private var webView: WKWebView!
     private var offlineView: UIView?
     private var downloads: [ObjectIdentifier: URL] = [:]
+    private var pageReady = false          // the page said it can receive books
+    private var sendingBooks = false
+    private var openBook: BookItem?
 
     override func loadView() {
         let config = WKWebViewConfiguration()
@@ -23,6 +27,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         let content = config.userContentController
         content.addUserScript(WKUserScript(source: "window.HALAQA_NATIVE=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBio")
+        content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBook")
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -39,11 +44,13 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     override func viewDidLoad() {
         super.viewDidLoad()
         webView.load(URLRequest(url: appURL))
+        NotificationCenter.default.addObserver(self, selector: #selector(sendPendingBooks), name: BookInbox.arrived, object: nil)
     }
 
     // MARK: - Face ID for the page (window.webkit.messageHandlers.halaqaBio)
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
+        if message.name == "halaqaBook" { handleBook(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         let action = (message.body as? [String: Any])?["action"] as? String ?? ""
         let context = LAContext()
         var error: NSError?
@@ -154,8 +161,94 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         offlineView = nil
     }
 
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        pageReady = false   // a new page is loading; it says "ready" again when it can take books
+    }
+
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        pageReady = false
         webView.reload()
+    }
+
+    // MARK: - «الخزانة العلمية»: books shared in, and reading them with Quick Look
+
+    private func handleBook(_ body: [String: Any], reply: @escaping (Any?, String?) -> Void) {
+        let id = body["id"] as? String ?? ""
+        let title = body["title"] as? String ?? "كتاب"
+        switch body["action"] as? String ?? "" {
+        case "ready":
+            pageReady = true
+            reply(true, nil)
+            sendPendingBooks()
+        case "open":
+            let file = BookCache.url(for: id)
+            if FileManager.default.fileExists(atPath: file.path) { showBook(file, title: title); reply("shown", nil) } else { reply("need", nil) }
+        case "chunk":
+            let part = BookCache.partURL(for: id)
+            guard let s = body["s"] as? String, let data = Data(base64Encoded: s) else { reply(false, nil); return }
+            if ((body["i"] as? NSNumber)?.intValue ?? 0) == 0 {
+                reply(FileManager.default.createFile(atPath: part.path, contents: data), nil)
+            } else if let handle = try? FileHandle(forWritingTo: part) {
+                handle.seekToEndOfFile(); handle.write(data); handle.closeFile()
+                reply(true, nil)
+            } else { reply(false, nil) }
+        case "show":
+            let file = BookCache.url(for: id), part = BookCache.partURL(for: id)
+            try? FileManager.default.removeItem(at: file)
+            guard (try? FileManager.default.moveItem(at: part, to: file)) != nil else { reply("failed", nil); return }
+            showBook(file, title: title)
+            reply("shown", nil)
+        case "forget":
+            try? FileManager.default.removeItem(at: BookCache.url(for: id))
+            reply(true, nil)
+        default:
+            reply(nil, nil)
+        }
+    }
+
+    private func showBook(_ file: URL, title: String) {
+        openBook = BookItem(url: file, title: title)
+        let preview = QLPreviewController()
+        preview.dataSource = self
+        preview.modalPresentationStyle = .fullScreen
+        top().present(preview, animated: true)
+    }
+
+    func numberOfPreviewItems(in controller: QLPreviewController) -> Int { openBook == nil ? 0 : 1 }
+    func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem { openBook! }
+
+    /// Hands books shared from other apps to the page, in small pieces, one book at a time.
+    @objc private func sendPendingBooks() {
+        guard pageReady, !sendingBooks else { return }
+        let books = BookInbox.shared.takeAll()
+        guard !books.isEmpty else { return }
+        sendingBooks = true
+        Task { @MainActor in
+            var allSent = true
+            for book in books {
+                if !(await self.send(book)) { BookInbox.shared.putBack(book); allSent = false }
+            }
+            self.sendingBooks = false
+            // books that arrived meanwhile; a failed book waits for the next "ready" instead of retrying in a loop
+            if allSent && self.pageReady && BookInbox.shared.hasPending { self.sendPendingBooks() }
+        }
+    }
+
+    @MainActor private func send(_ book: BookInbox.Book) async -> Bool {
+        guard let data = try? Data(contentsOf: book.file, options: .mappedIfSafe) else { return true }
+        do {
+            guard (try await webView.callAsyncJavaScript("return window.halaqaBookIn ? halaqaBookIn.begin(id, name) : false", arguments: ["id": book.id, "name": book.name], in: nil, in: .page)) as? Bool == true else { return false }
+            let step = 393_216   // a multiple of 3, so each piece is valid base64 on its own
+            var offset = 0
+            while offset < data.count {
+                let end = min(offset + step, data.count)
+                let piece = data.subdata(in: offset..<end).base64EncodedString()
+                guard (try await webView.callAsyncJavaScript("return halaqaBookIn.chunk(id, s)", arguments: ["id": book.id, "s": piece], in: nil, in: .page)) as? Bool == true else { return false }
+                offset = end
+            }
+            _ = try await webView.callAsyncJavaScript("return await halaqaBookIn.end(id)", arguments: ["id": book.id], in: nil, in: .page)
+            return true
+        } catch { return false }
     }
 
     private func showOffline() {
@@ -201,4 +294,48 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         while let next = controller.presentedViewController { controller = next }
         return controller
     }
+}
+
+// MARK: - Books shared from other apps («الخزانة العلمية»)
+
+/// PDF files opened in this app from another app's share sheet wait here until the page can take them.
+final class BookInbox {
+    struct Book { let id: String; let name: String; let file: URL }
+    static let shared = BookInbox()
+    static let arrived = Notification.Name("HalaqaBookArrived")
+    private var pending: [Book] = []
+    var hasPending: Bool { !pending.isEmpty }
+
+    func receive(_ url: URL) {
+        guard url.isFileURL else { return }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let id = "b" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36)
+        let file = BookCache.url(for: id)
+        do { try FileManager.default.copyItem(at: url, to: file) } catch { return }
+        if url.path.contains("/Inbox/") { try? FileManager.default.removeItem(at: url) }
+        pending.append(Book(id: id, name: url.lastPathComponent, file: file))
+        NotificationCenter.default.post(name: BookInbox.arrived, object: nil)
+    }
+
+    func takeAll() -> [Book] { defer { pending = [] }; return pending }
+    func putBack(_ book: Book) { pending.append(book) }
+}
+
+/// A copy of each book in Caches, so Quick Look can open it. The page keeps the real copy and resends it if iOS clears this folder.
+enum BookCache {
+    static var folder: URL {
+        let f = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("books", isDirectory: true)
+        try? FileManager.default.createDirectory(at: f, withIntermediateDirectories: true)
+        return f
+    }
+    static func safe(_ id: String) -> String { String(id.filter { $0.isASCII && ($0.isLetter || $0.isNumber) }.prefix(40)) }
+    static func url(for id: String) -> URL { folder.appendingPathComponent(safe(id) + ".pdf") }
+    static func partURL(for id: String) -> URL { folder.appendingPathComponent(safe(id) + ".part") }
+}
+
+final class BookItem: NSObject, QLPreviewItem {
+    let previewItemURL: URL?
+    let previewItemTitle: String?
+    init(url: URL, title: String) { previewItemURL = url; previewItemTitle = title }
 }

@@ -671,6 +671,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
       <button class="tab" role="tab" id="tab-month" data-v="month" aria-selected="false"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16M4 14h16M9 4v16M14 4v16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>الجدول الشهري</span></button>
       <button class="tab" role="tab" id="tab-students" data-v="students" aria-selected="false"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M16 3.5a4 4 0 010 7.5M18 14a5 5 0 014 5v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>الطلبة</span></button>
       <button class="tab" role="tab" id="tab-school" data-v="school" aria-selected="false"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6M12 5V2.5M12 2.5h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>المدرسة</span></button>
+      <button class="tab" role="tab" id="tab-lib" data-v="lib" aria-selected="false"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5a1 1 0 011-1h3v16H5a1 1 0 01-1-1zM8 4h4v16H8zM13.5 5.2l3.4-.9 3.6 13.6-3.4.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>الخزانة</span></button>
     </nav>
   </div>
 </header>
@@ -732,6 +733,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
     <div class="seg" role="tablist"><button type="button" role="tab" data-pane="photos">📷 الصور</button><button type="button" role="tab" data-pane="inv">🪑 جرد الأثاث</button><button type="button" role="tab" data-pane="events">📅 الأحداث</button></div>
     <div id="schBody"></div>
   </section>
+  <section id="v-lib" hidden></section>
 </main>
 
 <div id="modal" hidden></div>
@@ -1511,7 +1513,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.0</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.1</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1915,7 +1917,7 @@ const b64c=buf=>{const u=new Uint8Array(buf);let s="";for(let i=0;i<u.length;i+=
 const unb64c=s=>{const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u.buffer};
 async function docsBackup(){
   try{
-    const all=await DOCDB.all();if(!all.length){toast("لا توجد وثائق أو ملفات محفوظة بعد");return}
+    const all=[];for(const k of (await DOCDB.keys()).filter(k=>!String(k).startsWith("lib")))all.push([k,await DOCDB.get(k)]);if(!all.length){toast("لا توجد وثائق أو ملفات محفوظة بعد");return}
     const names={};S.students.forEach(s=>names[s.id]=s.name);
     const docs=all.map(([k,r])=>({k,name:names[k.split("|")[0]]||"",type:r.type,w:r.w,h:r.h,at:r.at,b64:b64c(r.buf)}));
     const blob=new Blob([JSON.stringify({app:"halaqa-docs",version:1,exportedAt:new Date().toISOString(),docs})],{type:"application/json"});
@@ -1959,7 +1961,7 @@ const dst=document.createElement("style");dst.textContent=`
 // ---- Data protection: status panel, documents backup reminder, notice after a self-repair ----
 const lsN=k=>{try{return +localStorage.getItem(k)||0}catch(_){return 0}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,String(v))}catch(_){}};
-(function(){for(const m of ["put","del"]){const f=DOCDB[m].bind(DOCDB);DOCDB[m]=async function(k){const r=await f.apply(null,arguments);lsSet("halaqa.docsChgAt",Date.now());return r}}})();
+(function(){for(const m of ["put","del"]){const f=DOCDB[m].bind(DOCDB);DOCDB[m]=async function(k){const r=await f.apply(null,arguments);if(!String(k).startsWith("lib"))lsSet("halaqa.docsChgAt",Date.now());return r}}})();
 async function askPersist(){try{if(navigator.storage&&navigator.storage.persist){if(await navigator.storage.persisted())return true;return await navigator.storage.persist()}}catch(_){}return null}
 const agoTxt=t=>{if(!t)return"";const d=Math.floor((Date.now()-t)/864e5);return d<=0?"اليوم":d===1?"أمس":d===2?"قبل يومين":d<=10?`قبل ${d} أيام`:`قبل ${d} يومًا`};
 async function dataHealth(){
@@ -1968,7 +1970,7 @@ async function dataHealth(){
   try{const e=navigator.storage&&navigator.storage.estimate?await navigator.storage.estimate():null;o.used=e&&e.usage||0}catch(_){o.used=0}
   try{await MIRROR.flush();const m=await MIRROR.get();o.mirror=m&&m.at||0}catch(_){o.mirror=0}
   try{o.snaps=(await AUTO.keys()).length}catch(_){o.snaps=0}
-  try{o.docs=(await DOCDB.keys()).length}catch(_){o.docs=0}
+  try{o.docs=(await DOCDB.keys()).filter(k=>!String(k).startsWith("lib")).length}catch(_){o.docs=0}
   o.bk=bkAt();o.dbk=lsN("halaqa.docsBkAt");o.dchg=lsN("halaqa.docsChgAt");o.chg=changedAt();
   return o;
 }
@@ -3331,7 +3333,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.0"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.1"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -3617,6 +3619,182 @@ textarea.wacin{resize:vertical}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wachelp{background:#12301F;border-color:#2E6B47;color:#CDEFD9}}
 :root[data-theme="dark"] .wachelp{background:#12301F;border-color:#2E6B47;color:#CDEFD9}
 `;document.head.appendChild(wacst);
+</script>
+
+<script>
+// ---- الخزانة العلمية: PDF books kept on this device (not synced, not in the documents backup) ----
+// Books arrive from the file picker, or (native app) from the share sheet of other apps via window.halaqaBookIn.
+// DOCDB keys: "libm|<id>" = {title, author, cat, size, at, opened}; "lib|<id>" = {buf, type}.
+const LIB={q:"",cat:"",sort:"recent",list:null,shell:false};
+const LIB_CATS=["القرءان وعلومه","التجويد والقراءات","التفسير","الحديث وعلومه","العقيدة","الفقه وأصوله","السيرة والتاريخ","اللغة العربية","التربية والتعليم","المتون","متفرقات"];
+const LIB_COLORS=["#1E3A5F","#17714A","#8A2F28","#6B4E07","#4B3A8C","#0E6A7A","#7A3E12","#2F4858"];
+const libNative=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.halaqaBook);
+const libPost=o=>window.webkit.messageHandlers.halaqaBook.postMessage(o);
+const libId=()=>"b"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const libSize=n=>n>=1048576?(n/1048576).toFixed(n>=10485760?0:1)+" م.ب":Math.max(1,Math.round(n/1024))+" ك.ب";
+const libColor=s=>{let h=0;for(const ch of String(s||""))h=(h*31+ch.charCodeAt(0))>>>0;return LIB_COLORS[h%LIB_COLORS.length]};
+const libTitle=name=>String(name||"").replace(/\.pdf$/i,"").replace(/[_]+/g," ").replace(/\s+/g," ").trim()||"كتاب";
+try{const o=JSON.parse(localStorage.getItem("halaqa.libopts")||"{}");if(o.sort)LIB.sort=o.sort}catch(_){}
+async function libAll(){
+  if(LIB.list)return LIB.list;
+  const ks=(await DOCDB.keys()).filter(k=>String(k).startsWith("libm|")),out=[];
+  for(const k of ks){const r=await DOCDB.get(k);if(r)out.push(Object.assign({},r,{id:String(k).slice(5)}))}
+  return LIB.list=out}
+async function libSaveMeta(m){const r=Object.assign({},m);delete r.id;await DOCDB.put("libm|"+m.id,r);LIB.list=null}
+async function libAdd(blob,name,id){
+  id=id||libId();
+  await DOCDB.put("lib|"+id,{buf:await blob.arrayBuffer(),type:"application/pdf"});
+  await libSaveMeta({id,title:libTitle(name),author:"",cat:"",size:blob.size,at:Date.now(),opened:0});
+  return id}
+async function libDelete(id){await DOCDB.del("lib|"+id);await DOCDB.del("libm|"+id);LIB.list=null;if(libNative())libPost({action:"forget",id}).catch(()=>{})}
+
+// the page
+function libShell(sec){
+  sec.innerHTML=`<div class="libhead"><div class="libicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M4 19V5a1 1 0 011-1h3v16H5a1 1 0 01-1-1zM8 4h4v16H8zM13.5 5.2l3.4-.9 3.6 13.6-3.4.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+      <div><b>الخزانة العلمية</b><span id="libSum">جارٍ التحميل…</span></div></div>
+    <div class="bar"><span class="sbox"><input type="search" id="libQ" placeholder="ابحث بالعنوان أو المؤلف…" value="${esc(LIB.q)}"><button type="button" class="sclear" data-for="libQ" aria-label="مسح البحث" ${LIB.q?"":"hidden"}>✕</button></span>
+      <select id="libSort" aria-label="ترتيب الكتب"><option value="recent">الأحدث إضافة</option><option value="read">آخر ما قرأت</option><option value="name">أبجديًا</option></select></div>
+    <div class="libchips" id="libChips"></div>
+    <input type="file" id="libIn" accept="application/pdf,.pdf" multiple hidden>
+    <div class="addrow"><label class="btn primary addbtn" for="libIn" style="cursor:pointer"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>إضافة كتاب PDF</label></div>
+    <div class="list" id="libList"></div>
+    <p class="note" id="libHow"></p>`;
+  sec.querySelector("#libSort").value=LIB.sort;LIB.shell=true}
+async function renderLib(){
+  const sec=document.getElementById("v-lib");if(!sec)return;
+  if(!LIB.shell||!document.getElementById("libList"))libShell(sec);
+  let all;try{all=await libAll()}catch(_){document.getElementById("libList").innerHTML=`<div class="empty">تعذّر فتح الخزانة على هذا الجهاز.</div>`;return}
+  const tot=all.reduce((t,b)=>t+(b.size||0),0);
+  const nb=all.length===1?"كتاب واحد":all.length===2?"كتابان":all.length<=10?all.length+" كتب":all.length+" كتابًا";
+  document.getElementById("libSum").textContent=all.length?nb+" · "+libSize(tot):"لا توجد كتب بعد";
+  if(S.view==="lib")document.getElementById("countLbl").textContent=all.length?nb+" في الخزانة":"";
+  const cats=[...new Set(all.map(b=>b.cat||"").filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
+  if(LIB.cat&&!cats.includes(LIB.cat))LIB.cat="";
+  document.getElementById("libChips").innerHTML=cats.length?[["","الكل"]].concat(cats.map(c=>[c,c])).map(([v,l])=>`<button type="button" class="chip${v===LIB.cat?" on":""}" data-libcat="${esc(v)}">${esc(l)}</button>`).join(""):"";
+  const q=LIB.q.trim().toLowerCase();
+  let L=all.filter(b=>(!LIB.cat||b.cat===LIB.cat)&&(!q||[b.title,b.author,b.cat].some(x=>String(x||"").toLowerCase().includes(q))));
+  L.sort(LIB.sort==="name"?(a,b)=>a.title.localeCompare(b.title,"ar"):LIB.sort==="read"?(a,b)=>(b.opened||0)-(a.opened||0)||(b.at||0)-(a.at||0):(a,b)=>(b.at||0)-(a.at||0));
+  document.getElementById("libList").innerHTML=L.length?L.map(b=>`<div class="librow">
+      <button type="button" class="libcover" data-libread="${b.id}" style="--c:${libColor(b.cat||b.title)}" aria-label="قراءة ${esc(b.title)}"><span>${esc(b.title)}</span></button>
+      <div class="libinfo"><button type="button" class="linkname" data-libread="${b.id}">${esc(b.title)}</button>
+        <span class="note">${[b.author,b.cat,libSize(b.size||0)].filter(Boolean).map(esc).join(" · ")}</span></div>
+      <span class="libacts"><button type="button" class="btn sm" data-libread="${b.id}">قراءة</button><button type="button" class="btn sm" data-libedit="${b.id}" aria-label="تعديل ${esc(b.title)}">⋯</button></span></div>`).join("")
+    :`<div class="empty">${all.length?"لا توجد كتب تطابق البحث.":"الخزانة فارغة. أضف أول كتاب."}</div>`;
+  document.getElementById("libHow").innerHTML=libNative()
+    ?"لإضافة كتاب من تطبيق آخر (واتساب، الملفات، تيليغرام…): افتح ملف PDF، واضغط «مشاركة»، ثم اختر «سجل الطلبة». إن لم يظهر، فاضغط «المزيد» في صف التطبيقات. الكتب محفوظة على هذا الجهاز فقط ولا تتزامن مع أجهزتك الأخرى."
+    :"اضغط «إضافة كتاب PDF» واختر الملف من «الملفات» أو iCloud. الكتب محفوظة على هذا الجهاز فقط ولا تتزامن مع أجهزتك الأخرى.";
+}
+
+// adding from the file picker
+document.addEventListener("change",async e=>{
+  if(e.target.id==="libSort"){LIB.sort=e.target.value;try{localStorage.setItem("halaqa.libopts",JSON.stringify({sort:LIB.sort}))}catch(_){}renderLib();return}
+  if(e.target.id!=="libIn")return;
+  const files=[...(e.target.files||[])];e.target.value="";if(!files.length)return;
+  let n=0,last="";
+  for(const f of files){if(!(f.type==="application/pdf"||/\.pdf$/i.test(f.name)))continue;
+    try{toast("جارٍ حفظ "+libTitle(f.name)+"…");last=await libAdd(f,f.name);n++}catch(_){toast("تعذّر حفظ "+f.name+"، ربما امتلأت مساحة الجهاز")}}
+  await renderLib();
+  if(n===1)libEdit(last,true);else if(n>1)toast("أُضيف "+n+" كتب إلى الخزانة");else toast("اختر ملفات PDF فقط");
+});
+document.addEventListener("input",e=>{if(e.target.id!=="libQ")return;LIB.q=e.target.value;const c=document.querySelector('.sclear[data-for="libQ"]');if(c)c.hidden=!LIB.q;clearTimeout(renderLib.t);renderLib.t=setTimeout(renderLib,150)});
+
+// edit / share / delete
+async function libEdit(id,fresh){
+  const b=(await libAll()).find(x=>x.id===id);if(!b)return;
+  const cats=[...new Set(LIB_CATS.concat((await libAll()).map(x=>x.cat||"").filter(Boolean)))];
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="بيانات الكتاب" id="libSheet" data-id="${b.id}">
+    <h3>${fresh?"كتاب جديد في الخزانة":"بيانات الكتاب"}</h3><div class="note">${esc(libSize(b.size||0))} · أُضيف ${esc(new Date(b.at||Date.now()).toLocaleDateString("ar-DZ"))}</div>
+    <div class="wacfields" style="margin-top:12px">
+      <label class="waclab"><span>العنوان</span><input type="text" id="libT" class="wacin" value="${esc(b.title)}" autocomplete="off"></label>
+      <label class="waclab"><span>المؤلف (اختياري)</span><input type="text" id="libA" class="wacin" value="${esc(b.author||"")}" autocomplete="off" placeholder="مثل: ابن الجزري"></label>
+      <label class="waclab"><span>الرف (التصنيف)</span><input type="text" id="libC" class="wacin" value="${esc(b.cat||"")}" autocomplete="off" list="libCats" placeholder="اختر أو اكتب رفًا جديدًا"></label>
+      <datalist id="libCats">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
+      <div class="libcatpick">${cats.slice(0,12).map(c=>`<button type="button" class="chip${c===b.cat?" on":""}" data-libpick="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+    </div>
+    <div class="lockset"><button class="btn primary" type="button" id="libSave">حفظ</button>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" data-libread="${b.id}" style="flex:1">قراءة</button><button class="btn" type="button" id="libShare" style="flex:1">مشاركة الكتاب</button></div>
+      <button class="btn danger" type="button" id="libDel">حذف من الخزانة</button>
+      <button class="btn" type="button" data-act="close">إغلاق</button></div>
+  </div></div>`;
+  md.hidden=false;
+}
+async function libRead(id){
+  const b=(await libAll()).find(x=>x.id===id);if(!b)return;
+  b.opened=Date.now();libSaveMeta(b).then(()=>{if(S.view==="lib"&&LIB.sort==="read")renderLib()}).catch(()=>{});
+  if(libNative()){
+    try{
+      if(await libPost({action:"open",id,title:b.title})==="shown")return;
+      const r=await DOCDB.get("lib|"+id);if(!r)throw 0;
+      toast("جارٍ فتح الكتاب…");
+      const u=new Uint8Array(r.buf),CH=393216;
+      for(let i=0,o=0;o<u.length;i++,o+=CH){
+        let s="";const part=u.subarray(o,Math.min(o+CH,u.length));for(let j=0;j<part.length;j+=0x8000)s+=String.fromCharCode.apply(null,part.subarray(j,j+0x8000));
+        if(await libPost({action:"chunk",id,i,s:btoa(s)})!==true)throw 0}
+      if(await libPost({action:"show",id,title:b.title})==="shown")return;
+    }catch(_){}
+  }
+  const r=await DOCDB.get("lib|"+id);if(!r){toast("ملف الكتاب غير موجود على هذا الجهاز");return}
+  const blob=new Blob([r.buf],{type:"application/pdf"});if(dvUrl)URL.revokeObjectURL(dvUrl);dvUrl=URL.createObjectURL(blob);
+  const v=document.createElement("div");v.id="docViewer";
+  v.innerHTML=`<div class="dvbar"><b>${esc(b.title)}</b><span><button type="button" class="btn" data-dvshare>مشاركة</button><button type="button" class="btn" data-dvclose>إغلاق</button></span></div><iframe src="${dvUrl}" title="${esc(b.title)}" style="flex:1;width:100%;border:0;background:#fff"></iframe>`;
+  v._blob=blob;v._name=b.title+".pdf";document.body.appendChild(v);
+}
+document.addEventListener("click",async e=>{
+  const sc=e.target.closest('.sclear[data-for="libQ"]');if(sc){const i=document.getElementById("libQ");i.value="";LIB.q="";sc.hidden=true;renderLib();i.focus();return}
+  const rd=e.target.closest("[data-libread]");if(rd){libRead(rd.dataset.libread);return}
+  const ed=e.target.closest("[data-libedit]");if(ed){libEdit(ed.dataset.libedit);return}
+  const ct=e.target.closest("[data-libcat]");if(ct){LIB.cat=ct.dataset.libcat;renderLib();return}
+  const pk=e.target.closest("[data-libpick]");if(pk){const i=document.getElementById("libC");if(i)i.value=pk.dataset.libpick;document.querySelectorAll("[data-libpick]").forEach(x=>x.classList.toggle("on",x===pk));return}
+  const sh=e.target.closest("#libSheet");if(!sh)return;const id=sh.dataset.id;
+  if(e.target.closest("#libSave")){
+    const b=(await libAll()).find(x=>x.id===id);if(!b)return;
+    b.title=(document.getElementById("libT").value||"").trim()||b.title;b.author=(document.getElementById("libA").value||"").trim();b.cat=(document.getElementById("libC").value||"").trim();
+    await libSaveMeta(b);document.getElementById("modal").hidden=true;toast("حُفظ");renderLib();return}
+  if(e.target.closest("#libShare")){
+    const b=(await libAll()).find(x=>x.id===id),r=await DOCDB.get("lib|"+id);if(!b||!r)return;
+    try{await shareOrDownload(b.title+".pdf",new Blob([r.buf],{type:"application/pdf"}))}catch(_){}return}
+  const dl=e.target.closest("#libDel");
+  if(dl){if(!dl.dataset.sure){dl.dataset.sure="1";dl.textContent="متأكد؟ اضغط مرة أخرى للحذف";setTimeout(()=>{if(dl.isConnected){delete dl.dataset.sure;dl.textContent="حذف من الخزانة"}},3500);return}
+    await libDelete(id);document.getElementById("modal").hidden=true;toast("حُذف الكتاب");renderLib()}
+});
+
+// books shared to the native app from other apps
+let _libArrived=0;
+window.halaqaBookIn={_b:{},
+  begin(id,name){this._b[id]={name,parts:[]};return true},
+  chunk(id,s){const b=this._b[id];if(!b)return false;const t=atob(s),u=new Uint8Array(t.length);for(let i=0;i<t.length;i++)u[i]=t.charCodeAt(i);b.parts.push(u);return true},
+  async end(id){const b=this._b[id];delete this._b[id];if(!b||!b.parts.length)return false;
+    try{await libAdd(new Blob(b.parts,{type:"application/pdf"}),b.name,id)}catch(_){toast("تعذّر حفظ الكتاب، ربما امتلأت مساحة الجهاز");return false}
+    _libArrived++;const first=_libArrived===1;
+    if(S.view!=="lib")document.getElementById("tab-lib")?.click();else renderLib();
+    const md=document.getElementById("modal");
+    if(first&&md.hidden)setTimeout(()=>libEdit(id,true),150);else toast("وصل كتاب جديد إلى الخزانة: "+libTitle(b.name));
+    setTimeout(()=>{_libArrived=0},4000);
+    return true}};
+
+// tab wiring (same pattern as the school page)
+const _renderLib=render;render=function(){if(S.view==="lib")renderLib();else _renderLib()};
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;document.getElementById("v-lib").hidden=b.dataset.v!=="lib"});
+try{if(localStorage.getItem("halaqa.view")==="lib")setTimeout(()=>document.getElementById("tab-lib")?.click(),0)}catch(_){}
+if(libNative())libPost({action:"ready"}).catch(()=>{});
+
+const libst=document.createElement("style");libst.textContent=`
+.libhead{display:flex;align-items:center;gap:12px;margin:4px 0 12px}
+.libhead .libicon{width:52px;height:52px;border-radius:14px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.libhead b{display:block;font-size:1.15rem;color:var(--ink)}.libhead span{font-size:.85rem;color:var(--muted)}
+.libchips,.libcatpick{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.libchips .chip,.libcatpick .chip{cursor:pointer;font:inherit;font-size:.85rem;color:var(--ink)}
+.libchips .chip.on,.libcatpick .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.librow{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.libcover{flex:none;width:52px;height:70px;border:0;border-radius:4px 10px 10px 4px;background:linear-gradient(90deg,rgba(0,0,0,.28) 0 5px,transparent 5px),var(--c);color:#fff;padding:6px 5px 6px 8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.18);cursor:pointer}
+.libcover span{font-size:.62rem;font-weight:700;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;text-align:center}
+.libinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.libinfo .linkname{font-size:1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.libinfo .note{margin:0;font-size:.8rem}
+.libacts{display:flex;gap:6px;flex:none}.libacts .btn.sm{min-height:38px}
+#v-lib .list{display:grid;gap:8px}
+`;document.head.appendChild(libst);
 </script>
 
 </body>

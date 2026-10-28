@@ -8,6 +8,7 @@ struct HalaqaApp: App {
     var body: some Scene {
         WindowGroup {
             WebContainer()
+                .onOpenURL { BookInbox.shared.receive($0) }   // PDF shared from another app → «الخزانة العلمية»
                 .ignoresSafeArea()
                 .background(Color(red: 0.96, green: 0.97, blue: 0.98).ignoresSafeArea())
         }
