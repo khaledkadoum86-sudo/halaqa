@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ar</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>ar</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>لتصوير وثائق الطلبة وصور المدرسة.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>لاختيار صور الوثائق والمدرسة.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>لحفظ الشهادات والبطاقات في الصور.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>لفتح سجل الطلبة ببصمة الوجه.</string>
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>khaledkadoum86-sudo.github.io</string>
+		<string>halaqa-23193.firebaseapp.com</string>
+		<string>www.gstatic.com</string>
+		<string>firestore.googleapis.com</string>
+		<string>identitytoolkit.googleapis.com</string>
+		<string>securetoken.googleapis.com</string>
+		<string>fonts.googleapis.com</string>
+		<string>fonts.gstatic.com</string>
+		<string>cdnjs.cloudflare.com</string>
+	</array>
+</dict>
+</plist>
