@@ -9,12 +9,14 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* HalaqaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* HalaqaApp.swift */; };
 		A10000000000000000000002 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* WebViewController.swift */; };
+		A10000000000000000000006 /* RenewalReminder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* RenewalReminder.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* HalaqaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HalaqaApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* RenewalReminder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenewalReminder.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20000000000000000000005 /* Halaqa.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Halaqa.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -44,6 +46,7 @@
 			children = (
 				A20000000000000000000001 /* HalaqaApp.swift */,
 				A20000000000000000000002 /* WebViewController.swift */,
+				A20000000000000000000006 /* RenewalReminder.swift */,
 				A20000000000000000000003 /* Assets.xcassets */,
 				A20000000000000000000004 /* Info.plist */,
 			);
@@ -130,6 +133,7 @@
 			files = (
 				A10000000000000000000001 /* HalaqaApp.swift in Sources */,
 				A10000000000000000000002 /* WebViewController.swift in Sources */,
+				A10000000000000000000006 /* RenewalReminder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

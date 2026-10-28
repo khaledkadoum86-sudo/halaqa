@@ -5,6 +5,8 @@ import SwiftUI
 /// After the first launch it also opens without internet (the page is kept on the device).
 @main
 struct HalaqaApp: App {
+    init() { RenewalReminder.schedule() }   // تذكير التجديد قبل انتهاء الأيام السبعة
+
     var body: some Scene {
         WindowGroup {
             WebContainer()
