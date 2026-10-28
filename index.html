@@ -689,6 +689,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
       </select>
       <button class="btn" id="allPresent">الباقي حاضر</button>
       <button class="btn" id="reportBtn">📤 تقرير اليوم</button>
+      <button class="btn" id="waCardBtn">🔒 بطاقة واتساب</button>
     </div>
     <div id="bkNote"></div>
     <div class="strip" id="dayStrip" aria-label="أيام الشهر"></div>
@@ -1510,7 +1511,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3330,7 +3331,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 6.9"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.0"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -3384,6 +3385,238 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 SYNC.load();
 window.SYNCHOOK=p=>SYNC.touch(p);
 if(FB_CONFIG)setTimeout(()=>SYNC.start(),300);
+</script>
+
+<script>
+// ---- WhatsApp cards: school-branded images, sent as «view once» so they are not kept on phones ----
+const WAC={kind:"report",f:{},open:false};
+const WAC_KEY="halaqa.wacard";
+const WAC_KINDS=[["report","📋 تقرير اليوم"],["abs","⚠️ تنبيه غياب"],["nosess","🚫 لا توجد حصة"],["time","🕒 تغيير الموعد"],["holiday","🌙 عطلة"],["notice","📢 إعلان"]];
+const WAC_TEXT_KEYS=["nsReason","nsNote","tTime","tNote","hNote","nTitle","nText","absNote"];
+function wacLoad(){try{const o=JSON.parse(localStorage.getItem(WAC_KEY)||"{}")||{};if(o.kind&&WAC_KINDS.some(k=>k[0]===o.kind))WAC.kind=o.kind;const f={};for(const k of WAC_TEXT_KEYS)if(o.f&&typeof o.f[k]==="string")f[k]=o.f[k];WAC.f=f}catch(_){}}
+function wacStore(){try{const f={};for(const k of WAC_TEXT_KEYS)if(WAC.f[k])f[k]=WAC.f[k];localStorage.setItem(WAC_KEY,JSON.stringify({kind:WAC.kind,f}))}catch(_){}}
+const wacLong=s=>{if(!s)return"";const d=parse(s);return DAYN[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]+" "+d.getFullYear()};
+const wacAddDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+function wacAbs(id,upTo){
+  const held=[],ds=hzDays();
+  for(let k=ds.length-1;k>=0&&held.length<60;k--){const [d,r]=ds[k];if(d>upTo)continue;const a=r.att||{};for(const i in a)if(isRec(a[i])){held.push([d,a]);break}}
+  let n=0,since="";for(const [d,a] of held){const v=a[id];if(v===A){n++;since=d}else if(v===P||v===J)break}
+  return{n,since}}
+
+// what each card says: a title, an optional date line, then blocks drawn one under another
+function wacContent(){
+  const k=WAC.kind,f=WAC.f;
+  if(k==="report"){
+    const d=S.date,dd=dayData(d),list=active(),o=repOpts();
+    const P_=list.filter(s=>dd.att[s.id]===P),J_=list.filter(s=>dd.att[s.id]===J),A_=list.filter(s=>dd.att[s.id]===A);
+    const mem=list.filter(s=>(Number(dd.th[s.id])||0)>0).sort((a,b)=>(Number(dd.th[b.id])||0)-(Number(dd.th[a.id])||0));
+    const tot=list.reduce((t,s)=>t+(Number(dd.th[s.id])||0),0),ms=hzMilestones(d);
+    const B=[{t:"tiles",items:[["الحضور",P_.length,"#D5ECDF","#1F5A3E"],["حضور جزئي",J_.length,"#F6E6B0","#6B4E07"],["الغياب",A_.length,"#F5D3CE","#8A2F28"],["الحفظ",tot?tot+" ثمن":"—","#DCE7F5","#12284A"]]}];
+    if(tot>=8)B.push({t:"line",text:"مجموع الحفظ اليوم: "+hizb(tot)});
+    if(o.mem&&ms.length)B.push({t:"list",head:"أتمّ حزبًا اليوم",dot:"#E2C26B",cols:1,items:ms.map(m=>m.s.name+" — "+(m.i.khatm?"ختم القرءان كاملًا":"الحزب "+m.i.last))});
+    if(o.mem&&mem.length)B.push({t:"list",head:"الحافظون اليوم",dot:"#8FD3AE",cols:1,items:mem.map(s=>s.name+" — "+thw(Number(dd.th[s.id])))});
+    if(o.present&&P_.length)B.push({t:"list",head:"الحاضرون",dot:"#8FD3AE",cols:2,items:P_.map(s=>s.name)});
+    if(o.partial&&J_.length)B.push({t:"list",head:"حضور جزئي",dot:"#F0D27A",cols:2,items:J_.map(s=>s.name)});
+    if(o.absent&&A_.length)B.push({t:"list",head:"الغائبون",dot:"#F09A8F",cols:2,items:A_.map(s=>s.name)});
+    B.push({t:"text",text:(repExtra().note||"").trim()||"بارك الله في الجميع"});
+    return{title:"تقرير حصة اليوم",sub:wacLong(d),blocks:B,file:"تقرير "+d};
+  }
+  if(k==="abs"){
+    const s=S.students.find(x=>x.id===f.sid);if(!s)return{title:"تنبيه غياب",blocks:[{t:"text",text:"اختر الطالب من القائمة."}],file:"تنبيه غياب"};
+    const {n,since}=wacAbs(s.id,S.date);
+    const B=[{t:"plate",label:"الطالب",value:s.name}];
+    if(n>=2)B.push({t:"line",text:"غاب "+hisas(n)+" متتالية، منذ "+wacLong(since)});
+    else if(n===1)B.push({t:"line",text:"غاب عن حصة "+wacLong(since)});
+    B.push({t:"text",text:"السلام عليكم ورحمة الله وبركاته،\nنرجو من وليّ الطالب التواصل مع المعلم لمعرفة سبب الغياب، والحرص على مواظبته على الحلقة، وجزاكم الله خيرًا."+((f.absNote||"").trim()?"\n"+f.absNote.trim():"")});
+    return{title:"تنبيه غياب",blocks:B,file:"تنبيه غياب - "+s.name};
+  }
+  if(k==="nosess"){
+    const B=[{t:"plate",label:"لا توجد حصة يوم",value:wacLong(f.nsDate)}];
+    if((f.nsReason||"").trim())B.push({t:"line",text:"السبب: "+f.nsReason.trim()});
+    B.push({t:"text",text:(f.nsNote||"").trim()||"تُستأنف الحصص في موعدها المعتاد إن شاء الله."});
+    return{title:"تنبيه: لا توجد حصة",blocks:B,file:"لا توجد حصة "+(f.nsDate||"")};
+  }
+  if(k==="time"){
+    const B=[{t:"plate",label:"حصة يوم",value:wacLong(f.tDate)}];
+    if((f.tTime||"").trim())B.push({t:"plate",label:"الموعد الجديد",value:f.tTime.trim(),gold:true});
+    B.push({t:"text",text:(f.tNote||"").trim()||"نرجو من الأولياء الحرص على إحضار أبنائهم في الموعد الجديد، وجزاكم الله خيرًا."});
+    return{title:"تغيير موعد الحصة",blocks:B,file:"تغيير الموعد "+(f.tDate||"")};
+  }
+  if(k==="holiday"){
+    const B=[{t:"plate",label:"العطلة",value:f.hTo&&f.hTo!==f.hFrom?"من "+wacLong(f.hFrom)+"\nإلى "+wacLong(f.hTo):wacLong(f.hFrom)}];
+    if(f.hBack)B.push({t:"plate",label:"استئناف الدراسة",value:wacLong(f.hBack),gold:true});
+    B.push({t:"text",text:(f.hNote||"").trim()||"نرجو من الأولياء متابعة مراجعة أبنائهم للحفظ خلال العطلة، وجزاكم الله خيرًا."});
+    return{title:"إعلان عطلة",blocks:B,file:"عطلة "+(f.hFrom||"")};
+  }
+  const B=[{t:"text",text:(f.nText||"").trim()||"اكتب نص الإعلان في الخانة أعلاه."}];
+  return{title:(f.nTitle||"").trim()||"إعلان",sub:wacLong(iso(new Date())),blocks:B,file:"إعلان"};
+}
+
+// draws (D=true) or only measures (D=false) the card; returns its height
+async function wacPaint(x,C,W,D,imgs){
+  const PAD=56,NAVY="#12284A",CW=W-2*PAD;let y=0;
+  x.direction="rtl";
+  // header: the mosque photo fading into the navy page, logo, school name
+  const HH=330;
+  if(D){
+    const img=imgs.banner;x.save();x.beginPath();x.rect(0,0,W,HH);x.clip();
+    if(img){const r=Math.max(W/img.naturalWidth,HH/img.naturalHeight),iw=img.naturalWidth*r,ih=img.naturalHeight*r;x.drawImage(img,(W-iw)/2,(HH-ih)/2,iw,ih)}
+    const g=x.createLinearGradient(0,0,0,HH);g.addColorStop(0,"rgba(18,42,70,.25)");g.addColorStop(.55,"rgba(18,42,70,.75)");g.addColorStop(1,"#1B3557");x.fillStyle=g;x.fillRect(0,0,W,HH);x.restore();
+    if(imgs.logo){x.save();x.shadowColor="rgba(0,0,0,.5)";x.shadowBlur=18;x.drawImage(imgs.logo,PAD-16,24,180,180);x.restore()}
+    x.textAlign="center";x.fillStyle="#fff";x.font="700 66px Amiri,serif";x.fillText("المدرسة القرءانية النموذجية",W/2+80,128);
+    x.fillStyle="#EBCB7A";x.font="700 32px "+CF;x.fillText("مسجد القطب الأمير عبد القادر · قسنطينة",W/2+80,190);
+  }
+  y=HH-50;
+  // title ribbon (gold)
+  x.font="700 54px "+CF;let tf=54;while(x.measureText(C.title).width>CW-80&&tf>32){tf-=2;x.font="700 "+tf+"px "+CF}
+  if(D){const gg=x.createLinearGradient(0,y,0,y+110);gg.addColorStop(0,"#F0DC9C");gg.addColorStop(1,"#E2C26B");x.fillStyle=gg;rr(x,PAD,y,CW,110,30);x.fill();
+    x.fillStyle=NAVY;x.textAlign="center";x.fillText(C.title,W/2,y+73)}
+  y+=110;
+  if(C.sub){y+=58;if(D){x.fillStyle="#FFFFFF";x.textAlign="center";x.font="700 38px "+CF;x.fillText(C.sub,W/2,y)}y+=6}
+  for(const b of C.blocks){
+    y+=34;
+    if(b.t==="tiles"){
+      const n=b.items.length,gp=16,tw=(CW-(n-1)*gp)/n,th=200;
+      b.items.forEach((t,i)=>{const tx=W-PAD-(i+1)*tw-i*gp;if(!D)return;x.fillStyle=t[2];rr(x,tx,y,tw,th,28);x.fill();x.fillStyle=t[3];x.textAlign="center";
+        let f=96;x.font="700 "+f+"px "+CF;while(x.measureText(String(t[1])).width>tw-24&&f>40){f-=4;x.font="700 "+f+"px "+CF}
+        x.fillText(String(t[1]),tx+tw/2,y+112);x.font="700 30px "+CF;x.fillText(t[0],tx+tw/2,y+170)});
+      y+=th;
+    }
+    else if(b.t==="line"){
+      x.font="700 38px "+CF;const L=wrapLines(x,b.text,CW-40);
+      L.forEach((l,i)=>{if(D){x.fillStyle="#EBCB7A";x.textAlign="center";x.fillText(l,W/2,y+40+i*54)}});y+=L.length*54;
+    }
+    else if(b.t==="plate"){
+      x.font="700 64px "+CF;let fs=64;const parts=String(b.value||"—").split("\n");
+      while(parts.some(p=>x.measureText(p).width>CW-70)&&fs>34){fs-=2;x.font="700 "+fs+"px "+CF}
+      const lh=fs*1.3,ph=86+parts.length*lh+24;
+      if(D){
+        if(b.gold){const gg=x.createLinearGradient(0,y,0,y+ph);gg.addColorStop(0,"#F0DC9C");gg.addColorStop(1,"#E2C26B");x.fillStyle=gg}else x.fillStyle="#FFFFFF";
+        rr(x,PAD,y,CW,ph,30);x.fill();x.textAlign="center";
+        x.fillStyle=b.gold?"#4A3A0E":"#4A5B73";x.font="700 30px "+CF;x.fillText(b.label,W/2,y+52);
+        x.fillStyle=NAVY;x.font="700 "+fs+"px "+CF;parts.forEach((p,i)=>x.fillText(p,W/2,y+86+(i+1)*lh-lh*.22));
+      }
+      y+=ph;
+    }
+    else if(b.t==="list"){
+      // heading with a coloured dot, then the names (two columns for short names)
+      if(D){x.fillStyle=b.dot;x.beginPath();x.arc(W-PAD-14,y+24,12,0,7);x.fill();x.fillStyle="#FFFFFF";x.textAlign="right";x.font="700 42px "+CF;x.fillText(b.head+" ("+b.items.length+")",W-PAD-40,y+38)}
+      y+=64;
+      const cols=b.cols,gp=20,colW=(CW-48-(cols-1)*gp)/cols,rh=62,rows=Math.ceil(b.items.length/cols),bh=rows*rh+28;
+      if(D){x.fillStyle="rgba(255,255,255,.09)";rr(x,PAD,y,CW,bh,24);x.fill();
+        b.items.forEach((it,i)=>{const c=i%cols,r=Math.floor(i/cols),rx=W-PAD-24-c*(colW+gp),ry=y+14+r*rh;
+          let f=36;x.font="600 "+f+"px "+CF;while(x.measureText("• "+it).width>colW&&f>24){f-=2;x.font="600 "+f+"px "+CF}
+          x.fillStyle="#EEF3FA";x.textAlign="right";x.fillText("• "+it,rx,ry+44)});}
+      y+=bh;
+    }
+    else if(b.t==="text"){
+      x.font="600 38px "+CF;const L=wrapLines(x,b.text,CW-90),bh=L.length*58+44;
+      if(D){x.fillStyle="rgba(255,255,255,.12)";rr(x,PAD,y,CW,bh,28);x.fill();x.strokeStyle="rgba(235,203,122,.7)";x.lineWidth=2.5;x.stroke();
+        x.fillStyle="#FFFFFF";x.textAlign="right";L.forEach((l,i)=>x.fillText(l,W-PAD-44,y+62+i*58))}
+      y+=bh;
+    }
+  }
+  // footer
+  y+=60;
+  if(D){x.strokeStyle="rgba(235,203,122,.55)";x.lineWidth=2;x.beginPath();x.moveTo(PAD+120,y);x.lineTo(W-PAD-120,y);x.stroke();
+    const t=teacherName();x.textAlign="center";x.fillStyle="#FFFFFF";x.font="700 42px "+CF;x.fillText(t?"المعلم: "+t:"معلم الحلقة",W/2,y+64);
+    x.fillStyle="#EBCB7A";x.font="700 28px "+CF;x.fillText("رسالة خاصة بأولياء طلبة الحلقة",W/2,y+110)}
+  return y+150;
+}
+const wacImg=src=>new Promise(ok=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
+async function wacBuild(){
+  try{await Promise.all([document.fonts.load("700 40px Cairo"),document.fonts.load("600 30px Cairo"),document.fonts.load("700 40px Amiri")])}catch(_){}
+  const b=document.querySelector(".banner img");
+  const imgs={banner:b&&b.complete&&b.naturalWidth?b:await wacImg("banner.jpg"),logo:await wacImg("logo.webp")};
+  const C=wacContent(),W=1080;
+  const m=document.createElement("canvas").getContext("2d");const H=Math.ceil(await wacPaint(m,C,W,false,imgs));
+  const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
+  const bg=x.createLinearGradient(0,0,0,H);bg.addColorStop(0,"#1B3557");bg.addColorStop(1,"#122A46");x.fillStyle=bg;x.fillRect(0,0,W,H);
+  await wacPaint(x,C,W,true,imgs);c._name=("بطاقة "+C.file).replace(/[\\/:*?"<>|]/g,"-")+".png";return c;
+}
+
+// the sheet
+function wacFields(){
+  const k=WAC.kind,f=WAC.f,v=key=>esc(f[key]||"");
+  const inp=(key,ph,type)=>`<input type="${type||"text"}" data-wf="${key}" value="${v(key)}" placeholder="${esc(ph)}" autocomplete="off" class="wacin">`;
+  const lab=(t,h)=>`<label class="waclab"><span>${t}</span>${h}</label>`;
+  if(k==="report"){const o=repOpts(),ck=(kk,l)=>`<label class="repck"><input type="checkbox" data-rep="${kk}" ${o[kk]?"checked":""}> ${l}</label>`;
+    return `<div class="note">تقرير ${esc(fmtDate(S.date))}، بخيارات «تقرير اليوم» نفسها.</div><div class="repopts">${ck("mem","الحافظون اليوم")}${ck("partial","أسماء الحضور الجزئي")}${ck("absent","أسماء الغائبين")}${ck("present","أسماء الحاضرين")}</div>`}
+  if(k==="abs"){const opts=active().slice().sort(byName).map(s=>`<option value="${s.id}" ${s.id===f.sid?"selected":""}>${esc(s.name)}</option>`).join("");
+    return lab("الطالب",`<select data-wf="sid" class="wacin"><option value="">اختر الطالب…</option>${opts}</select>`)+lab("ملاحظة (اختياري)",inp("absNote","تُضاف في آخر الرسالة"))+`<div class="note">هذه البطاقة خاصة بوليّ هذا الطالب، فأرسلها إليه مباشرة لا في المجموعة.</div>`}
+  if(k==="nosess")return lab("اليوم",inp("nsDate","","date"))+lab("السبب (اختياري)",inp("nsReason","مثل: ظرف طارئ، أشغال في المسجد"))+lab("ملاحظة (اختياري)",inp("nsNote","تُستأنف الحصص في موعدها المعتاد إن شاء الله."));
+  if(k==="time")return lab("يوم الحصة",inp("tDate","","date"))+lab("الموعد الجديد",inp("tTime","مثل: الساعة 14:00 بدل 15:00"))+lab("ملاحظة (اختياري)",inp("tNote","نرجو الحرص على الموعد الجديد"));
+  if(k==="holiday")return lab("من",inp("hFrom","","date"))+lab("إلى",inp("hTo","","date"))+lab("استئناف الدراسة (اختياري)",inp("hBack","","date"))+lab("ملاحظة (اختياري)",inp("hNote","نرجو متابعة المراجعة خلال العطلة"));
+  return lab("العنوان",inp("nTitle","إعلان"))+lab("نص الإعلان",`<textarea data-wf="nText" rows="5" class="wacin" placeholder="اكتب الإعلان هنا">${v("nText")}</textarea>`);
+}
+function openWaCard(kind,extra){
+  wacLoad();if(kind)WAC.kind=kind;
+  const d=S.date,f=WAC.f;f.nsDate=d;f.tDate=d;f.hFrom=d;f.hTo=wacAddDays(d,6);f.hBack="";
+  if(extra&&extra.sid)f.sid=extra.sid;else if(WAC.kind==="abs"&&!f.sid){const ab=absStreaks(S.date);if(ab.length)f.sid=ab[0].s.id}
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="بطاقة واتساب">
+    <h3>بطاقة واتساب</h3><div class="note">صورة بشعار المدرسة، تُرسل «للعرض مرة واحدة» فلا تبقى في هواتف المستلمين.</div>
+    <div class="wackinds" role="tablist">${WAC_KINDS.map(([k,l])=>`<button type="button" class="btn sm${k===WAC.kind?" on":""}" data-wack="${k}" role="tab" aria-selected="${k===WAC.kind}">${l}</button>`).join("")}</div>
+    <div id="wacFields" class="wacfields">${wacFields()}</div>
+    <div id="wacBox" class="note" style="min-height:120px;text-align:center">جارٍ تجهيز البطاقة…</div>
+    <div class="wachelp"><b>قبل الإرسال في واتساب:</b> اضغط الرمز <span class="wac1">1</span> بجانب خانة التعليق، فيصير «عرض مرة واحدة». عندها لا يستطيع المستلم حفظ الصورة ولا إعادة توجيهها، ويمنع واتساب لقطة الشاشة لها.
+      <ul><li>أرسلها إلى المجموعة أو الولي <b>مباشرة</b>، لا إلى حسابك أولًا، فرسالة العرض مرة واحدة لا تُعاد توجيهها.</li>
+      <li>إن لم يظهر الرمز <span class="wac1">1</span>: اضغط «حفظ في الصور»، ثم أرسلها من داخل واتساب (＋ ثم الصور) واختر <span class="wac1">1</span>، ثم احذفها من صورك.</li></ul></div>
+    <div class="lockset"><button class="btn wa" type="button" id="wacShare">إرسال عبر واتساب</button>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="wacSaveImg" style="flex:1">حفظ في الصور</button><button class="btn" type="button" data-act="close" style="flex:1">إغلاق</button></div></div>
+  </div></div>`;
+  md.hidden=false;WAC.open=true;wacStore();wacDraw();
+}
+let _wacT=0;
+async function wacDraw(){const box=document.getElementById("wacBox");if(!box)return;const tk=++_wacT;
+  try{const c=await wacBuild();if(tk!==_wacT)return;c.style.cssText="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)";box.innerHTML="";box.appendChild(c);box._c=c}
+  catch(_){if(tk===_wacT)box.textContent="تعذّر تجهيز البطاقة"}}
+const wacLater=()=>{clearTimeout(wacDraw.t);wacDraw.t=setTimeout(wacDraw,350)};
+document.addEventListener("click",async e=>{
+  const kb=e.target.closest("[data-wack]");
+  if(kb){WAC.kind=kb.dataset.wack;if(WAC.kind==="abs"&&!WAC.f.sid){const ab=absStreaks(S.date);if(ab.length)WAC.f.sid=ab[0].s.id}
+    document.querySelectorAll("[data-wack]").forEach(b=>{const on=b.dataset.wack===WAC.kind;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});
+    const fl=document.getElementById("wacFields");if(fl)fl.innerHTML=wacFields();wacStore();wacDraw();return}
+  const ab=e.target.closest("[data-wacabs]");if(ab){openWaCard("abs",{sid:ab.dataset.wacabs});return}
+  if(e.target.closest("#waCardBtn")){openWaCard(null);return}
+  if(e.target.closest("#repCardGo")){openWaCard("report");return}
+  const sh=e.target.closest("#wacShare"),sv=e.target.closest("#wacSaveImg");if(!sh&&!sv)return;
+  if(WAC.kind==="abs"&&!WAC.f.sid){toast("اختر الطالب أولًا");return}
+  const c=document.getElementById("wacBox")?._c;if(!c){toast("البطاقة غير جاهزة بعد");return}
+  const b=await new Promise(ok=>c.toBlob(ok,"image/png"));if(!b){toast("تعذّر تجهيز الصورة");return}
+  try{if(sh){await shareOrDownload(c._name,b);toast("لا تنسَ الرمز 1 قبل الإرسال")}
+    else{await shareOrDownload(c._name,b);toast("احفظها، ثم احذفها من صورك بعد الإرسال")}}
+  catch(err){if(!(err&&err.code==="declined"))toast("تعذّر الإرسال")}
+});
+document.addEventListener("input",e=>{const k=e.target.dataset&&e.target.dataset.wf;if(!k||!document.getElementById("wacBox"))return;
+  WAC.f[k]=e.target.value;if(k==="hFrom"&&WAC.f.hTo&&WAC.f.hTo<WAC.f.hFrom){WAC.f.hTo=WAC.f.hFrom;const t=document.querySelector('[data-wf="hTo"]');if(t)t.value=WAC.f.hTo}
+  wacStore();wacLater()});
+document.addEventListener("change",e=>{if(!document.getElementById("wacBox"))return;
+  if(e.target.dataset&&(e.target.dataset.rep||e.target.dataset.wf)){if(e.target.dataset.wf){WAC.f[e.target.dataset.wf]=e.target.value;wacStore()}wacDraw()}});
+
+// entry points: the «تقرير اليوم» sheet and the consecutive-absence alerts
+const _orWac=openReport;openReport=function(){_orWac();
+  const ls=document.querySelector("#modal .lockset");if(!ls||ls.querySelector("#repCardGo"))return;
+  const bt=document.createElement("button");bt.className="btn gold";bt.type="button";bt.id="repCardGo";bt.textContent="🔒 إرسال كبطاقة لا تُحفظ (صورة)";ls.insertBefore(bt,ls.children[2]||null)};
+const _raWac=renderAlerts;renderAlerts=function(){_raWac();
+  document.querySelectorAll("#hzAlerts .hznote.abs .hzrow").forEach(r=>{const o=r.querySelector("[data-hzopen]"),acts=r.querySelector(".hzacts");if(!o||!acts||acts.querySelector("[data-wacabs]"))return;
+    const bt=document.createElement("button");bt.type="button";bt.className="btn sm";bt.dataset.wacabs=o.dataset.hzopen;bt.textContent="🔒 بطاقة";acts.insertBefore(bt,acts.firstChild)})};
+try{renderAlerts()}catch(_){}
+
+const wacst=document.createElement("style");wacst.textContent=`
+.wackinds{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.wackinds .btn{min-height:38px;font-size:.88rem;padding:6px 12px}
+.wackinds .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.wacfields{display:grid;gap:8px;margin:8px 0 12px}
+.waclab{display:grid;gap:4px;font-size:.88rem;font-weight:600;color:var(--ink)}
+.wacin{min-height:44px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);font:inherit}
+textarea.wacin{resize:vertical}
+.wachelp{margin-top:12px;background:#EAF7EF;border:1px solid #9FD9B5;border-radius:12px;padding:10px 12px;font-size:.88rem;line-height:1.7;color:#16432B}
+.wachelp ul{margin:6px 0 0;padding-inline-start:18px}
+.wac1{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:2px solid currentColor;font-weight:700;font-size:.78rem;line-height:1;vertical-align:middle}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wachelp{background:#12301F;border-color:#2E6B47;color:#CDEFD9}}
+:root[data-theme="dark"] .wachelp{background:#12301F;border-color:#2E6B47;color:#CDEFD9}
+`;document.head.appendChild(wacst);
 </script>
 
 </body>
