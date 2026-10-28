@@ -631,6 +631,31 @@ html.ipad .basmala .b1{font-size:1.9rem}
 .banner .school-logo{position:absolute;inset-inline-end:16px;top:10px;width:72px!important;height:72px!important;max-width:none;object-fit:cover;border-radius:50%;box-shadow:0 4px 14px rgba(18,40,70,.45)}
 @media (min-width:700px){.banner-txt{min-height:112px}.banner .school-logo{width:96px!important;height:96px!important;top:8px}}
 </style>
+<style>
+/* hizb position, absence alert, certificate */
+.hzbox{margin-top:12px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface)}
+.hzhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.hzcur{display:flex;align-items:center;gap:12px}
+.hzn{flex:0 0 auto;min-width:56px;height:56px;border-radius:14px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:1.6rem;font-weight:700;padding:0 6px}
+.hzt{display:flex;flex-direction:column;gap:2px}.hzt b{font-size:1.05rem}.hzt em{font-style:normal;color:var(--muted);font-size:.88rem}
+.hzbar{direction:rtl;display:flex;height:8px;border-radius:99px;background:var(--surface-2);margin:12px 0 8px;overflow:hidden}
+.hzbar i{display:block;height:100%;min-width:8px;background:linear-gradient(270deg,#E2C26B,#B8892E);border-radius:99px}
+.hzfoot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hzform{display:grid;gap:10px}.hzform label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+.hzform select{min-height:44px;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 10px}
+.hzbtns{display:flex;gap:8px}.hzbtns .btn{flex:1;min-height:44px}
+.btn.gold{background:#F3E3B5;border-color:#E2C26B;color:#5B4510}
+.hztag{display:inline-block;background:var(--surface-2);color:var(--accent);font-weight:700;border-radius:6px;padding:0 6px;margin-inline-end:4px}
+#hzAlerts{display:grid;gap:10px;margin-bottom:12px}#hzAlerts:empty{display:none}
+.hznote{border:1px solid var(--line);border-inline-start:4px solid var(--absent);background:var(--surface);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.hznote.win{border-inline-start-color:#E2C26B}
+.hznote>b{font-size:.92rem}
+.hzrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--line)}
+.hzrow .note{flex:1 1 150px;margin:0}
+.hzacts{display:flex;gap:6px}.hzacts .btn.wa{min-height:34px;font-size:.85rem;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center}
+.linkname{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;text-align:start}
+.certseg button[aria-checked="true"]{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+</style>
 </head>
 <body>
 <div class="banner"><img src="banner.jpg" alt="صحن المسجد والقبة والمئذنتان"><div class="basmala wrap" aria-label="بسم الله الرحمن الرحيم، وصلى الله على سيدنا محمد وءاله"><p class="b1">بسم الله الرحمن الرحيم</p><p class="b2">وصلى الله على سيدنا محمد وءاله</p></div>
@@ -1485,7 +1510,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 6.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2937,6 +2962,7 @@ function openNewStudent(){
       <label for="f-ph">رقم الهاتف<input type="tel" id="f-ph" dir="ltr" inputmode="tel" ${S.contacts.length?'list="contactsList"':""} placeholder="0X XX XX XX XX"></label>
       ${S.contacts.length?`<datalist id="contactsList">${S.contacts.flatMap(c=>c.tels.map(t=>`<option value="${esc(t)}" label="${esc(c.name)}"></option>`)).join("")}</datalist>`:""}
       <label for="f-ad" class="wide">العنوان الشخصي<input type="text" id="f-ad"></label>
+      <label for="f-hz" class="wide">الحزب الذي يحفظه الآن (اختياري)<select id="f-hz" style="min-height:44px"><option value="">لم يُحدَّد بعد</option>${(()=>{const fwd=(()=>{try{return localStorage.getItem("halaqa.hzdir")==="fwd"}catch(_){return false}})(),L=[];for(let h=1;h<=60;h++)L.push(fwd?h:61-h);return L.map(h=>`<option value="${h}">الحزب ${h}</option>`).join("")})()}</select></label>
       <div class="wide lockset" style="margin-top:6px">
         <button class="btn primary" type="submit" id="newSave">حفظ الطالب</button>
         <button class="btn" type="button" data-act="close">إلغاء</button>
@@ -2955,9 +2981,204 @@ document.getElementById("modal").addEventListener("submit",async e=>{
   if(S.students.some(s=>norm(s.name)===norm(name))&&!e.target.dataset.dup){e.target.dataset.dup="1";document.getElementById("newMsg").textContent="يوجد طالب بنفس الاسم. اضغط «حفظ الطالب» مرة أخرى إذا كان طالبًا آخر.";return}
   const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1,id="s"+Date.now().toString(36);
   const data={n,name,active:true,fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
+  {const h=+g("f-hz");if(h){const fwd=(()=>{try{return localStorage.getItem("halaqa.hzdir")==="fwd"}catch(_){return false}})();Object.assign(data,{hzSet:true,hzDir:fwd?"fwd":"back",hzOff:(fwd?h-1:60-h)*8})}}
   try{await S.db.doc("students/"+id).set(data);document.getElementById("modal").hidden=true;toast("أُضيف "+name)}
   catch(_){document.getElementById("newMsg").textContent="تعذّر الحفظ، حاول مرة أخرى."}
 });
+</script>
+<script>
+/* ================= موضع الحفظ، تنبيه الغياب، الشهادات =================
+   Hizb position: the teacher sets once where a student is (current hizb + athman done in it, and the direction:
+   from سورة الناس back towards البقرة, or from الفاتحة forward). After that the position moves by itself with every
+   ثمن recorded in the daily session.  Stored on the student: hzSet, hzOff (athman not covered by recorded days, may be
+   negative), hzDir ("back" | "fwd").  Position = hzOff + every ثمن ever recorded for the student.
+   Absence alert: students absent in 3 or more sessions in a row (sessions = days where anyone was recorded).
+   Certificate: an image for completing a hizb, a number of ahzab, or the whole Quran. */
+const HZ={cache:null,edit:null};
+LDB._watch(ch=>{for(const k of ch)if(k.startsWith("days/"))return true;return false},()=>{HZ.cache=null});
+const HZ_DIR_KEY="halaqa.hzdir";
+const hzDirDefault=()=>{try{return localStorage.getItem(HZ_DIR_KEY)==="fwd"?"fwd":"back"}catch(_){return"back"}};
+/* every recorded day, oldest first, with edits not yet saved laid on top */
+function hzDays(){
+  if(!HZ.cache){const raw=LDB._raw(),out=[];
+    for(const k in raw){if(k.startsWith("days/")&&k.indexOf("/",5)<0&&raw[k])out.push([k.slice(5),raw[k]])}
+    out.sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);HZ.cache={days:out,sums:{}}}
+  const pk=Object.keys(S.pending);if(!pk.length)return HZ.cache.days;
+  const m=new Map(HZ.cache.days);
+  for(const d of pk){const r=m.get(d)||{},p=S.pending[d];m.set(d,{att:Object.assign({},r.att,p.att),th:Object.assign({},r.th,p.th)})}
+  return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
+}
+/* athman recorded per student on days up to (and including) upTo */
+function thSums(upTo){const key=upTo||"~",clean=!Object.keys(S.pending).length;
+  if(clean&&HZ.cache&&HZ.cache.sums[key])return HZ.cache.sums[key];
+  const out={};for(const [d,r] of hzDays()){if(upTo&&d>upTo)break;const th=r.th||{};for(const id in th){const n=Number(th[id])||0;if(n)out[id]=(out[id]||0)+n}}
+  if(clean&&HZ.cache)HZ.cache.sums[key]=out;return out}
+const hzClamp=t=>Math.max(0,Math.min(480,t));
+function hzFrom(s,t){const c=Math.floor(t/8),r=t%8,back=s.hzDir!=="fwd";
+  return{t,c,r,back,khatm:c>=60,cur:c>=60?null:(back?60-c:c+1),last:c?(back?61-c:c):null}}
+function hzInfo(s,upTo){if(!s||!s.hzSet)return null;return hzFrom(s,hzClamp((Number(s.hzOff)||0)+(thSums(upTo)[s.id]||0)))}
+const hzCnt=c=>c===1?"حزبًا واحدًا":c===2?"حزبين":c<=10?c+" أحزاب":c+" حزبًا";
+const thAcc=r=>r===1?"ثمنًا واحدًا":r===2?"ثمنين":r+" أثمان";
+const hzSub=i=>i.khatm?"أتمّ حفظ القرءان كاملًا":(i.r?"حفظ منه "+thAcc(i.r):"في أوّله")+(i.c?" · أتمّ "+hzCnt(i.c):"");
+/* date on which the student completed his c-th hizb (null if before the recorded days) */
+function hzDoneDate(s,c){let t=Number(s.hzOff)||0;if(t>=c*8)return null;
+  for(const [d,r] of hzDays()){t+=Number((r.th||{})[s.id])||0;if(t>=c*8)return d}return null}
+
+// ---- student sheet: position block ----
+function hzOptions(dir,sel){const L=[];if(dir==="fwd")for(let h=1;h<=60;h++)L.push(h);else for(let h=60;h>=1;h--)L.push(h);
+  return L.map(h=>`<option value="${h}"${h===sel?" selected":""}>الحزب ${h}</option>`).join("")+`<option value="0"${sel===0?" selected":""}>أتمّ الختمة</option>`}
+function hzBlock(s){
+  const i=hzInfo(s),dis=S.canWrite?"":"disabled",ed=HZ.edit===s.id||(!i&&HZ.edit==="new:"+s.id);
+  let h=`<div class="hzbox" data-hzid="${s.id}"><div class="hzhd"><b>موضع الحفظ</b>${!ed&&i?`<button type="button" class="btn sm" data-hzedit ${dis}>تعديل</button>`:""}</div>`;
+  if(ed){const dir=i?(i.back?"back":"fwd"):hzDirDefault(),cur=i?(i.khatm?0:i.cur):(dir==="fwd"?1:60),r=i&&!i.khatm?i.r:0;
+    h+=`<div class="hzform"><label>اتجاه الحفظ<select id="hzDir" ${dis}><option value="back"${dir==="back"?" selected":""}>من سورة الناس نحو البقرة</option><option value="fwd"${dir==="fwd"?" selected":""}>من الفاتحة نحو الناس</option></select></label>
+      <label>الحزب الذي يحفظه الآن<select id="hzCur" ${dis}>${hzOptions(dir,cur)}</select></label>
+      <label>الأثمان التي أتمّها منه<select id="hzR" ${dis}>${[0,1,2,3,4,5,6,7].map(n=>`<option value="${n}"${n===r?" selected":""}>${n?thw(n):"لم يبدأه بعد"}</option>`).join("")}</select></label>
+      <div class="hzbtns"><button type="button" class="btn primary" data-hzsave ${dis}>حفظ الموضع</button><button type="button" class="btn" data-hzcancel>إلغاء</button></div>
+      <span class="note">بعد الحفظ يتقدّم الموضع وحده مع كل ثمن تسجّله في حصة اليوم.</span></div>`}
+  else if(i){h+=`<div class="hzcur"><span class="hzn num">${i.khatm?"🏅":i.cur}</span><span class="hzt"><b>${i.khatm?"خاتم للقرءان":"الحزب "+i.cur}</b><em>${hzSub(i)}</em></span></div>
+      <div class="hzbar" role="img" aria-label="${i.c} من 60 حزبًا"><i style="width:${(i.t/480*100).toFixed(1)}%"></i></div>
+      <div class="hzfoot"><span class="note num">${i.c} / 60 حزبًا</span>${i.c?`<button type="button" class="btn sm gold" data-cert="${s.id}">🏅 شهادة</button>`:""}</div>`}
+  else h+=`<div class="note" style="margin:4px 0 8px">حدّد الحزب الذي وصل إليه الطالب مرة واحدة، ثم يتقدّم الموضع وحده كلما سجّلت له الأثمان.</div><button type="button" class="btn" data-hzstart ${dis}>تحديد موضع الحفظ</button>`;
+  return h+`</div>`}
+const _osHz=openStudent;openStudent=function(id){_osHz(id);
+  const s=S.students.find(x=>x.id===id),sh=document.querySelector("#modal .stusheet");if(!s||!sh)return;
+  const st=sh.querySelector(".stats");if(!st)return;st.insertAdjacentHTML("afterend",hzBlock(s))};
+function hzRedraw(id){const sh=document.querySelector("#modal .stusheet");if(!sh)return;const b=sh.querySelector(".hzbox"),s=S.students.find(x=>x.id===id);if(b&&s)b.outerHTML=hzBlock(s)}
+document.getElementById("modal").addEventListener("click",async e=>{
+  const box=e.target.closest(".hzbox");if(!box)return;const id=box.dataset.hzid;
+  if(e.target.closest("[data-hzedit]")){HZ.edit=id;hzRedraw(id);return}
+  if(e.target.closest("[data-hzstart]")){HZ.edit="new:"+id;hzRedraw(id);return}
+  if(e.target.closest("[data-hzcancel]")){HZ.edit=null;hzRedraw(id);return}
+  if(e.target.closest("[data-hzsave]")){
+    const dir=document.getElementById("hzDir").value,cur=+document.getElementById("hzCur").value,r=+document.getElementById("hzR").value;
+    const t=cur===0?480:hzClamp((dir==="fwd"?cur-1:60-cur)*8+r);
+    const off=t-(thSums()[id]||0);
+    try{localStorage.setItem(HZ_DIR_KEY,dir)}catch(_){}
+    try{await S.db.doc("students/"+id).update({hzSet:true,hzOff:off,hzDir:dir});HZ.edit=null;toast("حُفظ موضع الحفظ");setTimeout(()=>hzRedraw(id),40)}
+    catch(_){toast("تعذّر الحفظ")}}
+});
+document.getElementById("modal").addEventListener("change",e=>{
+  if(e.target.id!=="hzDir")return;const c=document.getElementById("hzCur");if(!c)return;
+  const v=+c.value,dir=e.target.value;
+  // same place, other numbering: hizb n from one end is hizb 61-n from the other
+  c.innerHTML=hzOptions(dir,v===0?0:61-v)});
+
+// ---- students tab: show the current hizb on each card ----
+const _stuCardHz=stuCard;stuCard=function(s){let h=_stuCardHz(s);const i=hzInfo(s);if(!i)return h;
+  const tag=`<span class="hztag">${i.khatm?"🏅 خاتم":"الحزب "+i.cur}</span>`;
+  return h.replace(/(<span class="meta">)/,"$1"+tag+" ")};
+
+// ---- today: who completed a hizb on this day ----
+function hzMilestones(d){const out=[],sums=thSums(d),dd=dayData(d);
+  for(const s of active()){if(!s.hzSet)continue;const n=Number(dd.th[s.id])||0;if(!n)continue;
+    const t=hzClamp((Number(s.hzOff)||0)+(sums[s.id]||0)),tb=hzClamp(t-n);
+    const a=hzFrom(s,t),b=hzFrom(s,tb);if(a.c>b.c)out.push({s,i:a})}
+  return out}
+
+// ---- absence alert: absent in 3 or more sessions in a row ----
+const ABS_MIN=3,ABS_HIDE="halaqa.abshide";
+const absHidden=()=>{try{return JSON.parse(localStorage.getItem(ABS_HIDE)||"{}")||{}}catch(_){return{}}};
+const hisas=n=>n<=10?n+" حصص":n+" حصة";
+function absStreaks(upTo){
+  const held=[];const ds=hzDays();
+  for(let k=ds.length-1;k>=0&&held.length<40;k--){const [d,r]=ds[k];if(d>upTo)continue;const a=r.att||{};for(const id in a)if(isRec(a[id])){held.push([d,a]);break}}
+  const out=[],hide=absHidden();
+  for(const s of active()){let n=0,since="";
+    for(const [d,a] of held){const v=a[s.id];if(v===A){n++;since=d}else if(v===P||v===J)break}
+    if(n>=ABS_MIN&&hide[s.id]!==since)out.push({s,n,since})}
+  return out.sort((a,b)=>b.n-a.n)}
+function absMsg(x){const t=teacherName();
+  return `السلام عليكم ورحمة الله وبركاته،\nنُعلمكم أن ابنكم ${x.s.name} غاب عن الحلقة ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}.\nنرجو التواصل معنا لمعرفة السبب، وجزاكم الله خيرًا.${t?"\n"+t:""}\nالمدرسة القرءانية النموذجية`}
+function renderAlerts(){
+  let el=document.getElementById("hzAlerts");
+  if(!el){const strip=document.getElementById("dayStrip");if(!strip)return;el=document.createElement("div");el.id="hzAlerts";strip.parentNode.insertBefore(el,strip)}
+  if(!S.studentsLoaded||!active().length){el.innerHTML="";return}
+  const ab=absStreaks(S.date),ms=hzMilestones(S.date);let h="";
+  if(ms.length)h+=`<div class="hznote win"><b>🎉 ${ms.length>1?"أتمّوا حزبًا اليوم":"أتمّ حزبًا اليوم"}</b>${ms.map(m=>`<div class="hzrow"><button type="button" class="linkname" data-hzopen="${m.s.id}">${esc(m.s.name)}</button><span class="note">${m.i.khatm?"ختم القرءان كاملًا":"أتمّ الحزب "+m.i.last}</span><button type="button" class="btn sm gold" data-cert="${m.s.id}">🏅 شهادة</button></div>`).join("")}</div>`;
+  if(ab.length)h+=`<div class="hznote abs"><b>⚠️ غياب متتالٍ</b>${ab.map(x=>{const wa=waNum(x.s.phone);
+    return `<div class="hzrow"><button type="button" class="linkname" data-hzopen="${x.s.id}">${esc(x.s.name)}</button><span class="note">غاب ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}</span><span class="hzacts">${wa?`<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(absMsg(x))}" target="_blank" rel="noopener">راسل الولي</a>`:""}<button type="button" class="btn sm" data-abshide="${x.s.id}" data-since="${x.since}" aria-label="إخفاء التنبيه">إخفاء</button></span></div>`}).join("")}</div>`;
+  el.innerHTML=h}
+const _rtHz=renderToday;renderToday=function(){_rtHz();renderAlerts()};
+document.addEventListener("click",e=>{
+  const o=e.target.closest("[data-hzopen]");if(o){openStudent(o.dataset.hzopen);return}
+  const hd=e.target.closest("[data-abshide]");if(hd){const m=absHidden();m[hd.dataset.abshide]=hd.dataset.since;try{localStorage.setItem(ABS_HIDE,JSON.stringify(m))}catch(_){}renderAlerts();toast("أُخفي التنبيه، ويعود إن غاب من جديد بعد حضوره")}
+});
+
+// ---- daily WhatsApp report: mention who completed a hizb ----
+const _brHz=buildReport;buildReport=function(o){const out=_brHz(o);if(!o.mem)return out;const ms=hzMilestones(S.date);if(!ms.length)return out;
+  const add="🎉 *أتمّ حزبًا اليوم:*\n"+ms.map(m=>`• ${m.s.name} — ${m.i.khatm?"ختم القرءان كاملًا 🏅":"الحزب "+m.i.last}`).join("\n");
+  const k=out.lastIndexOf("\n\n");return k<0?out+"\n\n"+add:out.slice(0,k)+"\n\n"+add+out.slice(k)};
+
+// ---- certificate image ----
+const CERT={id:null,kind:"last",note:""};
+function certText(s,kind){const i=hzInfo(s);if(!i||!i.c)return null;
+  if(i.khatm)return{line:"قد أتمّ حفظ كتاب الله تعالى كاملًا",title:"شهادة ختم القرءان الكريم",date:hzDoneDate(s,60)};
+  if(kind==="count"&&i.c>1)return{line:"قد أتمّ حفظ "+hzCnt(i.c)+" من كتاب الله تعالى",title:"شهادة تقدير",date:hzDoneDate(s,i.c)};
+  return{line:"قد أتمّ حفظ الحزب "+i.last+" من كتاب الله تعالى",title:"شهادة تقدير",date:hzDoneDate(s,i.c)}}
+function star8(x,cx,cy,R,fill){x.save();x.translate(cx,cy);x.fillStyle=fill;for(let k=0;k<2;k++){x.save();x.rotate(k*Math.PI/4);x.fillRect(-R*.7,-R*.7,R*1.4,R*1.4);x.restore()}x.restore()}
+async function buildCert(id,kind,note){
+  const s=S.students.find(x=>x.id===id),ct=certText(s,kind);if(!ct)throw 0;
+  const W=1080,H=1400,PAD=64;
+  try{await Promise.all([document.fonts.load("700 40px Cairo"),document.fonts.load("600 30px Cairo"),document.fonts.load("700 40px Amiri")])}catch(_){}
+  const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.direction="rtl";x.textAlign="center";
+  const NAVY="#12284A",GOLD="#B8892E",GOLDL="#E2C26B";
+  const bg=x.createRadialGradient(W/2,H*.42,80,W/2,H/2,H*.75);bg.addColorStop(0,"#FFFDF6");bg.addColorStop(1,"#F3E8CC");x.fillStyle=bg;x.fillRect(0,0,W,H);
+  // frame: navy band, gold lines, star corners
+  x.fillStyle=NAVY;x.fillRect(0,0,W,22);x.fillRect(0,H-22,W,22);x.fillRect(0,0,22,H);x.fillRect(W-22,0,22,H);
+  x.strokeStyle=GOLD;x.lineWidth=5;x.strokeRect(40,40,W-80,H-80);x.lineWidth=1.6;x.strokeRect(54,54,W-108,H-108);
+  for(const [cx,cy] of [[54,54],[W-54,54],[54,H-54],[W-54,H-54]]){star8(x,cx,cy,22,GOLD);star8(x,cx,cy,12,"#FFFDF6")}
+  // logo + basmala
+  try{const lg=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src="logo.webp"});x.drawImage(lg,W/2-95,92,190,190)}catch(_){}
+  x.fillStyle=NAVY;x.font="700 50px Amiri,serif";x.fillText("بسم الله الرحمن الرحيم",W/2,340);
+  // title
+  x.fillStyle=GOLD;let tf=96;x.font="700 "+tf+"px Amiri,serif";while(x.measureText(ct.title).width>W-2*PAD-80&&tf>50){tf-=4;x.font="700 "+tf+"px Amiri,serif"}
+  x.fillText(ct.title,W/2,470);
+  x.strokeStyle=GOLDL;x.lineWidth=3;x.beginPath();x.moveTo(W/2-230,505);x.lineTo(W/2-24,505);x.moveTo(W/2+24,505);x.lineTo(W/2+230,505);x.stroke();star8(x,W/2,505,11,GOLD);
+  // body
+  x.fillStyle="#3B4A5E";x.font="600 36px "+CF;
+  x.fillText("تشهد المدرسة القرءانية النموذجية",W/2,590);x.fillText("بمسجد القطب الأمير عبد القادر · قسنطينة",W/2,642);x.fillText("بأنّ الطالب",W/2,716);
+  let fs=86;x.font="700 "+fs+"px "+CF;while(x.measureText(s.name).width>W-2*PAD-100&&fs>40){fs-=2;x.font="700 "+fs+"px "+CF}
+  x.fillStyle=NAVY;x.fillText(s.name,W/2,828);
+  x.strokeStyle="rgba(184,137,46,.55)";x.lineWidth=2;x.beginPath();x.moveTo(PAD+90,862);x.lineTo(W-PAD-90,862);x.stroke();
+  x.fillStyle=NAVY;let lf=50;x.font="700 "+lf+"px "+CF;while(x.measureText(ct.line).width>W-2*PAD-60&&lf>30){lf-=2;x.font="700 "+lf+"px "+CF}
+  x.fillText(ct.line,W/2,950);
+  x.fillStyle="#3B4A5E";x.font="600 36px "+CF;x.fillText("نسأل الله أن يبارك فيه، وأن يجعله من أهل القرءان",W/2,1018);
+  let yy=1018;
+  if(note&&note.trim()){x.font="600 32px "+CF;const nl=wrapLines(x,note.trim(),W-2*PAD-120).slice(0,3);x.fillStyle="#5B4A1E";nl.forEach(l=>{yy+=50;x.fillText(l,W/2,yy)})}
+  // date + teacher
+  const d=ct.date||iso(new Date()),dt=parse(d);
+  x.fillStyle="#5D6B7E";x.font="600 30px "+CF;x.fillText("قسنطينة في "+dt.getDate()+" "+MON[dt.getMonth()]+" "+dt.getFullYear(),W/2,Math.max(yy+80,1150));
+  const t=teacherName();
+  x.fillStyle=NAVY;x.font="700 40px "+CF;x.fillText(t?"المعلم: "+t:"معلم الحلقة",W/2,Math.max(yy+150,1222));
+  x.fillStyle=GOLD;x.font="700 30px "+CF;x.fillText("المدرسة القرءانية النموذجية",W/2,H-96);
+  return c}
+async function openCert(id){
+  const s=S.students.find(x=>x.id===id),i=hzInfo(s);if(!s||!i||!i.c){toast("لا توجد شهادة بعد لهذا الطالب");return}
+  if(CERT.id!==id){CERT.id=id;CERT.kind="last";CERT.note=""}
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="شهادة ${esc(s.name)}">
+    <h3>شهادة ${esc(s.name)}</h3>
+    ${!i.khatm&&i.c>1?`<div class="seg certseg" role="radiogroup"><button type="button" role="radio" data-ckind="last" aria-checked="${CERT.kind==="last"}">إتمام الحزب ${i.last}</button><button type="button" role="radio" data-ckind="count" aria-checked="${CERT.kind==="count"}">حفظ ${hzCnt(i.c)}</button></div>`:""}
+    <input type="text" id="certNote" placeholder="كلمة تضيفها في الشهادة (اختياري)" autocomplete="off" style="min-height:44px;width:100%;margin:10px 0" value="${esc(CERT.note)}">
+    <div id="certBox" style="min-height:120px;text-align:center" class="note">جارٍ تجهيز الشهادة…</div>
+    <div class="lockset" style="margin-top:10px"><button class="btn wa" type="button" id="certShare">مشاركة الشهادة</button>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="certSave" style="flex:1">حفظ الصورة</button><button class="btn" type="button" data-act="close" style="flex:1">إغلاق</button></div></div>
+  </div></div>`;md.hidden=false;delete md.dataset.cur;await drawCert()}
+let _certT=0;
+async function drawCert(){const box=document.getElementById("certBox");if(!box||!CERT.id)return;const tk=++_certT;
+  try{const c=await buildCert(CERT.id,CERT.kind,CERT.note);if(tk!==_certT)return;c.style.cssText="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)";box.innerHTML="";box.appendChild(c);box._c=c}
+  catch(_){box.textContent="تعذّر تجهيز الشهادة"}}
+function certName(){const s=S.students.find(x=>x.id===CERT.id);return `شهادة ${s?s.name:""}.png`}
+document.addEventListener("click",async e=>{
+  const o=e.target.closest("[data-cert]");if(o){e.stopPropagation();openCert(o.dataset.cert);return}
+  const k=e.target.closest("[data-ckind]");if(k){CERT.kind=k.dataset.ckind;document.querySelectorAll("[data-ckind]").forEach(b=>b.setAttribute("aria-checked",String(b===k)));drawCert();return}
+  const sh=e.target.closest("#certShare"),sv=e.target.closest("#certSave");if(!sh&&!sv)return;
+  const c=document.getElementById("certBox")?._c;const b=await new Promise(ok=>c?c.toBlob(ok,"image/png"):ok(null));if(!b){toast("الشهادة غير جاهزة بعد");return}
+  try{if(sh)await shareOrDownload(certName(),b);else{const u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=certName();document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},5000);toast("حُفظت الصورة")}}
+  catch(err){if(!(err&&err.code==="declined"))toast("تعذّر الإرسال")}
+},true);
+document.addEventListener("input",e=>{if(e.target.id!=="certNote")return;CERT.note=e.target.value;clearTimeout(drawCert.t);drawCert.t=setTimeout(drawCert,350)});
 </script>
 <script>
 /* ================= المزامنة بين الأجهزة (Firebase) =================
@@ -3103,7 +3324,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 6.7"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 6.8"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
