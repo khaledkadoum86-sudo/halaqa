@@ -315,7 +315,7 @@ button,.btn,label.btn{touch-action:manipulation;-webkit-user-select:none;user-se
 .lhead{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-2);font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
 .lhead b{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 10px;color:var(--accent)}
 .lhead.off{border-top:1px solid var(--line)}
-.lhead.sexh{background:#E3ECF8;border-top:1px solid var(--line);font-size:1.45rem;font-weight:800;color:#1B3557;padding:14px 16px;letter-spacing:0}
+.lhead.sexh{background:#E3ECF8;border-top:1px solid var(--line);font-size:1.45rem;font-weight:800;color:#1B3557;padding:14px 16px;letter-spacing:0;flex-direction:column;justify-content:center;align-items:center;gap:6px;text-align:center}
 .lhead.sexh b{font-size:1.05rem;padding:2px 14px;color:#1B3557;border-color:#B9CBE6}
 .lhead.sexh.fem{background:#F7E4EE;color:#8E3567}
 .lhead.sexh.fem b{color:#8E3567;border-color:#E6BCD2}
@@ -323,7 +323,8 @@ button,.btn,label.btn{touch-action:manipulation;-webkit-user-select:none;user-se
   .lhead.sexh.fem{background:#3A2233;color:#F2C6DD}.lhead.sexh.fem b{color:#F2C6DD;border-color:#6A3B57}}
 #todayList .lhead.sexh{border-radius:0}
 html.ipad #todayList .lhead{grid-column:1/-1}
-tr.sexrow td{background:#E3ECF8;font-weight:800;font-size:1.25rem;color:#1B3557;text-align:right;padding:10px 12px}
+tr.sexrow td{background:#E3ECF8;font-weight:800;font-size:1.25rem;color:#1B3557;text-align:center;padding:10px 12px}
+tr.sexrow .sxt,tr.sexrow .sxn{display:block}tr.sexrow .sxn{font-size:1rem;margin-top:4px}
 tr.sexrow.fem td{background:#F7E4EE;color:#8E3567}
 @media (prefers-color-scheme:dark){tr.sexrow td{background:#1E3352;color:#DCE7F5}tr.sexrow.fem td{background:#3A2233;color:#F2C6DD}}
 .list .scard.srow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);cursor:pointer;background:var(--surface)}
@@ -904,7 +905,7 @@ function setOrder(o){ORDER=o;try{localStorage.setItem("halaqa.order",o)}catch(_)
 // males first, then females (each part keeps the chosen order); the lists show a heading for each part
 const sexFirst=fn=>(a,b)=>(isF(a)-isF(b))||fn(a,b);
 const mixed=list=>list.some(isF)&&list.some(s=>!isF(s));
-const sexHead=(s,list)=>{const f=isF(s),n=list.filter(x=>isF(x)===f).length;return `<div class="lhead sexh ${f?"fem":"mal"}"><span>${f?"الإناث":"الذكور"}</span><b class="num">${n}</b></div>`};
+const sexHead=(s,list)=>{const f=isF(s),n=list.filter(x=>isF(x)===f).length;return `<div class="lhead sexh ${f?"fem":"mal"}"><span>${f?"قسم الإناث":"قسم الذكور"}</span><b class="num">${n}</b></div>`};
 const countText=()=>{const l=active(),f=l.filter(isF).length;return l.length+" طالبًا"+(f&&f<l.length?` (${l.length-f} ذكور · ${f} إناث)`:"")};
 const active=()=>S.students.filter(s=>s.active!==false).sort(sexFirst(orderFn()));
 
@@ -1044,7 +1045,7 @@ function renderMonth(){
   // Names live in their own table beside the scrolling days, so they never move or vanish.
   document.getElementById("gridNames").innerHTML=
    `<thead><tr><th class="stickn">رقم</th><th class="sticky">اسم ولقب الطالب</th></tr></thead>
-    <tbody>${rows.map((s,i)=>(gStart(s,i)?`<tr class="sexrow${isF(s)?" fem":""}"><td colspan="2" class="sticky">${isF(s)?"الإناث":"الذكور"} (${gN(s)})</td></tr>`:"")+`<tr><td class="num stickn">${s.n}</td><td class="sticky"><button class="namebtn" data-id="${s.id}">${esc(s.name)}</button></td></tr>`).join("")}</tbody>`;
+    <tbody>${rows.map((s,i)=>(gStart(s,i)?`<tr class="sexrow${isF(s)?" fem":""}"><td colspan="2" class="sticky"><span class="sxt">${isF(s)?"قسم الإناث":"قسم الذكور"}</span><span class="sxn num">${gN(s)}</span></td></tr>`:"")+`<tr><td class="num stickn">${s.n}</td><td class="sticky"><button class="namebtn" data-id="${s.id}">${esc(s.name)}</button></td></tr>`).join("")}</tbody>`;
   syncRows();
 }
 function syncRows(){
@@ -1536,7 +1537,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.8</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.9</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3360,7 +3361,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.8"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.9"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4031,7 +4032,7 @@ const sexst=document.createElement("style");sexst.textContent=`
 .sexnote{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:10px 14px;border:1px solid #E2C26B;background:#FBF3DC;color:#5B4510;border-radius:12px;font-size:.88rem;font-weight:600}
 .sexnote.quiet{border:0;background:none;padding:0 2px;justify-content:flex-end}
 @media (prefers-color-scheme:dark){.sexnote:not(.quiet){background:#3A3220;color:#F0DC9C;border-color:#7A6630}}
-.sexsheet .lhead.sexh{margin-top:6px;font-size:1rem;padding:10px 12px}
+.sexsheet .lhead.sexh{margin-top:6px;font-size:1rem;padding:10px 12px;flex-direction:row;justify-content:space-between}
 .lhead.sexh.need{color:#8A2F28}
 .sexrw{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 2px;border-top:1px solid var(--line)}
 .sexrw .nm{flex:1;min-width:120px;font-weight:700}
