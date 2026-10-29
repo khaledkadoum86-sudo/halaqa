@@ -1530,7 +1530,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.5</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.6</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3354,7 +3354,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.5"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.6"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -3930,6 +3930,113 @@ const libst=document.createElement("style");libst.textContent=`
 .libacts{display:flex;gap:6px;flex:none}.libacts .btn.sm{min-height:38px}
 #v-lib .list{display:grid;gap:8px}
 `;document.head.appendChild(libst);
+</script>
+
+<script>
+/* ================= تحديد الذكور والإناث من الأسماء =================
+   SEXG.guess(name) -> {sug:"m"|"f"|null, sure:true|false}. Names are usually written «اللقب الاسم» (given name last),
+   sometimes «الاسم اللقب»; both ends are checked and any conflict, unknown or two-gender name goes to the teacher. */
+const SEXG=(()=>{
+  const nn=w=>String(w||"").replace(/[ً-ْـٰ]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/ؤ/g,"و").replace(/ئ/g,"ي").trim();
+  const set=s=>new Set(s.split(/\s*[,،]\s*/).filter(Boolean).map(nn));
+  const F=set(`فاطمة,فاطمة الزهراء,الزهراء,زهراء,خديجة,عائشة,عايشة,مريم,مريام,زينب,آمنة,أمينة,سمية,رقية,حفصة,أسماء,صفية,سكينة,هاجر,سارة,سارا,نور الهدى,نورالهدى,نور اليقين,نور الإيمان,نور الإسلام,شمس الضحى,إيمان,ريم,آلاء,هديل,سلسبيل,رتاج,ريتاج,بشرى,سلمى,ليلى,هدى,نجوى,سلوى,يسرى,لبنى,منى,نهى,رحاب,وئام,ابتهال,إسراء,دعاء,شيماء,لمياء,حنين,ياسمين,ياسمينة,نسرين,شيرين,جيهان,سوسن,أريج,جنى,رنا,رهف,لين,تسنيم,أفنان,مرام,وجدان,سهام,أحلام,كوثر,نوال,منال,آمال,أمال,أمل,فردوس,إكرام,سندس,دنيا,صفاء,وفاء,هناء,عبير,ميار,مايا,أنفال,إخلاص,سجود,بتول,البتول,سيرين,رزان,لجين,مروى,مروة,روان,حياة,هيام,غدير,نسيبة,أروى,جويرية,ميمونة,زليخة,حليمة,كريمة,نعيمة,سعاد,سعدية,نادية,ناديا,وردة,ياقوت,لطيفة,فريدة,فضيلة,جميلة,نبيلة,سميرة,سامية,منيرة,نصيرة,صليحة,صبرينة,سهيلة,وهيبة,حسيبة,نسيمة,شهرزاد,زهرة,زهور,يمينة,خيرة,حورية,حياة,باية,زوبيدة,زبيدة,ربيعة,فتيحة,مليكة,ملكية,نجاة,حنان,إلهام,سلمة,أم كلثوم,كلثوم,رميساء,الرميساء,ميساء,بثينة,بسمة,ابتسام,شروق,غفران,رضوى,ريهام,لينا,ليديا,ليندة,ملاك الرحمن,رؤى,رؤيا,ريماس,أسيل,جود,لجين,تقوى,هبة,هبة الله,رحمة,نعمة,منة,منة الله,آية,أية,إسلام الهدى,ضحى,الضحى,هالة,أنيسة,عفاف,نزيهة,شهيناز,دليلة,فلة,سلاف,مسعودة,مباركة,عقيلة,جهيدة,نوارة,وسيلة,أسيا,آسيا,آسية,إيناس,أنس الرحمن,كنزة,كنزى,نرجس,جنات,جنة,سدرة,مرجانة,لؤلؤة,درة,بلقيس,صفوة,جمانة,سنية,سناء,يقين,اليقين,تسبيح,فرح,فرحة,هند,حسناء,رانيا,رانية,لمى,ديما,دينا,رشا,عبلة,أسمهان,فايزة,شيماء,إشراق,حبيبة,عزيزة,شريفة,سهى,روميساء,زكية,صابرة,سعيدة,رشيدة,حميدة,مجيدة,حكيمة,عتيقة,ذهبية,قمرة,غنية,وهيبة,سليمة,راضية,فاتن,مرية,ياسمينا`);
+  const M=set(`محمد,أحمد,محمود,مصطفى,علي,عمر,عثمان,أبوبكر,أبو بكر,بكر,يوسف,إبراهيم,إسماعيل,إسحاق,يعقوب,موسى,عيسى,يحيى,يحي,زكريا,زكرياء,داود,داوود,سليمان,آدم,نوح,هود,صالح,شعيب,أيوب,يونس,إلياس,إدريس,هارون,لقمان,خالد,بلال,حمزة,أسامة,أنس,معاذ,زيد,سعد,سعيد,ياسين,ياسر,عمار,حسن,حسين,الحسن,الحسين,حسان,كريم,رضا,رياض,رشيد,فاروق,فيصل,وليد,هشام,هيثم,طارق,زياد,سفيان,عادل,جمال,كمال,نبيل,أمين,الأمين,مراد,نذير,بشير,البشير,منير,سمير,نصر,ناصر,منصور,فؤاد,عماد,مهدي,المهدي,هادي,رامي,سامي,فارس,ماهر,مازن,نزار,أيمن,إيهاب,ربيع,شريف,لطفي,فتحي,صبري,عصام,أكرم,أنور,أمجد,ماجد,مجيد,حميد,رفيق,توفيق,عزيز,جلال,بلقاسم,مسعود,مبروك,العربي,الطاهر,طاهر,الهاشمي,هاشم,الصادق,صادق,الحاج,لخضر,الأخضر,جابر,حمدي,رابح,الطيب,طيب,بوعلام,سيد علي,سيدعلي,أنيس,وسيم,وائل,رائد,معتز,مؤمن,مأمون,صهيب,خبيب,مصعب,عبادة,عبيدة,أبو عبيدة,طلحة,عكرمة,معاوية,حذيفة,عروة,قتادة,البراء,براء,علاء,ضياء,بهاء,عطية,جعفر,عقبة,سلمان,ثابت,حارث,الحارث,عامر,عمرو,مالك,أوس,سهيل,شاكر,حامد,حمادة,راشد,مرشد,مجاهد,مختار,المختار,نعمان,النعمان,قاسم,القاسم,هاني,وحيد,وهيب,يزيد,يامن,يمان,إياد,باسم,بسام,تميم,ثامر,جواد,حاتم,حازم,خليل,إدريس,ريان الدين,زهير,سالم,سلام,شادي,صابر,صلاح,ضياء الدين,عاطف,عبود,عرفات,غسان,فادي,فراس,فريد,فهد,فوزي,قيس,لؤي,مجد,مدحت,مروان,مسلم,مصطفي,معين,ممدوح,مهند,ميلود,ناجي,نادر,نجيب,نوفل,هلال,هيكل,وجدي,وديع,وسام,يوسف,عبدو,حمو,موح,رمضان,شعبان,جمعة,خميس,صديق,الصديق,إسلام,أكرم,منذر,مؤنس,أشرف,شوقي,رؤوف,عبد الرؤوف,كمال الدين,نور الدين,نورالدين,سيف,سيف الدين,سيف الإسلام,بدر,بدر الدين,بدرالدين,علاء الدين,علاءالدين,تقي الدين,تقي,عز الدين,عزالدين,محي الدين,خير الدين,خيرالدين,جمال الدين,صلاح الدين,شمس الدين,نصر الدين,شرف الدين,زين الدين,زين العابدين,محمد الأمين,محمد أمين,محمد علي,محمد الصالح,محمد الطاهر,محمد رضا,أحمد أمين,إسحاق,عيسى,عزوز,بوبكر,بوبكر,الربيع,ابراهيم,رستم,طه,ياسين,حمدان,سعدان,مهدي,أمير,الأمير,منيب,أواب,أويس,ريان محمد`);
+  const AMB=set(`نور,ملاك,بيان,رجاء,ريان,جهاد,صباح,نجاح,إسلام نور,وصال,شمس,سلام نور,نسيم,عدل,إحسان,هيبة`);
+  const male=w=>/^عبد/.test(w)||/(الدين|الاسلام|الله|الرحمن)$/.test(w)&&!F.has(w);
+  const look=w=>{if(!w)return 0;if(AMB.has(w))return "?";if(F.has(w))return "f";if(M.has(w)||male(w))return "m";return 0};
+  const FAM=new Set(["بن","ابن","بو","ولد","اولاد","ال","سي","آيت","ايت","بنت"].map(nn));
+  function guess(name){
+    const w=String(name||"").split(/\s+/).filter(Boolean).map(nn),n=w.length;if(!n)return{sug:null,sure:false};
+    // given name at the end (skip it if it belongs to «بن X»)
+    let L=0,Lw="";
+    if(!(n>=2&&FAM.has(w[n-2]))){
+      if(n>=2&&(/^ال/.test(w[n-1])||w[n-2]==="عبد"||w[n-2]==="نور"||w[n-2]==="سيف"||w[n-2]==="محمد")){const c=w[n-2]+" "+w[n-1];L=look(c);if(L)Lw=c}
+      if(!L){L=look(w[n-1]);Lw=w[n-1]}
+    }
+    // given name at the start
+    let S=0;
+    if(n>=2&&!FAM.has(w[0])){const c=w[0]+" "+w[1];S=(/^ال/.test(w[1])||w[0]==="عبد"||w[0]==="نور"||w[0]==="سيف")?look(c):0;if(!S)S=look(w[0])}
+    if(n===1)S=0;
+    if(L==="?"||S==="?"&&!L)return{sug:null,sure:false};
+    if(L&&S&&S!=="?"&&L!==S)return{sug:L,sure:false};
+    if(L)return{sug:L,sure:true};
+    if(S&&S!=="?")return{sug:S,sure:false};
+    const last=w[n-1];return{sug:/ه$/.test(last)?"f":"m",sure:false};
+  }
+  return{guess,nn};
+})();
+
+// ---- screen: the teacher reviews the guesses; anything unsure is asked, nothing is saved before «حفظ» ----
+const SEXR={ch:{},all:false};
+function sexTodo(all){return S.students.filter(s=>all||(s.sex!=="f"&&s.sex!=="m"))}
+function openSexReview(all){
+  if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
+  SEXR.all=!!all;SEXR.ch={};
+  const list=sexTodo(SEXR.all);
+  if(!list.length){SEXR.all=true;return openSexReview(true)}
+  list.forEach(s=>{const g=SEXG.guess(s.name);SEXR.ch[s.id]={sug:SEXR.all&&(s.sex==="f"||s.sex==="m")?s.sex:g.sug,sure:SEXR.all&&(s.sex==="f"||s.sex==="m")?true:g.sure,pick:null}});
+  drawSexReview();
+}
+function sexRow(s){const c=SEXR.ch[s.id],v=c.pick||(c.sure?c.sug:null);
+  return `<div class="sexrw${v?"":" need"}" data-sid="${s.id}"><span class="nm">${esc(s.name)}</span><span class="seg sexseg" role="radiogroup" aria-label="جنس ${esc(s.name)}">
+    <button type="button" role="radio" data-sx="m" aria-checked="${v==="m"}">ذكر</button><button type="button" role="radio" data-sx="f" aria-checked="${v==="f"}">أنثى</button></span>${!v&&c.sug?`<span class="note sexhint">أظنه ${c.sug==="f"?"أنثى":"ذكرًا"}</span>`:""}</div>`}
+function drawSexReview(){
+  const list=sexTodo(SEXR.all).slice().sort(byName),val=s=>{const c=SEXR.ch[s.id];return c.pick||(c.sure?c.sug:null)};
+  const ask=list.filter(s=>!SEXR.ch[s.id].sure),f=list.filter(s=>SEXR.ch[s.id].sure&&SEXR.ch[s.id].sug==="f"),m=list.filter(s=>SEXR.ch[s.id].sure&&SEXR.ch[s.id].sug==="m");
+  const left=list.filter(s=>!val(s)).length;
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet sexsheet" role="dialog" aria-modal="true" aria-label="تحديد الذكور والإناث">
+    <h3>تحديد الذكور والإناث</h3>
+    <div class="note">حدّدتُ الجنس من الأسماء. ما أشكل عليّ وضعته في الأعلى لتختار أنت، وراجع الباقي بنظرة سريعة. لا يُحفظ شيء قبل الضغط على «حفظ».</div>
+    ${ask.length?`<div class="lhead sexh need"><span>يحتاج اختيارك</span><b class="num">${ask.length}</b></div>${ask.map(sexRow).join("")}`:""}
+    ${f.length?`<div class="lhead sexh fem"><span>الإناث</span><b class="num">${f.length}</b></div>${f.map(sexRow).join("")}`:""}
+    ${m.length?`<div class="lhead sexh mal"><span>الذكور</span><b class="num">${m.length}</b></div>${m.map(sexRow).join("")}`:""}
+    <div class="lockset" style="margin-top:12px;position:sticky;bottom:0;background:var(--surface);padding-top:8px">
+      <span class="note" id="sexLeft">${left?`بقي ${left} دون اختيار، ويمكنك الحفظ الآن وإكمالهم لاحقًا.`:"اكتمل الاختيار ✓"}</span>
+      <button class="btn primary" type="button" id="sexSave">حفظ</button>
+      <button class="btn" type="button" data-act="close">إلغاء</button>
+      ${SEXR.all?"":`<button class="linkbtn" type="button" id="sexAll" style="justify-content:center">مراجعة كل الطلبة، حتى المحدَّدين سابقًا</button>`}
+    </div>
+  </div></div>`;md.hidden=false;
+}
+document.addEventListener("click",async e=>{
+  if(e.target.closest("[data-sexrev]")){openSexReview(false);return}
+  if(e.target.closest("#sexAll")){openSexReview(true);return}
+  const b=e.target.closest(".sexrw [data-sx]");
+  if(b){const r=b.closest(".sexrw"),c=SEXR.ch[r.dataset.sid];if(!c)return;c.pick=b.dataset.sx;
+    r.classList.remove("need");r.querySelectorAll("[data-sx]").forEach(x=>x.setAttribute("aria-checked",x===b));const h=r.querySelector(".sexhint");if(h)h.remove();
+    const left=sexTodo(SEXR.all).filter(s=>{const c=SEXR.ch[s.id];return !(c.pick||(c.sure?c.sug:null))}).length;
+    const l=document.getElementById("sexLeft");if(l)l.textContent=left?`بقي ${left} دون اختيار، ويمكنك الحفظ الآن وإكمالهم لاحقًا.`:"اكتمل الاختيار ✓";return}
+  if(e.target.closest("#sexSave")){
+    let n=0;
+    for(const s of sexTodo(SEXR.all)){const c=SEXR.ch[s.id];if(!c)continue;const v=c.pick||(c.sure?c.sug:null);if(!v||v===s.sex)continue;
+      try{await S.db.doc("students/"+s.id).update({sex:v});n++}catch(_){}}
+    document.getElementById("modal").hidden=true;toast(n?"حُفظ جنس "+n+" "+(n===1?"طالب":n===2?"طالبين":n<=10?"طلبة":"طالبًا"):"لا تغييرات");return}
+});
+// reminder in the students tab while some students have no gender yet
+const _rsSex=renderStudents;renderStudents=function(){_rsSex();
+  const box=document.getElementById("stuList");if(!box||!S.studentsLoaded||!S.students.length)return;
+  const n=sexTodo(false).length;
+  const tip=document.createElement("div");tip.className="sexnote";
+  tip.innerHTML=n?`<span>لم يُحدَّد جنس <b class="num">${n}</b> من الطلبة، فلا يظهر قسما الذكور والإناث كاملين.</span><button class="btn sm primary" type="button" data-sexrev>حدِّد الآن</button>`
+    :`<button class="linkbtn" type="button" data-sexrev>مراجعة الذكور والإناث</button>`;
+  if(!n)tip.classList.add("quiet");
+  box.parentNode.insertBefore(tip,box);document.querySelectorAll(".sexnote").forEach(x=>{if(x!==tip)x.remove()})};
+const sexst=document.createElement("style");sexst.textContent=`
+.sexnote{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:10px 14px;border:1px solid #E2C26B;background:#FBF3DC;color:#5B4510;border-radius:12px;font-size:.88rem;font-weight:600}
+.sexnote.quiet{border:0;background:none;padding:0 2px;justify-content:flex-end}
+@media (prefers-color-scheme:dark){.sexnote:not(.quiet){background:#3A3220;color:#F0DC9C;border-color:#7A6630}}
+.sexsheet .lhead.sexh{margin-top:6px}
+.lhead.sexh.need{color:#8A2F28}
+.sexrw{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 2px;border-top:1px solid var(--line)}
+.sexrw .nm{flex:1;min-width:120px;font-weight:700}
+.sexrw.need{background:rgba(245,211,206,.35);border-radius:10px;padding:8px}
+.sexseg{margin:0;flex:none;width:150px}
+.sexseg button{padding:7px 4px}
+.sexseg button[aria-checked="true"]{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sexseg button[data-sx="f"][aria-checked="true"]{color:#A2457A}
+.sexhint{width:100%;margin:0;font-size:.78rem}
+`;document.head.appendChild(sexst);
 </script>
 
 </body>
