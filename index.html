@@ -867,6 +867,9 @@ const dmy=s=>{if(!s)return "";const [y,m,d]=s.split("-").map(Number);return d+" 
 function hizb(n){if(!n)return "0";const h=Math.floor(n/8),t=n%8;
   if(!h)return n+" ثمن";return h+" حزب"+(t?" و"+t+" ثمن":"")}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+// gender of a student: sex:"f" = أنثى, anything else (or missing) = ذكر. gw(s,"للذكر","للأنثى") picks the right wording.
+const isF=s=>!!s&&s.sex==="f";const gw=(s,m,f)=>isF(s)?f:m;
+const sexSel=(v,dis)=>`<label for="f-sx">الجنس<select id="f-sx" ${dis||""} style="min-height:44px"><option value="m"${v==="f"?"":" selected"}>ذكر (الطالب)</option><option value="f"${v==="f"?" selected":""}>أنثى (الطالبة)</option></select></label>`;
 const norm=s=>String(s).replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").trim();
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
 
@@ -1126,6 +1129,7 @@ function openInfo(id){
     <form class="info" id="infoForm" data-id="${id}" style="margin-top:14px">
       <label for="f-nm" class="wide">اسم ولقب الطالب<input type="text" id="f-nm" class="nameinput" value="${esc(s.name||"")}" ${S.canWrite?"":"disabled"} autocomplete="off"></label>
       <label for="f-fn">رقم الملف<input type="text" id="f-fn" dir="ltr" value="${esc(s.fileNo||"")}" ${S.canWrite?"":"disabled"} autocomplete="off"></label>
+      ${sexSel(s.sex,S.canWrite?"":"disabled")}
       <div class="bd wide"><b>الميلاد</b>
       <label for="f-bd-d">تاريخ الميلاد${bdPicker(s.birthDate)}</label>
       <label for="f-bp">مكان الميلاد<input type="text" id="f-bp" value="${esc(s.birthPlace||"")}" ${S.canWrite?"":"disabled"} placeholder="مثال: الجلفة" autocomplete="off"></label>
@@ -1209,6 +1213,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementB
 let infoTimer=null,infoBusy=false,infoDirty=null;
 function infoSnapshot(){const f=document.getElementById("infoForm");if(!f)return null;const g=k=>document.getElementById(k).value.trim();
   const data={fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
+  const sx=document.getElementById("f-sx"); if(sx)data.sex=sx.value==="f"?"f":"m";
   const nm=g("f-nm"); if(nm)data.name=nm;
   return {id:f.dataset.id,data}}
 function setInfoState(t){const el=document.getElementById("infoState");if(el)el.textContent=t}
@@ -1268,9 +1273,9 @@ document.getElementById("exportBtn").onclick=async()=>{
   const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
   const [y,m]=S.month.split("-").map(Number);
   XLSX.utils.book_append_sheet(wb,ws,MON[m-1]+" "+y);
-  const info=XLSX.utils.aoa_to_sheet([["الرقم","اسم ولقب الطالب","رقم الملف","تاريخ الميلاد","مكان الميلاد","العمر","رقم الهاتف","العنوان الشخصي"],
-    ...list.map(s=>[s.n,s.name,s.fileNo||"",dmy(s.birthDate),s.birthPlace||"",s.birthDate?age(s.birthDate):"",s.phone||"",s.address||""])]);
-  info["!cols"]=[{wch:6},{wch:26},{wch:10},{wch:13},{wch:16},{wch:6},{wch:15},{wch:34}];
+  const info=XLSX.utils.aoa_to_sheet([["الرقم","اسم ولقب الطالب","الجنس","رقم الملف","تاريخ الميلاد","مكان الميلاد","العمر","رقم الهاتف","العنوان الشخصي"],
+    ...list.map(s=>[s.n,s.name,gw(s,"ذكر","أنثى"),s.fileNo||"",dmy(s.birthDate),s.birthPlace||"",s.birthDate?age(s.birthDate):"",s.phone||"",s.address||""])]);
+  info["!cols"]=[{wch:6},{wch:26},{wch:7},{wch:10},{wch:13},{wch:16},{wch:6},{wch:15},{wch:34}];
   XLSX.utils.book_append_sheet(wb,info,"معلومات الطلبة");
   const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
@@ -1513,7 +1518,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.3</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.4</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2844,7 +2849,7 @@ async function buildCard(id,mk,note){
   x.fillStyle="#EBCB7A";x.font="700 40px "+CF;x.fillText(MON[m-1]+" "+y,W/2+76,292);
   // student name (white plate, dark text)
   x.fillStyle="#FFFFFF";rr(x,PAD,360,W-2*PAD,176,30);x.fill();
-  x.fillStyle="#4A5B73";x.font="700 30px "+CF;x.fillText("الطالب",W/2,408);
+  x.fillStyle="#4A5B73";x.font="700 30px "+CF;x.fillText(gw(s,"الطالب","الطالبة"),W/2,408);
   let fs=74;x.font="700 "+fs+"px "+CF;while(x.measureText(s.name).width>W-2*PAD-70&&fs>34){fs-=2;x.font="700 "+fs+"px "+CF}
   x.fillStyle="#12284A";x.fillText(s.name,W/2,500);
   // attendance tiles
@@ -2875,14 +2880,14 @@ async function buildCard(id,mk,note){
   // footer
   x.strokeStyle="rgba(235,203,122,.55)";x.lineWidth=2;x.beginPath();x.moveTo(PAD+120,H-150);x.lineTo(W-PAD-120,H-150);x.stroke();
   const t=teacherName();x.textAlign="center";x.fillStyle="#FFFFFF";x.font="700 42px "+CF;x.fillText(t?"المعلم: "+t:"سجل متابعة الطلبة",W/2,H-86);
-  x.fillStyle="#EBCB7A";x.font="700 31px "+CF;x.fillText("بارك الله فيه ونفع به",W/2,H-40);
+  x.fillStyle="#EBCB7A";x.font="700 31px "+CF;x.fillText(gw(s,"بارك الله فيه ونفع به","بارك الله فيها ونفع بها"),W/2,H-40);
   return c;
 }
 async function openCard(id,mk){
   const s=S.students.find(x=>x.id===id);if(!s)return;CARD.id=id;CARD.mk=mk||S.month;
   const md=document.getElementById("modal");
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="بطاقة ${esc(s.name)}">
-    <h3>بطاقة المتابعة للولي</h3><div class="note">صورة خاصة بهذا الطالب فقط، أرسلها لوليه مباشرة لا في المجموعة.</div>
+    <h3>بطاقة المتابعة للولي</h3><div class="note">${gw(s,"صورة خاصة بهذا الطالب فقط، أرسلها لوليّه","صورة خاصة بهذه الطالبة فقط، أرسلها لوليّها")} مباشرة لا في المجموعة.</div>
     <input type="text" id="cardNote" placeholder="ملاحظة من المعلم للولي (اختياري)" autocomplete="off" style="min-height:44px;width:100%;margin:10px 0" value="${esc(CARD.note)}">
     <div id="cardBox" style="min-height:120px;text-align:center" class="note">جارٍ تجهيز البطاقة…</div>
     <div class="lockset" style="margin-top:10px"><button class="btn wa" type="button" id="cardShare">مشاركة البطاقة</button>
@@ -2964,6 +2969,7 @@ function openNewStudent(){
     <form class="info" id="newForm" style="margin-top:14px" autocomplete="off">
       <label for="f-nm" class="wide">اسم ولقب الطالب *<input type="text" id="f-nm" class="nameinput" placeholder="مثال: بن علي محمد"></label>
       <label for="f-fn">رقم الملف<input type="text" id="f-fn" dir="ltr"></label>
+      ${sexSel("m")}
       <div class="bd wide"><b>الميلاد</b>
         <label for="f-bd-d">تاريخ الميلاد${bdPicker("")}</label>
         <label for="f-bp">مكان الميلاد<input type="text" id="f-bp" placeholder="مثال: الجلفة"></label>
@@ -2989,7 +2995,7 @@ document.getElementById("modal").addEventListener("submit",async e=>{
   const name=g("f-nm");if(!name){document.getElementById("newMsg").textContent="اكتب اسم الطالب أولًا.";document.getElementById("f-nm").focus();return}
   if(S.students.some(s=>norm(s.name)===norm(name))&&!e.target.dataset.dup){e.target.dataset.dup="1";document.getElementById("newMsg").textContent="يوجد طالب بنفس الاسم. اضغط «حفظ الطالب» مرة أخرى إذا كان طالبًا آخر.";return}
   const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1,id="s"+Date.now().toString(36);
-  const data={n,name,active:true,fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
+  const data={n,name,active:true,sex:g("f-sx")==="f"?"f":"m",fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),address:g("f-ad")};
   {const h=+g("f-hz");if(h){const fwd=(()=>{try{return localStorage.getItem("halaqa.hzdir")==="fwd"}catch(_){return false}})();Object.assign(data,{hzSet:true,hzDir:fwd?"fwd":"back",hzOff:(fwd?h-1:60-h)*8})}}
   try{await S.db.doc("students/"+id).set(data);document.getElementById("modal").hidden=true;toast("أُضيف "+name)}
   catch(_){document.getElementById("newMsg").textContent="تعذّر الحفظ، حاول مرة أخرى."}
@@ -3098,15 +3104,17 @@ function absStreaks(upTo){
     if(n>=ABS_MIN&&hide[s.id]!==since)out.push({s,n,since})}
   return out.sort((a,b)=>b.n-a.n)}
 function absMsg(x){const t=teacherName();
-  return `السلام عليكم ورحمة الله وبركاته،\nنُعلمكم أن ابنكم ${x.s.name} غاب عن الحلقة ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}.\nنرجو التواصل معنا لمعرفة السبب، وجزاكم الله خيرًا.${t?"\n"+t:""}\nالمدرسة القرءانية النموذجية`}
+  return `السلام عليكم ورحمة الله وبركاته،\nنُعلمكم أن ${gw(x.s,"ابنكم","ابنتكم")} ${x.s.name} ${gw(x.s,"غاب","غابت")} عن الحلقة ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}.\nنرجو التواصل معنا لمعرفة السبب، وجزاكم الله خيرًا.${t?"\n"+t:""}\nالمدرسة القرءانية النموذجية`}
+// heading for "completed a hizb today": أتمّ / أتمّت / أتمّوا / أتممن
+function msHead(ms){const f=ms.every(m=>isF(m.s));return ms.length>1?(f?"أتممن حزبًا اليوم":"أتمّوا حزبًا اليوم"):(f?"أتمّت حزبًا اليوم":"أتمّ حزبًا اليوم")}
 function renderAlerts(){
   let el=document.getElementById("hzAlerts");
   if(!el){const strip=document.getElementById("dayStrip");if(!strip)return;el=document.createElement("div");el.id="hzAlerts";strip.parentNode.insertBefore(el,strip)}
   if(!S.studentsLoaded||!active().length){el.innerHTML="";return}
   const ab=absStreaks(S.date),ms=hzMilestones(S.date);let h="";
-  if(ms.length)h+=`<div class="hznote win"><b>🎉 ${ms.length>1?"أتمّوا حزبًا اليوم":"أتمّ حزبًا اليوم"}</b>${ms.map(m=>`<div class="hzrow"><button type="button" class="linkname" data-hzopen="${m.s.id}">${esc(m.s.name)}</button><span class="note">${m.i.khatm?"ختم القرءان كاملًا":"أتمّ الحزب "+m.i.last}</span><button type="button" class="btn sm gold" data-cert="${m.s.id}">🏅 شهادة</button></div>`).join("")}</div>`;
+  if(ms.length)h+=`<div class="hznote win"><b>🎉 ${msHead(ms)}</b>${ms.map(m=>`<div class="hzrow"><button type="button" class="linkname" data-hzopen="${m.s.id}">${esc(m.s.name)}</button><span class="note">${m.i.khatm?gw(m.s,"ختم","ختمت")+" القرءان كاملًا":gw(m.s,"أتمّ","أتمّت")+" الحزب "+m.i.last}</span><button type="button" class="btn sm gold" data-cert="${m.s.id}">🏅 شهادة</button></div>`).join("")}</div>`;
   if(ab.length)h+=`<div class="hznote abs"><b>⚠️ غياب متتالٍ</b>${ab.map(x=>{const wa=waNum(x.s.phone);
-    return `<div class="hzrow"><button type="button" class="linkname" data-hzopen="${x.s.id}">${esc(x.s.name)}</button><span class="note">غاب ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}</span><span class="hzacts">${wa?`<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(absMsg(x))}" target="_blank" rel="noopener">راسل الولي</a>`:""}<button type="button" class="btn sm" data-abshide="${x.s.id}" data-since="${x.since}" aria-label="إخفاء التنبيه">إخفاء</button></span></div>`}).join("")}</div>`;
+    return `<div class="hzrow"><button type="button" class="linkname" data-hzopen="${x.s.id}">${esc(x.s.name)}</button><span class="note">${gw(x.s,"غاب","غابت")} ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}</span><span class="hzacts">${wa?`<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(absMsg(x))}" target="_blank" rel="noopener">راسل الولي</a>`:""}<button type="button" class="btn sm" data-abshide="${x.s.id}" data-since="${x.since}" aria-label="إخفاء التنبيه">إخفاء</button></span></div>`}).join("")}</div>`;
   el.innerHTML=h}
 const _rtHz=renderToday;renderToday=function(){_rtHz();renderAlerts()};
 document.addEventListener("click",e=>{
@@ -3116,15 +3124,16 @@ document.addEventListener("click",e=>{
 
 // ---- daily WhatsApp report: mention who completed a hizb ----
 const _brHz=buildReport;buildReport=function(o){const out=_brHz(o);if(!o.mem)return out;const ms=hzMilestones(S.date);if(!ms.length)return out;
-  const add="🎉 *أتمّ حزبًا اليوم:*\n"+ms.map(m=>`• ${m.s.name} — ${m.i.khatm?"ختم القرءان كاملًا 🏅":"الحزب "+m.i.last}`).join("\n");
+  const add="🎉 *"+msHead(ms)+":*\n"+ms.map(m=>`• ${m.s.name} — ${m.i.khatm?"ختم القرءان كاملًا 🏅":"الحزب "+m.i.last}`).join("\n");
   const k=out.lastIndexOf("\n\n");return k<0?out+"\n\n"+add:out.slice(0,k)+"\n\n"+add+out.slice(k)};
 
 // ---- certificate image ----
 const CERT={id:null,kind:"last",note:""};
 function certText(s,kind){const i=hzInfo(s);if(!i||!i.c)return null;
-  if(i.khatm)return{line:"قد أتمّ حفظ كتاب الله تعالى كاملًا",title:"شهادة ختم القرءان الكريم",date:hzDoneDate(s,60)};
-  if(kind==="count"&&i.c>1)return{line:"قد أتمّ حفظ "+hzCnt(i.c)+" من كتاب الله تعالى",title:"شهادة تقدير",date:hzDoneDate(s,i.c)};
-  return{line:"قد أتمّ حفظ الحزب "+i.last+" من كتاب الله تعالى",title:"شهادة تقدير",date:hzDoneDate(s,i.c)}}
+  const v=gw(s,"قد أتمّ","قد أتمّت");
+  if(i.khatm)return{line:v+" حفظ كتاب الله تعالى كاملًا",title:"شهادة ختم القرءان الكريم",date:hzDoneDate(s,60)};
+  if(kind==="count"&&i.c>1)return{line:v+" حفظ "+hzCnt(i.c)+" من كتاب الله تعالى",title:"شهادة تقدير",date:hzDoneDate(s,i.c)};
+  return{line:v+" حفظ الحزب "+i.last+" من كتاب الله تعالى",title:"شهادة تقدير",date:hzDoneDate(s,i.c)}}
 function star8(x,cx,cy,R,fill){x.save();x.translate(cx,cy);x.fillStyle=fill;for(let k=0;k<2;k++){x.save();x.rotate(k*Math.PI/4);x.fillRect(-R*.7,-R*.7,R*1.4,R*1.4);x.restore()}x.restore()}
 async function buildCert(id,kind,note){
   const s=S.students.find(x=>x.id===id),ct=certText(s,kind);if(!ct)throw 0;
@@ -3146,13 +3155,13 @@ async function buildCert(id,kind,note){
   x.strokeStyle=GOLDL;x.lineWidth=3;x.beginPath();x.moveTo(W/2-230,505);x.lineTo(W/2-24,505);x.moveTo(W/2+24,505);x.lineTo(W/2+230,505);x.stroke();star8(x,W/2,505,11,GOLD);
   // body
   x.fillStyle="#3B4A5E";x.font="600 36px "+CF;
-  x.fillText("تشهد المدرسة القرءانية النموذجية",W/2,590);x.fillText("بمسجد القطب الأمير عبد القادر · قسنطينة",W/2,642);x.fillText("بأنّ الطالب",W/2,716);
+  x.fillText("تشهد المدرسة القرءانية النموذجية",W/2,590);x.fillText("بمسجد القطب الأمير عبد القادر · قسنطينة",W/2,642);x.fillText(gw(s,"بأنّ الطالب","بأنّ الطالبة"),W/2,716);
   let fs=86;x.font="700 "+fs+"px "+CF;while(x.measureText(s.name).width>W-2*PAD-100&&fs>40){fs-=2;x.font="700 "+fs+"px "+CF}
   x.fillStyle=NAVY;x.fillText(s.name,W/2,828);
   x.strokeStyle="rgba(184,137,46,.55)";x.lineWidth=2;x.beginPath();x.moveTo(PAD+90,862);x.lineTo(W-PAD-90,862);x.stroke();
   x.fillStyle=NAVY;let lf=50;x.font="700 "+lf+"px "+CF;while(x.measureText(ct.line).width>W-2*PAD-60&&lf>30){lf-=2;x.font="700 "+lf+"px "+CF}
   x.fillText(ct.line,W/2,950);
-  x.fillStyle="#3B4A5E";x.font="600 36px "+CF;x.fillText("نسأل الله أن يبارك فيه، وأن يجعله من أهل القرءان",W/2,1018);
+  x.fillStyle="#3B4A5E";x.font="600 36px "+CF;x.fillText(gw(s,"نسأل الله أن يبارك فيه، وأن يجعله من أهل القرءان","نسأل الله أن يبارك فيها، وأن يجعلها من أهل القرءان"),W/2,1018);
   let yy=1018;
   if(note&&note.trim()){x.font="600 32px "+CF;const nl=wrapLines(x,note.trim(),W-2*PAD-120).slice(0,3);x.fillStyle="#5B4A1E";nl.forEach(l=>{yy+=50;x.fillText(l,W/2,yy)})}
   // date + teacher
@@ -3333,7 +3342,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.3"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.4"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -3415,7 +3424,7 @@ function wacContent(){
     const tot=list.reduce((t,s)=>t+(Number(dd.th[s.id])||0),0),ms=hzMilestones(d);
     const B=[{t:"tiles",items:[["الحضور",P_.length,"#D5ECDF","#1F5A3E"],["حضور جزئي",J_.length,"#F6E6B0","#6B4E07"],["الغياب",A_.length,"#F5D3CE","#8A2F28"],["الحفظ",tot?tot+" ثمن":"—","#DCE7F5","#12284A"]]}];
     if(tot>=8)B.push({t:"line",text:"مجموع الحفظ اليوم: "+hizb(tot)});
-    if(o.mem&&ms.length)B.push({t:"list",head:"أتمّ حزبًا اليوم",dot:"#E2C26B",cols:1,items:ms.map(m=>m.s.name+" — "+(m.i.khatm?"ختم القرءان كاملًا":"الحزب "+m.i.last))});
+    if(o.mem&&ms.length)B.push({t:"list",head:msHead(ms),dot:"#E2C26B",cols:1,items:ms.map(m=>m.s.name+" — "+(m.i.khatm?"ختم القرءان كاملًا":"الحزب "+m.i.last))});
     if(o.mem&&mem.length)B.push({t:"list",head:"الحافظون اليوم",dot:"#8FD3AE",cols:1,items:mem.map(s=>s.name+" — "+thw(Number(dd.th[s.id])))});
     if(o.present&&P_.length)B.push({t:"list",head:"الحاضرون",dot:"#8FD3AE",cols:2,items:P_.map(s=>s.name)});
     if(o.partial&&J_.length)B.push({t:"list",head:"حضور جزئي",dot:"#F0D27A",cols:2,items:J_.map(s=>s.name)});
@@ -3426,10 +3435,10 @@ function wacContent(){
   if(k==="abs"){
     const s=S.students.find(x=>x.id===f.sid);if(!s)return{title:"تنبيه غياب",blocks:[{t:"text",text:"اختر الطالب من القائمة."}],file:"تنبيه غياب"};
     const {n,since}=wacAbs(s.id,S.date);
-    const B=[{t:"plate",label:"الطالب",value:s.name}];
-    if(n>=2)B.push({t:"line",text:"غاب "+hisas(n)+" متتالية، منذ "+wacLong(since)});
-    else if(n===1)B.push({t:"line",text:"غاب عن حصة "+wacLong(since)});
-    B.push({t:"text",text:"السلام عليكم ورحمة الله وبركاته،\nنرجو من وليّ الطالب التواصل مع المعلم لمعرفة سبب الغياب، والحرص على مواظبته على الحلقة، وجزاكم الله خيرًا."+((f.absNote||"").trim()?"\n"+f.absNote.trim():"")});
+    const B=[{t:"plate",label:gw(s,"الطالب","الطالبة"),value:s.name}];
+    if(n>=2)B.push({t:"line",text:gw(s,"غاب ","غابت ")+hisas(n)+" متتالية، منذ "+wacLong(since)});
+    else if(n===1)B.push({t:"line",text:gw(s,"غاب","غابت")+" عن حصة "+wacLong(since)});
+    B.push({t:"text",text:"السلام عليكم ورحمة الله وبركاته،\n"+gw(s,"نرجو من وليّ الطالب التواصل مع المعلم لمعرفة سبب الغياب، والحرص على مواظبته على الحلقة","نرجو من وليّ الطالبة التواصل مع المعلم لمعرفة سبب الغياب، والحرص على مواظبتها على الحلقة")+"، وجزاكم الله خيرًا."+((f.absNote||"").trim()?"\n"+f.absNote.trim():"")});
     return{title:"تنبيه غياب",blocks:B,file:"تنبيه غياب - "+s.name};
   }
   if(k==="nosess"){
