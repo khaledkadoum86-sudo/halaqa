@@ -1513,7 +1513,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.2</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.3</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3333,7 +3333,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.2"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.3"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -3640,18 +3640,23 @@ async function libAll(){
   const ks=(await DOCDB.keys()).filter(k=>String(k).startsWith("libm|")),out=[];
   for(const k of ks){const r=await DOCDB.get(k);if(r)out.push(Object.assign({},r,{id:String(k).slice(5)}))}
   return LIB.list=out}
-async function libSaveMeta(m){const r=Object.assign({},m);delete r.id;await DOCDB.put("libm|"+m.id,r);LIB.list=null}
+// libPutMeta: يحفظ على الجهاز فقط (يُستعمل عند استقبال تعديل من جهاز آخر)
+async function libPutMeta(m){const r=Object.assign({},m);delete r.id;await DOCDB.put("libm|"+m.id,r);LIB.list=null}
+// libSaveMeta: تعديل من المستخدم على هذا الجهاز، فيُرسَل إلى الأجهزة الأخرى
+async function libSaveMeta(m,quiet){if(!quiet)m.upd=Date.now();await libPutMeta(m);if(!quiet&&window.LIBSYNC)LIBSYNC.queueMeta(m.id)}
 async function libAdd(blob,name,id){
   id=id||libId();
   await DOCDB.put("lib|"+id,{buf:await blob.arrayBuffer(),type:"application/pdf"});
-  await libSaveMeta({id,title:libTitle(name),author:"",cat:"",size:blob.size,at:Date.now(),opened:0});
+  await libPutMeta({id,title:libTitle(name),author:"",cat:"",size:blob.size,at:Date.now(),opened:0,upd:Date.now()});
+  if(window.LIBSYNC)LIBSYNC.queueUp(id);
   return id}
-async function libDelete(id){await DOCDB.del("lib|"+id);await DOCDB.del("libm|"+id);LIB.list=null;if(libNative())libPost({action:"forget",id}).catch(()=>{})}
+async function libDelete(id,quiet){await DOCDB.del("lib|"+id);await DOCDB.del("libm|"+id);LIB.list=null;if(libNative())libPost({action:"forget",id}).catch(()=>{});
+  if(!quiet&&window.LIBSYNC)LIBSYNC.queueDel(id)}
 
 // the page
 function libShell(sec){
   sec.innerHTML=`<div class="libhead"><div class="libicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M4 19V5a1 1 0 011-1h3v16H5a1 1 0 01-1-1zM8 4h4v16H8zM13.5 5.2l3.4-.9 3.6 13.6-3.4.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
-      <div><b>الخزانة العلمية</b><span id="libSum">جارٍ التحميل…</span></div></div>
+      <div><b>الخزانة العلمية</b><span id="libSum">جارٍ التحميل…</span><span id="libSync" class="libsync" role="status"></span></div></div>
     <div class="bar"><span class="sbox"><input type="search" id="libQ" placeholder="ابحث بالعنوان أو المؤلف…" value="${esc(LIB.q)}"><button type="button" class="sclear" data-for="libQ" aria-label="مسح البحث" ${LIB.q?"":"hidden"}>✕</button></span>
       <select id="libSort" aria-label="ترتيب الكتب"><option value="recent">الأحدث إضافة</option><option value="read">آخر ما قرأت</option><option value="name">أبجديًا</option></select></div>
     <div class="libchips" id="libChips"></div>
@@ -3682,8 +3687,9 @@ async function renderLib(){
       <span class="libacts"><button type="button" class="btn sm" data-libread="${b.id}">قراءة</button><button type="button" class="btn sm" data-libedit="${b.id}" aria-label="تعديل ${esc(b.title)}">⋯</button></span></div>`).join("")
     :`<div class="empty">${all.length?"لا توجد كتب تطابق البحث.":"الخزانة فارغة. أضف أول كتاب."}</div>`;
   document.getElementById("libHow").innerHTML=libNative()
-    ?"لإضافة كتاب من تطبيق آخر (واتساب، الملفات، تيليغرام…): افتح ملف PDF، واضغط «مشاركة»، ثم اختر «سجل الطلبة». إن لم يظهر، فاضغط «المزيد» في صف التطبيقات. الكتب محفوظة على هذا الجهاز فقط ولا تتزامن مع أجهزتك الأخرى."
-    :"اضغط «إضافة كتاب PDF» واختر الملف من «الملفات» أو iCloud. الكتب محفوظة على هذا الجهاز فقط ولا تتزامن مع أجهزتك الأخرى.";
+    ?"لإضافة كتاب من تطبيق آخر (واتساب، الملفات، تيليغرام…): افتح ملف PDF، واضغط «مشاركة»، ثم اختر «سجل الطلبة». إن لم يظهر، فاضغط «المزيد» في صف التطبيقات. "+libSyncNote()
+    :"اضغط «إضافة كتاب PDF» واختر الملف من «الملفات» أو iCloud. "+libSyncNote();
+  LIBSYNC.paint();
 }
 
 // adding from the file picker
@@ -3722,7 +3728,7 @@ async function libEdit(id,fresh){
 }
 async function libRead(id){
   const b=(await libAll()).find(x=>x.id===id);if(!b)return;
-  b.opened=Date.now();libSaveMeta(b).then(()=>{if(S.view==="lib"&&LIB.sort==="read")renderLib()}).catch(()=>{});
+  b.opened=Date.now();libSaveMeta(b,true).then(()=>{if(S.view==="lib"&&LIB.sort==="read")renderLib()}).catch(()=>{});
   if(libNative()){
     try{
       if(await libPost({action:"open",id,title:b.title})==="shown")return;
@@ -3813,7 +3819,81 @@ if(libNative()){libPost({action:"ready"}).catch(()=>{});setTimeout(()=>halaqaBoo
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(()=>halaqaBookPoll(),400)});
 document.addEventListener("click",e=>{if(e.target.closest("#libPoll"))halaqaBookPoll(true)});
 
+
+// ---- الخزانة بين الأجهزة: كل كتاب يُرفع إلى حساب المزامنة نفسه (Firestore) قطعًا، فيظهر على الآيفون والآيباد والماك ----
+// users/<uid>/lib/<id>      = {title, author, cat, size, at, upd, n (عدد القطع), del}
+// users/<uid>/libc/<id>_<i> = {b: Bytes}  قطع من 700 ك.ب؛ تُكتب القطع أولًا ثم بيانات الكتاب، فلا يُنزَّل كتاب ناقص
+function libSyncNote(){return SYNC.user?"الكتب تتزامن مع أجهزتك التي دخلت فيها بحساب المزامنة نفسه.":"الكتب على هذا الجهاز فقط. لتظهر على أجهزتك الأخرى، ادخل بحساب المزامنة من الإعدادات ← المزامنة بين أجهزتي."}
+const LIBSYNC={CH:700000,up:new Set(),meta:new Set(),del:new Set(),unsub:null,remote:{},busy:false,msg:"",first:true,used:0,
+  load(){try{const s=JSON.parse(localStorage.getItem("halaqa.libsync")||"{}");this.up=new Set(s.up||[]);this.meta=new Set(s.meta||[]);this.del=new Set(s.del||[])}catch(_){}},
+  save(){try{localStorage.setItem("halaqa.libsync",JSON.stringify({up:[...this.up],meta:[...this.meta],del:[...this.del]}))}catch(_){}},
+  col(n){return SYNC.db.collection("users").doc(SYNC.user.uid).collection(n)},
+  on(){return !!(SYNC.user&&SYNC.db&&window.firebase&&navigator.onLine!==false)},
+  queueUp(id){this.up.add(id);this.del.delete(id);this.save();this.kick()},
+  queueMeta(id){this.meta.add(id);this.save();this.kick()},
+  queueDel(id){this.del.add(id);this.up.delete(id);this.meta.delete(id);this.save();this.kick()},
+  kick(){clearTimeout(this.t);this.t=setTimeout(()=>this.run(),800)},
+  paint(){const el=document.getElementById("libSync");if(!el)return;
+    const n=this.up.size;
+    el.textContent=this.msg||(SYNC.user?(n?`بانتظار الرفع إلى أجهزتك: ${n}`:(this.ok?"متزامنة مع أجهزتك ✓":"جارٍ الاتصال بحسابك…"))+(this.used?` · المستعمل: ${libSize(this.used)} من 1 غ.ب مجانًا`:""):"")},
+  say(m){this.msg=m;this.paint()},
+  onUser(u){if(this.unsub){this.unsub();this.unsub=null}this.first=true;this.ok=false;if(!u){this.paint();return}this.listen()},
+  listen(){if(this.unsub||!this.on())return;
+    this.unsub=this.col("lib").onSnapshot(s=>this.onSnap(s),()=>{this.unsub=null;setTimeout(()=>this.listen(),20000)})},
+  async onSnap(snap){
+    const R={};let used=0;snap.forEach(d=>{const r=d.data();R[d.id]=r;if(!r.del)used+=r.size||0});this.remote=R;this.used=used;this.ok=true;
+    const loc=await libAll(),have=new Set(loc.map(b=>b.id));
+    if(this.first){this.first=false; // أول اتصال: كتب هذا الجهاز التي ليست في الحساب تُرفع
+      for(const b of loc)if(!R[b.id])this.up.add(b.id);this.save()}
+    let changed=false;
+    for(const id in R){const r=R[id];
+      if(r.del){if(have.has(id)&&!this.up.has(id)){await libDelete(id,true);changed=true}continue}
+      const b=loc.find(x=>x.id===id);
+      if(!b)continue; // يُنزَّل في run()
+      if((r.upd||0)>(b.upd||0)&&!this.meta.has(id)){b.title=r.title;b.author=r.author||"";b.cat=r.cat||"";b.upd=r.upd;await libPutMeta(b);changed=true}
+    }
+    if(changed&&S.view==="lib")renderLib();
+    this.kick();this.paint()},
+  async run(){
+    if(this.busy||!this.on())return;this.busy=true;
+    try{
+      for(const id of [...this.del]){const r=this.remote[id];
+        if(r&&r.n)for(let i=0;i<r.n;i++)await this.col("libc").doc(id+"_"+i).delete();
+        await this.col("lib").doc(id).set({del:true,upd:Date.now()});this.del.delete(id);this.save()}
+      for(const id of [...this.up]){
+        const b=(await libAll()).find(x=>x.id===id),f=await DOCDB.get("lib|"+id);
+        if(!b||!f){this.up.delete(id);this.save();continue}
+        if(this.used+(b.size||0)>1000*1048576){this.up.delete(id);this.save();this.say("امتلأت المساحة المجانية للحساب (1 غ.ب)، فبقي «"+b.title+"» على هذا الجهاز وحده.");continue}
+        const u=new Uint8Array(f.buf),n=Math.max(1,Math.ceil(u.length/this.CH));
+        for(let i=0;i<n;i++){this.say(`جارٍ رفع «${b.title}» إلى أجهزتك ${Math.round(i*100/n)}٪`);
+          await this.col("libc").doc(id+"_"+i).set({b:firebase.firestore.Blob.fromUint8Array(u.subarray(i*this.CH,(i+1)*this.CH))})}
+        await this.col("lib").doc(id).set({title:b.title,author:b.author||"",cat:b.cat||"",size:u.length,at:b.at||Date.now(),upd:b.upd||Date.now(),n,del:false});
+        this.used+=u.length;this.up.delete(id);this.meta.delete(id);this.save()}
+      for(const id of [...this.meta]){
+        const b=(await libAll()).find(x=>x.id===id),r=this.remote[id];
+        if(b&&r&&!r.del)await this.col("lib").doc(id).set({title:b.title,author:b.author||"",cat:b.cat||"",upd:b.upd||Date.now()},{merge:true});
+        this.meta.delete(id);this.save()}
+      // كتب في الحساب ليست على هذا الجهاز: تُنزَّل
+      const have=new Set((await libAll()).map(b=>b.id));
+      for(const id in this.remote){const r=this.remote[id];
+        if(r.del||have.has(id)||!r.n||this.del.has(id))continue;
+        const parts=[];
+        for(let i=0;i<r.n;i++){this.say(`جارٍ تنزيل «${r.title}» ${Math.round(i*100/r.n)}٪`);
+          const d=await this.col("libc").doc(id+"_"+i).get();if(!d.exists)throw new Error("part");parts.push(d.data().b.toUint8Array())}
+        await DOCDB.put("lib|"+id,{buf:await new Blob(parts).arrayBuffer(),type:"application/pdf"});
+        await libPutMeta({id,title:r.title,author:r.author||"",cat:r.cat||"",size:r.size,at:r.at||Date.now(),opened:0,upd:r.upd||0});
+        if(S.view==="lib")renderLib()}
+      this.msg="";
+    }catch(e){this.msg=(e&&e.code==="resource-exhausted")?"بلغ الحساب حدّه اليومي المجاني، تُكمَل مزامنة الخزانة غدًا.":"تعذّرت مزامنة الخزانة الآن، ستُعاد المحاولة تلقائيًا.";setTimeout(()=>this.kick(),30000)}
+    finally{this.busy=false;this.paint()}}
+};
+window.LIBSYNC=LIBSYNC;LIBSYNC.load();
+{const _ou=SYNC.onUser.bind(SYNC);SYNC.onUser=async function(u){await _ou(u);LIBSYNC.onUser(u)};if(SYNC.user)LIBSYNC.onUser(SYNC.user)}
+addEventListener("online",()=>{LIBSYNC.listen();LIBSYNC.kick()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){LIBSYNC.listen();LIBSYNC.kick()}});
+
 const libst=document.createElement("style");libst.textContent=`
+.libhead .libsync{display:block;font-size:.78rem;color:var(--muted);margin-top:2px}
 .libhead{display:flex;align-items:center;gap:12px;margin:4px 0 12px}
 .libhead .libicon{width:52px;height:52px;border-radius:14px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
 .libhead b{display:block;font-size:1.15rem;color:var(--ink)}.libhead span{font-size:.85rem;color:var(--muted)}

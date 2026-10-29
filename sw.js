@@ -1,6 +1,6 @@
 // Fast start: the app opens instantly from the copy saved on the device,
 // then quietly downloads the newest version for the next launch.
-const CACHE = "halaqa-v28";
+const CACHE = "halaqa-v29";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-167.png", "icon-152.png", "icon-192.png", "icon-512.png", "banner.jpg", "logo.webp"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
