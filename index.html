@@ -315,6 +315,11 @@ button,.btn,label.btn{touch-action:manipulation;-webkit-user-select:none;user-se
 .lhead{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-2);font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
 .lhead b{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 10px;color:var(--accent)}
 .lhead.off{border-top:1px solid var(--line)}
+.lhead.sexh{background:none;border-top:1px solid var(--line);font-size:.86rem;color:var(--accent)}
+.lhead.sexh.fem{color:#A2457A}
+#todayList .lhead.sexh{border-radius:0}
+html.ipad #todayList .lhead{grid-column:1/-1}
+tr.sexrow td{background:var(--surface-2);font-weight:700;font-size:.85rem;color:var(--accent);text-align:right;padding:6px 10px}
 .list .scard.srow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);cursor:pointer;background:var(--surface)}
 .list .lhead+.scard{border-top:0}
 .list .scard.srow>.acts{grid-column:auto;display:flex;align-items:center;gap:6px;justify-content:flex-end!important}
@@ -890,7 +895,12 @@ function setOrder(o){ORDER=o;try{localStorage.setItem("halaqa.order",o)}catch(_)
   const so=document.getElementById("stuOrder");if(so)so.value=o;
   const sb=document.getElementById("sortBy");if(sb&&["n","file","num"].includes(sb.value))sb.value=o==="name"?"n":o;
   render()}
-const active=()=>S.students.filter(s=>s.active!==false).sort(orderFn());
+// males first, then females (each part keeps the chosen order); the lists show a heading for each part
+const sexFirst=fn=>(a,b)=>(isF(a)-isF(b))||fn(a,b);
+const mixed=list=>list.some(isF)&&list.some(s=>!isF(s));
+const sexHead=(s,list)=>{const f=isF(s),n=list.filter(x=>isF(x)===f).length;return `<div class="lhead sexh ${f?"fem":"mal"}"><span>${f?"الإناث":"الذكور"}</span><b class="num">${n}</b></div>`};
+const countText=()=>{const l=active(),f=l.filter(isF).length;return l.length+" طالبًا"+(f&&f<l.length?` (${l.length-f} ذكور · ${f} إناث)`:"")};
+const active=()=>S.students.filter(s=>s.active!==false).sort(sexFirst(orderFn()));
 
 // One write in flight per day doc; edits made meanwhile are coalesced.
 const inflight={},timers={};
@@ -942,7 +952,7 @@ function subscribeMonth(){
 
 // ---------- rendering ----------
 function render(){
-  document.getElementById("countLbl").textContent=S.studentsLoaded?active().length+" طالبًا":"";
+  document.getElementById("countLbl").textContent=S.studentsLoaded?countText():"";
   if(S.view==="today")renderToday();
   else if(S.view==="month")renderMonth();
   else renderStudents();
@@ -981,8 +991,9 @@ function renderTodayInner(){
   });
   const dis=S.canWrite?"":"disabled";
   box.innerHTML=`<div class="hd"><span class="n">رقم</span><span>اسم ولقب الطالب</span><span class="c1">ح / ج / غ</span><span class="c2">الثمن</span></div>`+
-   (rows.length?rows.map(s=>{const v=dd.att[s.id],th=dd.th[s.id];
-    return `<div class="row ${v===P?"is-p":v===A?"is-a":v===J?"is-j":""}" data-id="${s.id}">
+   (rows.length?rows.map((s,i)=>{const v=dd.att[s.id],th=dd.th[s.id];
+    const gh=mixed(rows)&&(i===0||isF(rows[i-1])!==isF(s))?sexHead(s,rows):"";
+    return gh+`<div class="row ${v===P?"is-p":v===A?"is-a":v===J?"is-j":""}" data-id="${s.id}">
       <span class="n num">${s.n}</span>
       <button class="name" data-act="open">${esc(s.name)}</button>
       <span class="pa"><button data-act="p" class="${v===P?"on-p":""}" aria-pressed="${v===P}" ${dis} aria-label="حاضر">ح</button><button data-act="j" class="${v===J?"on-j":""}" aria-pressed="${v===J}" ${dis} aria-label="حضور جزئي">ج</button><button data-act="a" class="${v===A?"on-a":""}" aria-pressed="${v===A}" ${dis} aria-label="غائب">غ</button></span>
@@ -1014,19 +1025,20 @@ function renderMonth(){
   let rows=list.filter(s=>!q||norm(s.name).includes(q)||String(s.n)===q);
   const r=x=>x==null?-1:x;
   if(false){}
-  else if(S.sortBy==="tot")rows.sort((a,b)=>per[b.id].t-per[a.id].t);
-  else if(S.sortBy==="rate")rows.sort((a,b)=>r(per[b.id].rate)-r(per[a.id].rate));
-  else if(S.sortBy==="low")rows.sort((a,b)=>(per[a.id].rate??101)-(per[b.id].rate??101));
+  else if(S.sortBy==="tot")rows.sort(sexFirst((a,b)=>per[b.id].t-per[a.id].t));
+  else if(S.sortBy==="rate")rows.sort(sexFirst((a,b)=>r(per[b.id].rate)-r(per[a.id].rate)));
+  else if(S.sortBy==="low")rows.sort(sexFirst((a,b)=>(per[a.id].rate??101)-(per[b.id].rate??101)));
+  const mx=mixed(rows),gStart=(s,i)=>mx&&(i===0||isF(rows[i-1])!==isF(s)),gN=s=>rows.filter(x=>isF(x)===isF(s)).length;
   const today=iso(new Date());
   document.getElementById("grid").innerHTML=
    `<thead><tr>${days.map(d=>{const x=parse(d);return `<th class="${d===today?"today":""}${d>today?" fut":""}" data-d="${d}" style="${d>today?"":"cursor:pointer"}" title="${d>today?"":"افتح هذا اليوم"}"><span class="dname">${DAYN[x.getDay()]}</span>${x.getDate()}</th>`}).join("")}<th>الحفظ الشهري</th><th>الحضور</th><th>جزئي</th><th>الغياب</th><th>النسبة</th></tr></thead>
-    <tbody>${rows.map(s=>{const st=per[s.id];return `<tr>${
+    <tbody>${rows.map((s,i)=>{const st=per[s.id];return (gStart(s,i)?`<tr class="sexrow"><td colspan="${days.length+5}">&nbsp;</td></tr>`:"")+`<tr>${
       dds.map((dd,i)=>{const v=dd.att[s.id],t=Number(dd.th[s.id])||0;return `<td data-s="${s.id}" data-d="${days[i]}" class="cell${days[i]>today?" fut":""} ${v===P?"p":v===A?"a":v===J?"j":""}">${isRec(v)?v:""}${t?`<span class="t num">${t}</span>`:""}</td>`}).join("")
     }<td class="tot num">${st.t||""}</td><td class="num">${st.p}</td><td class="num">${st.j}</td><td class="num">${st.a}</td><td class="rate num">${st.rate==null?"—":st.rate+"%"}</td></tr>`}).join("")}</tbody>`;
   // Names live in their own table beside the scrolling days, so they never move or vanish.
   document.getElementById("gridNames").innerHTML=
    `<thead><tr><th class="stickn">رقم</th><th class="sticky">اسم ولقب الطالب</th></tr></thead>
-    <tbody>${rows.map(s=>`<tr><td class="num stickn">${s.n}</td><td class="sticky"><button class="namebtn" data-id="${s.id}">${esc(s.name)}</button></td></tr>`).join("")}</tbody>`;
+    <tbody>${rows.map((s,i)=>(gStart(s,i)?`<tr class="sexrow"><td colspan="2" class="sticky">${isF(s)?"الإناث":"الذكور"} (${gN(s)})</td></tr>`:"")+`<tr><td class="num stickn">${s.n}</td><td class="sticky"><button class="namebtn" data-id="${s.id}">${esc(s.name)}</button></td></tr>`).join("")}</tbody>`;
   syncRows();
 }
 function syncRows(){
@@ -1057,10 +1069,10 @@ function renderStudents(){
   if(!S.studentsLoaded){box.innerHTML=`<div class="empty">جارٍ التحميل…</div>`;return}
   const q=norm(S.sq||"");
   const match=s=>!q||norm(s.name).includes(q)||String(s.n)===q||String(s.fileNo||"").includes(q)||String(s.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""));
-  const on=S.students.filter(s=>s.active!==false&&match(s)).sort(orderFn());
+  const on=S.students.filter(s=>s.active!==false&&match(s)).sort(sexFirst(orderFn()));
   const off=S.students.filter(s=>s.active===false&&match(s)).sort(orderFn());
   if(!on.length&&!off.length){box.innerHTML=`<div class="empty">${q?"لا يوجد طالب يطابق البحث.":"لا يوجد طلبة بعد. أضف أول طالب من الخانة أعلاه."}</div>`;return}
-  box.innerHTML=`<div class="lhead"><span>الطلبة الحاليون</span><b class="num">${on.length}</b></div>`+on.map(stuCard).join("")+
+  box.innerHTML=`<div class="lhead"><span>الطلبة الحاليون</span><b class="num">${on.length}</b></div>`+on.map((s,i)=>(mixed(on)&&(i===0||isF(on[i-1])!==isF(s))?sexHead(s,on):"")+stuCard(s)).join("")+
     (off.length?`<div class="lhead off"><span>الطلبة الموقوفون</span><b class="num">${off.length}</b></div>`+off.map(stuCard).join(""):"");
 }
 function renderStudentsOld(){
@@ -1518,7 +1530,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.4</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.5</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2722,7 +2734,7 @@ async function exportInv(){
   if(/^school\//.test(path)){for(const m of ["set","delete"]){const f=r[m];r[m]=async function(){const out=await f.apply(this,arguments);markChanged();return out}}}
   return r}})();
 // hook into the app's tab switching
-const _renderSch=render;render=function(){if(S.view==="school"){document.getElementById("countLbl").textContent=S.studentsLoaded?active().length+" طالبًا":"";renderSchool()}else _renderSch()};
+const _renderSch=render;render=function(){if(S.view==="school"){document.getElementById("countLbl").textContent=S.studentsLoaded?countText():"";renderSchool()}else _renderSch()};
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;document.getElementById("v-school").hidden=b.dataset.v!=="school"});
 try{if(localStorage.getItem("halaqa.view")==="school")setTimeout(()=>document.getElementById("tab-school")?.click(),0)}catch(_){}
 const schst=document.createElement("style");schst.textContent=`
@@ -3342,7 +3354,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.4"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.5"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
