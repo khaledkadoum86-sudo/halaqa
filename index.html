@@ -741,9 +741,15 @@ html.ipad .basmala .b1{font-size:1.9rem}
     <p class="note">الطالب الموقوف لا يظهر في حصة اليوم ولا في الجدول، ويبقى سجله محفوظًا ويمكن إرجاعه في أي وقت.</p>
   </section>
   <section id="v-school" hidden>
+    <div class="schnav" role="tablist" aria-label="صفحات المدرسة"><button type="button" role="tab" data-schpg="0" aria-selected="true">🏫 المدرسة</button><span class="schdots" aria-hidden="true"><i></i><i></i></span><button type="button" role="tab" data-schpg="1" aria-selected="false">📖 الطلبة والأحزاب</button></div>
+    <div class="schpager" id="schPager">
+    <div class="schpg" id="schPg1">
     <div class="schhead"><img src="logo.webp" alt="" width="52" height="52"><div><b>المدرسة القرءانية النموذجية</b><span>مسجد القطب الأمير عبد القادر · قسنطينة</span></div></div>
     <div class="seg" role="tablist"><button type="button" role="tab" data-pane="photos">📷 الصور</button><button type="button" role="tab" data-pane="inv">🪑 جرد الأثاث</button><button type="button" role="tab" data-pane="events">📅 الأحداث</button></div>
     <div id="schBody"></div>
+    </div>
+    <div class="schpg" id="schPg2"><div id="schStu"></div></div>
+    </div>
   </section>
   <section id="v-lib" hidden></section>
 </main>
@@ -1537,7 +1543,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 7.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3361,7 +3367,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 7.9"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.0"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4045,5 +4051,70 @@ const sexst=document.createElement("style");sexst.textContent=`
 `;document.head.appendChild(sexst);
 </script>
 
+<script>
+/* ===== School tab, page 2 (swipe left): every student with the number of ahzab memorized,
+   males and females each under a big heading. Page 1 is the existing school page. ===== */
+const SPG={i:0,ord:"name"};
+try{SPG.i=localStorage.getItem("halaqa.schpg")==="1"?1:0;SPG.ord=localStorage.getItem("halaqa.schpgord")==="hz"?"hz":"name"}catch(_){}
+const hzWord=c=>c===1?"حزب":c===2?"حزبان":c>=3&&c<=10?"أحزاب":"حزبًا";
+function schStuHTML(){
+  if(!S.studentsLoaded)return `<div class="empty">جارٍ التحميل…</div>`;
+  const L=active();if(!L.length)return `<div class="empty">لا يوجد طلبة بعد. أضفهم من تبويب «الطلبة».</div>`;
+  const rows=L.map(s=>({s,i:hzInfo(s)}));
+  const sum=a=>a.reduce((t,r)=>t+(r.i?r.i.c:0),0);
+  const sorter=SPG.ord==="hz"?(a,b)=>((b.i?b.i.c:-1)-(a.i?a.i.c:-1))||a.s.name.localeCompare(b.s.name,"ar"):(a,b)=>a.s.name.localeCompare(b.s.name,"ar");
+  const part=(f)=>{const R=rows.filter(r=>isF(r.s)===f).sort(sorter);if(!R.length)return"";const t=sum(R);
+    return `<div class="lhead sexh ${f?"fem":"mal"}"><span>${f?"قسم الإناث":"قسم الذكور"}</span><b class="num">${R.length}</b></div>
+    <div class="stuhz-list"><div class="stuhz-row stuhz-h"><span>#</span><span>${f?"اسم الطالبة":"اسم الطالب"}</span><span>عدد الأحزاب</span></div>
+    ${R.map((r,k)=>{const i=r.i;const sub=!i?"لم يُحدَّد حزبه بعد":i.khatm?"🏅 "+gw(r.s,"خاتم","خاتمة")+" للقرءان":gw(r.s,"يحفظ","تحفظ")+" الحزب "+i.cur;
+      return `<button type="button" class="stuhz-row" data-hzopen="${r.s.id}"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n"><b>${esc(r.s.name)}</b><em>${sub}</em></span><span class="stuhz-c${i?"":" none"}">${i?`<b class="num">${i.c}</b><em>${hzWord(i.c)}</em>`:"—"}</span></button>`}).join("")}
+    <div class="stuhz-row stuhz-f"><span></span><span>${f?"مجموع أحزاب الإناث":"مجموع أحزاب الذكور"}</span><span class="num">${t}</span></div></div>`};
+  const m=rows.filter(r=>!isF(r.s)).length,f=rows.length-m;
+  return `<div class="stats mini"><div class="stat"><b class="num">${rows.length}</b><span>طالبًا</span></div><div class="stat"><b class="num">${m}</b><span>ذكور</span></div><div class="stat"><b class="num">${f}</b><span>إناث</span></div><div class="stat"><b class="num">${sum(rows)}</b><span>مجموع الأحزاب</span></div></div>
+  <div class="seg hzord"><button type="button" data-hzord="name" aria-selected="${SPG.ord==="name"}">ترتيب حسب الاسم</button><button type="button" data-hzord="hz" aria-selected="${SPG.ord==="hz"}">حسب عدد الأحزاب</button></div>
+  ${part(false)}${part(true)}
+  <p class="note">اضغط على اسم لفتح ملفه. يُحسب عدد الأحزاب من الحزب المحدَّد لكل طالب ومن الأثمان المسجَّلة في الحصص.</p>`;
+}
+const _renderSchoolP=renderSchool;
+renderSchool=function(){_renderSchoolP();const b=document.getElementById("schStu");if(b)b.innerHTML=schStuHTML();schNavMark();schFit()};
+const schPager=()=>document.getElementById("schPager");
+const schSign=el=>getComputedStyle(el).direction==="rtl"?-1:1;
+function schNavMark(){document.querySelectorAll("#v-school [data-schpg]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.schpg===SPG.i)));
+  const d=document.querySelectorAll("#v-school .schdots i");d.forEach((x,k)=>x.classList.toggle("on",k===SPG.i))}
+function schFit(){const p=schPager();if(!p)return;const pg=p.children[SPG.i];if(pg)p.style.height=pg.offsetHeight+"px"}
+function schGo(i,smooth){const p=schPager();if(!p)return;SPG.i=i;try{localStorage.setItem("halaqa.schpg",String(i))}catch(_){}
+  p.scrollTo({left:schSign(p)*i*p.clientWidth,behavior:smooth?"smooth":"auto"});schNavMark();schFit();
+  const sec=document.getElementById("v-school"),top=sec.getBoundingClientRect().top+window.scrollY-70;if(window.scrollY>top)window.scrollTo({top:Math.max(0,top),behavior:smooth?"smooth":"auto"})}
+(function(){const p=schPager();if(!p)return;let t;
+  p.addEventListener("scroll",()=>{clearTimeout(t);t=setTimeout(()=>{const i=Math.round(Math.abs(p.scrollLeft)/Math.max(1,p.clientWidth));if(i!==SPG.i){SPG.i=i;try{localStorage.setItem("halaqa.schpg",String(i))}catch(_){}schNavMark()}schFit()},90)},{passive:true});
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>schFit());[...p.children].forEach(c=>ro.observe(c))}
+  window.addEventListener("resize",()=>schGo(SPG.i,false));
+  document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(b&&b.dataset.v==="school")requestAnimationFrame(()=>schGo(SPG.i,false))});
+  requestAnimationFrame(()=>schGo(SPG.i,false))})();
+document.addEventListener("click",e=>{
+  const g=e.target.closest&&e.target.closest("#v-school [data-schpg]");if(g){schGo(+g.dataset.schpg,true);return}
+  const o=e.target.closest&&e.target.closest("[data-hzord]");if(o){SPG.ord=o.dataset.hzord;try{localStorage.setItem("halaqa.schpgord",SPG.ord)}catch(_){}const b=document.getElementById("schStu");if(b)b.innerHTML=schStuHTML()}});
+const spgst=document.createElement("style");spgst.textContent=`
+.schnav{display:flex;align-items:center;gap:6px;margin:2px 0 10px}
+.schnav button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 4px;font:inherit;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer}
+.schnav button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.schdots{display:flex;gap:5px}.schdots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.schdots i.on{background:var(--accent)}
+.schpager{display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;transition:height .2s}
+.schpager::-webkit-scrollbar{display:none}
+.schpg{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
+.schchips{overscroll-behavior-x:contain}
+.seg.hzord{margin:10px 0}
+#schStu .stats.mini{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stuhz-list{background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;overflow:hidden;margin-bottom:14px}
+.stuhz-row{display:grid;grid-template-columns:30px minmax(0,1fr) 78px;gap:8px;align-items:center;width:100%;padding:10px 12px;border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;text-align:start}
+button.stuhz-row{cursor:pointer}
+.stuhz-row.stuhz-h{border-top:0;background:var(--surface-2);font-size:.78rem;font-weight:700;color:var(--muted);padding:8px 12px}
+.stuhz-row.stuhz-h span:last-child,.stuhz-row.stuhz-f span:last-child{text-align:center}
+.stuhz-k{color:var(--muted);font-size:.85rem;text-align:center}
+.stuhz-n b{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stuhz-n em{display:block;font-style:normal;font-size:.78rem;color:var(--muted)}
+.stuhz-c{text-align:center;line-height:1.1}.stuhz-c b{display:block;font-size:1.35rem;color:var(--accent)}.stuhz-c em{font-style:normal;font-size:.72rem;color:var(--muted)}.stuhz-c.none{color:var(--muted)}
+.stuhz-row.stuhz-f{background:var(--surface-2);font-weight:800;color:var(--accent)}.stuhz-row.stuhz-f span:last-child{font-size:1.15rem}
+`;document.head.appendChild(spgst);
+</script>
 </body>
 </html>
