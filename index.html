@@ -1021,7 +1021,7 @@ function renderTodayInner(){
     const gh=mixed(rows)&&(i===0||isF(rows[i-1])!==isF(s))?sexHead(s,rows):"";
     return gh+`<div class="row ${v===P?"is-p":v===A?"is-a":v===J?"is-j":""}" data-id="${s.id}">
       <span class="n num">${s.n}</span>
-      <button class="name" data-act="open">${esc(s.name)}</button>
+      <span class="nmcell"><button class="name" data-act="open">${esc(s.name)}</button>${typeof hzMini==="function"?hzMini(s):""}</span>
       <span class="pa"><button data-act="p" class="${v===P?"on-p":""}" aria-pressed="${v===P}" ${dis} aria-label="حاضر">ح</button><button data-act="j" class="${v===J?"on-j":""}" aria-pressed="${v===J}" ${dis} aria-label="حضور جزئي">ج</button><button data-act="a" class="${v===A?"on-a":""}" aria-pressed="${v===A}" ${dis} aria-label="غائب">غ</button></span>
       <span class="step"><button data-act="minus" ${dis} aria-label="إنقاص">−</button><input class="num" type="number" min="0" step="1" inputmode="numeric" id="th-${s.id}" value="${th==null||th===""?"":th}" ${dis} aria-label="عدد الأثمان"><button data-act="plus" ${dis} aria-label="زيادة">+</button></span>
     </div>`}).join(""):`<div class="empty">لا يوجد طالب يطابق البحث.</div>`);
@@ -1233,7 +1233,7 @@ document.getElementById("todayList").addEventListener("click",e=>{
     queue(S.date,"th",id,n||null); if(n&&dd.att[id]!==P&&dd.att[id]!==J)queue(S.date,"att",id,P)}
 });
 document.getElementById("todayList").addEventListener("change",e=>{
-  if(e.target.type!=="number")return;
+  if(e.target.type!=="number"||e.target.classList.contains("hzin"))return;
   const id=e.target.closest(".row").dataset.id;let n=Math.max(0,Math.round(Number(e.target.value)||0));
   {const cv=dayData(S.date).att[id]; queue(S.date,"th",id,n||null); if(n&&cv!==P&&cv!==J)queue(S.date,"att",id,P);}
 });
@@ -1556,7 +1556,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.3</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.4</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3380,7 +3380,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.3"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.4"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4091,6 +4091,9 @@ function schStuHTML(){
 
 /* quick edit of «completed ahzab» on the students-and-ahzab page: keeps the eighths already memorized in the current hizb */
 const HZQ={};
+/* compact version for the attendance rows («حصة اليوم» page 2) */
+function hzMini(s){const i=hzInfo(s),d=S.canWrite?"":"disabled";
+  return `<span class="hzmini"><span>${gw(s,"أتمّ","أتمّت")}</span><span class="hzstep mini" data-hzstep="${s.id}"><button type="button" class="hzpm" data-hzpm="-1" aria-label="إنقاص حزب" ${d}>−</button><input type="number" inputmode="numeric" min="0" max="60" class="num hzin" value="${i?i.c:""}" placeholder="—" aria-label="عدد الأحزاب التي ${gw(s,"أتمّها","أتمّتها")} ${esc(s.name)}" ${d}><button type="button" class="hzpm" data-hzpm="1" aria-label="زيادة حزب" ${d}>+</button></span></span>`}
 function hzQuickSave(id,n){const s=S.students.find(x=>x.id===id);if(!s)return;
   n=Math.max(0,Math.min(60,Math.round(n)||0));const i=hzInfo(s),r=i&&n<60?i.r:0;
   const off=hzClamp(n*8+r)-(thSums()[id]||0),dir=s.hzSet&&s.hzDir?s.hzDir:hzDirDefault();
@@ -4109,6 +4112,9 @@ const hzqst=document.createElement("style");hzqst.textContent=`
 .hzin{width:44px;height:38px;border:0;text-align:center;font:inherit;font-size:1.15rem;font-weight:800;color:var(--accent);background:transparent;-moz-appearance:textfield;padding:0}
 .hzin::-webkit-outer-spin-button,.hzin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .stuhz-n[data-hzopen]{cursor:pointer}
+.nmcell{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.hzmini{display:inline-flex;max-width:100%;flex-wrap:nowrap;align-items:center;gap:5px;font-size:.74rem;color:var(--muted)}
+.hzstep.mini{margin:0;border-radius:8px;flex:none}.hzstep.mini .hzpm{width:26px;height:26px;font-size:1rem}.hzstep.mini .hzin{width:32px;height:26px;font-size:.95rem}
 `;document.head.appendChild(hzqst);
 const _renderSchoolP=renderSchool;
 renderSchool=function(){_renderSchoolP();const b=document.getElementById("schStu");if(b)b.innerHTML=schStuHTML();schNavMark();schFit()};
