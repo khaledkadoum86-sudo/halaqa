@@ -733,7 +733,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
       </div>
       <span class="sbox"><input type="search" id="mq" placeholder="ابحث عن طالب…"><button type="button" class="sclear" data-for="mq" aria-label="مسح البحث" hidden>✕</button></span>
       <select id="sortBy" aria-label="الترتيب">
-        <option value="n">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option><option value="tot">الأكثر حفظًا</option><option value="rate">الأعلى حضورًا</option><option value="low">الأقل حضورًا</option>
+        <option value="n">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option><option value="hz">الأعلى أحزابًا</option><option value="tot">الأكثر حفظًا</option><option value="rate">الأعلى حضورًا</option><option value="low">الأقل حضورًا</option>
       </select>
       <button class="btn primary" id="exportBtn">تصدير Excel</button>
     </div>
@@ -745,7 +745,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
   <section id="v-students" hidden>
     <div class="bar">
       <span class="sbox"><input type="search" id="sq" placeholder="ابحث في الطلبة…"><button type="button" class="sclear" data-for="sq" aria-label="مسح البحث" hidden>✕</button></span>
-      <select id="stuOrder" aria-label="ترتيب الطلبة"><option value="name">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option></select>
+      <select id="stuOrder" aria-label="ترتيب الطلبة"><option value="name">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option><option value="hz">الأعلى أحزابًا</option></select>
     </div>
     <input type="file" id="vcfIn" accept=".vcf,text/vcard,text/x-vcard,text/directory" hidden>
     <div class="addrow"><button class="btn primary addbtn" type="button" id="addStuBtn"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>إضافة طالب</button></div>
@@ -916,10 +916,13 @@ const FCOLL=(()=>{try{return new Intl.Collator("ar",{numeric:true,sensitivity:"b
 const byFile=(a,b)=>{const x=String(a.fileNo||"").trim(),y=String(b.fileNo||"").trim();if(!x&&!y)return byName(a,b);if(!x)return 1;if(!y)return -1;return FCOLL.compare(x,y)||byName(a,b)};
 const byNum=(a,b)=>a.n-b.n;
 let ORDER=(()=>{try{return localStorage.getItem("halaqa.order")||"name"}catch(_){return "name"}})();
-const orderFn=()=>ORDER==="file"?byFile:ORDER==="num"?byNum:byName;
+/* most memorized first: athman counted from the hizb position (students without a set position go last) */
+const hzT=s=>{const i=typeof hzInfo==="function"?hzInfo(s):null;return i?i.t:-1};
+const byHz=(a,b)=>hzT(b)-hzT(a)||byName(a,b);
+const orderFn=()=>ORDER==="file"?byFile:ORDER==="num"?byNum:ORDER==="hz"?byHz:byName;
 function setOrder(o){ORDER=o;try{localStorage.setItem("halaqa.order",o)}catch(_){}
   const so=document.getElementById("stuOrder");if(so)so.value=o;
-  const sb=document.getElementById("sortBy");if(sb&&["n","file","num"].includes(sb.value))sb.value=o==="name"?"n":o;
+  const sb=document.getElementById("sortBy");if(sb&&["n","file","num","hz"].includes(sb.value))sb.value=o==="name"?"n":o;
   render()}
 // males first, then females (each part keeps the chosen order); the lists show a heading for each part
 const sexFirst=fn=>(a,b)=>(isF(a)-isF(b))||fn(a,b);
@@ -1210,7 +1213,7 @@ document.getElementById("mq").addEventListener("input",()=>syncClear("mq"));
 document.getElementById("q").oninput=e=>{S.q=e.target.value;renderToday()};
 document.getElementById("filter").onchange=e=>{S.filter=e.target.value;renderToday()};
 document.getElementById("mq").oninput=e=>{S.mq=e.target.value;renderMonth()};
-document.getElementById("sortBy").onchange=e=>{const v=e.target.value;S.sortBy=v;if(v==="n"||v==="file"||v==="num")setOrder(v==="n"?"name":v);else renderMonth()};
+document.getElementById("sortBy").onchange=e=>{const v=e.target.value;S.sortBy=v;if(v==="n"||v==="file"||v==="num"||v==="hz")setOrder(v==="n"?"name":v);else renderMonth()};
 function shiftMonth(dir){const [y,m]=S.month.split("-").map(Number);const d=new Date(y,m-1+dir,1);S.month=iso(d).slice(0,7);subscribeMonth();render()}
 document.getElementById("prevMonth").onclick=()=>shiftMonth(-1);
 document.getElementById("nextMonth").onclick=()=>shiftMonth(1);
@@ -1556,7 +1559,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.5</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.6</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3380,7 +3383,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.5"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.6"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4068,7 +4071,7 @@ const sexst=document.createElement("style");sexst.textContent=`
 /* ===== School tab, page 2 (swipe left): every student with the number of ahzab memorized,
    males and females each under a big heading. Page 1 is the existing school page. ===== */
 const SPG={i:0,ord:"name"};
-try{SPG.i=localStorage.getItem("halaqa.schpg")==="1"?1:0;const o=localStorage.getItem("halaqa.schpgord");SPG.ord=o==="hz"||o==="rate"?o:"name"}catch(_){}
+try{SPG.i=localStorage.getItem("halaqa.schpg")==="1"?1:0;const o=localStorage.getItem("halaqa.schpgord");SPG.ord=["num","file","hz","rate"].includes(o)?o:"name"}catch(_){}
 /* memorization rate: athman recorded ÷ sessions attended (present or partial), over every recorded day */
 function hzRates(){const out={};for(const [,r] of hzDays()){const att=r.att||{},th=r.th||{};
   for(const id in att){const v=att[id];if(v===P||v===J){const o=out[id]||(out[id]={n:0,t:0});o.n++;o.t+=Number(th[id])||0}}}
@@ -4084,17 +4087,19 @@ function schStuHTML(){
   const sum=a=>a.reduce((t,r)=>t+(r.i?r.i.c:0),0);
   const sorter=SPG.ord==="hz"?(a,b)=>((b.i?b.i.c:-1)-(a.i?a.i.c:-1))||a.s.name.localeCompare(b.s.name,"ar")
     :SPG.ord==="rate"?(a,b)=>((b.q?b.q.r:-1)-(a.q?a.q.r:-1))||((b.q?b.q.n:0)-(a.q?a.q.n:0))||a.s.name.localeCompare(b.s.name,"ar")
+    :SPG.ord==="num"?(a,b)=>byNum(a.s,b.s):SPG.ord==="file"?(a,b)=>byFile(a.s,b.s)
     :(a,b)=>a.s.name.localeCompare(b.s.name,"ar");
   const part=(f)=>{const R=rows.filter(r=>isF(r.s)===f).sort(sorter);if(!R.length)return"";const t=sum(R);
     return `<div class="lhead sexh ${f?"fem":"mal"}"><span>${f?"قسم الإناث":"قسم الذكور"}</span><b class="num">${R.length}</b></div>
     <div class="stuhz-list"><div class="stuhz-row stuhz-h"><span>#</span><span>${f?"اسم الطالبة":"اسم الطالب"}</span><span>الأحزاب التي أتمّها</span></div>
     ${R.map((r,k)=>{const i=r.i;const sub=!i?"لم يُحدَّد حزبه بعد":i.khatm?"🏅 "+gw(r.s,"خاتم","خاتمة")+" للقرءان":"وصل إلى الحزب "+i.cur;
+      const idl=SPG.ord==="num"||SPG.ord==="file"?`<em class="hzrate">الرقم <b class="num">${r.s.n}</b>${r.s.fileNo?` · رقم الملف <b class="num">${esc(r.s.fileNo)}</b>`:" · لا رقم ملف"}</em>`:"";
       const rt=SPG.ord==="rate"?`<em class="hzrate">${r.q?`معدل الحفظ: <b class="num">${rateTxt(r.q.r)}</b> ثمن في الحصة (${sessW(r.q.n)})`:gw(r.s,"لم يُسجَّل له حضور بعد","لم يُسجَّل لها حضور بعد")}</em>`:"";
-      return `<div class="stuhz-row"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n" data-hzopen="${r.s.id}" role="button" tabindex="0"><b>${esc(r.s.name)}</b><em>${sub}</em>${rt}</span><span class="stuhz-c"><em>${gw(r.s,"أتمّ","أتمّت")}</em><span class="hzstep" data-hzstep="${r.s.id}"><button type="button" class="hzpm" data-hzpm="1" aria-label="زيادة حزب" ${S.canWrite?"":"disabled"}>+</button><input type="number" inputmode="numeric" min="0" max="60" class="num hzin" value="${i?i.c:""}" placeholder="—" aria-label="عدد الأحزاب التي ${gw(r.s,"أتمّها","أتمّتها")} ${esc(r.s.name)}" ${S.canWrite?"":"disabled"}><button type="button" class="hzpm" data-hzpm="-1" aria-label="إنقاص حزب" ${S.canWrite?"":"disabled"}>−</button></span></span></div>`}).join("")}
+      return `<div class="stuhz-row"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n" data-hzopen="${r.s.id}" role="button" tabindex="0"><b>${esc(r.s.name)}</b><em>${sub}</em>${idl}${rt}</span><span class="stuhz-c"><em>${gw(r.s,"أتمّ","أتمّت")}</em><span class="hzstep" data-hzstep="${r.s.id}"><button type="button" class="hzpm" data-hzpm="1" aria-label="زيادة حزب" ${S.canWrite?"":"disabled"}>+</button><input type="number" inputmode="numeric" min="0" max="60" class="num hzin" value="${i?i.c:""}" placeholder="—" aria-label="عدد الأحزاب التي ${gw(r.s,"أتمّها","أتمّتها")} ${esc(r.s.name)}" ${S.canWrite?"":"disabled"}><button type="button" class="hzpm" data-hzpm="-1" aria-label="إنقاص حزب" ${S.canWrite?"":"disabled"}>−</button></span></span></div>`}).join("")}
     <div class="stuhz-row stuhz-f"><span></span><span>${f?"مجموع ما أتمّته الإناث":"مجموع ما أتمّه الذكور"}</span><span class="num">${t}</span></div></div>`};
   const m=rows.filter(r=>!isF(r.s)).length,f=rows.length-m;
   return `<div class="stats mini"><div class="stat"><b class="num">${rows.length}</b><span>طالبًا</span></div><div class="stat"><b class="num">${m}</b><span>ذكور</span></div><div class="stat"><b class="num">${f}</b><span>إناث</span></div><div class="stat"><b class="num">${sum(rows)}</b><span>حزبًا أُتِمّ</span></div></div>
-  <div class="seg hzord"><button type="button" data-hzord="name" aria-selected="${SPG.ord==="name"}">ترتيب حسب الاسم</button><button type="button" data-hzord="hz" aria-selected="${SPG.ord==="hz"}">حسب عدد الأحزاب</button><button type="button" data-hzord="rate" aria-selected="${SPG.ord==="rate"}">حسب معدل الحفظ</button></div>
+  <div class="seg hzord" role="group" aria-label="ترتيب القائمة">${[["name","الاسم"],["num","الرقم"],["file","رقم الملف"],["hz","الأعلى أحزابًا"],["rate","معدل الحفظ"]].map(([k,t])=>`<button type="button" data-hzord="${k}" aria-selected="${SPG.ord===k}">${t}</button>`).join("")}</div>
   ${part(false)}${part(true)}
   <p class="note">غيّر عدد الأحزاب بزرّي + و− أو اكتبه مباشرة، فيُحفظ وحده. اضغط على الاسم لفتح ملفه. يُحسب عدد الأحزاب المُتمَّمة من الحزب المحدَّد لكل طالب ومن الأثمان المسجَّلة في الحصص.${SPG.ord==="rate"?" ومعدل الحفظ = مجموع الأثمان المسجَّلة ÷ عدد الحصص التي حضرها (حضورًا كاملًا أو جزئيًا)، فلا تُحسب عليه الحصص التي غاب عنها.":""}</p>`;
 }
@@ -4154,7 +4159,7 @@ const spgst=document.createElement("style");spgst.textContent=`
 .schpager::-webkit-scrollbar{display:none}
 .schpg{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
 .schchips{overscroll-behavior-x:contain}
-.seg.hzord{margin:10px 0}
+.seg.hzord{margin:10px 0;flex-wrap:wrap}.seg.hzord button{flex:1 1 28%;white-space:nowrap}
 .stuhz-n em.hzrate{color:var(--accent);white-space:normal}.stuhz-n em.hzrate b{font-weight:700}
 #schStu .stats.mini{grid-template-columns:repeat(4,minmax(0,1fr))}
 .stuhz-list{background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;overflow:hidden;margin-bottom:14px}
