@@ -690,25 +690,38 @@ html.ipad .basmala .b1{font-size:1.9rem}
 
 <main class="wrap">
   <section id="v-today">
-    <div class="bar">
+    <div class="bar tdbar">
       <div class="datebox">
         <button id="prevDay" aria-label="اليوم السابق">› السابق</button>
         <div class="lbl datepick"><span id="dateLbl"></span><input type="date" id="dateIn" aria-label="اختيار تاريخ"></div>
         <button id="nextDay" aria-label="اليوم التالي">التالي ‹</button>
       </div>
-      <span class="sbox"><input type="search" id="q" placeholder="ابحث عن طالب…"><button type="button" class="sclear" data-for="q" aria-label="مسح البحث" hidden>✕</button></span>
-      <select id="filter" aria-label="تصفية">
+    </div>
+    <div class="strip" id="dayStrip" aria-label="أيام الشهر"></div>
+    <div class="schnav" role="tablist" aria-label="صفحات حصة اليوم"><button type="button" role="tab" data-tdpg="0" aria-selected="true">⚠️ الغيابات والإرسال</button><span class="schdots tddots" aria-hidden="true"><i></i><i></i></span><button type="button" role="tab" data-tdpg="1" aria-selected="false">✍️ تسجيل الحضور</button></div>
+    <div class="schpager" id="tdPager">
+    <div class="schpg" id="tdPg1">
+      <div class="bar tdsend">
+        <button class="btn" id="reportBtn">📤 تقرير اليوم</button>
+        <button class="btn" id="waCardBtn">🔒 بطاقة واتساب</button>
+      </div>
+      <div id="bkNote"></div>
+      <div id="hzAlerts"></div>
+      <div id="todayAbs"></div>
+    </div>
+    <div class="schpg" id="tdPg2">
+      <div class="bar">
+        <span class="sbox"><input type="search" id="q" placeholder="ابحث عن طالب…"><button type="button" class="sclear" data-for="q" aria-label="مسح البحث" hidden>✕</button></span>
+        <select id="filter" aria-label="تصفية">
         <option value="all">الكل</option><option value="p">الحاضرون</option><option value="j">حضور جزئي</option><option value="a">الغائبون</option><option value="none">غير مسجَّل</option>
       </select>
-      <button class="btn" id="allPresent">الباقي حاضر</button>
-      <button class="btn" id="reportBtn">📤 تقرير اليوم</button>
-      <button class="btn" id="waCardBtn">🔒 بطاقة واتساب</button>
+        <button class="btn" id="allPresent">الباقي حاضر</button>
+      </div>
+      <div class="stats" id="todayStats"></div>
+      <div class="list" id="todayList"><div class="empty">جارٍ تحميل قائمة الطلبة…</div></div>
+      <p class="note">اضغط «ح» للحضور و«ج» للحضور الجزئي و«غ» للغياب، واضغط مرة أخرى للمسح. عدد الأثمان المحفوظة يُسجَّل في خانة الثمن، وتسجيل ثمن يجعل الطالب حاضرًا تلقائيًا.</p>
     </div>
-    <div id="bkNote"></div>
-    <div class="strip" id="dayStrip" aria-label="أيام الشهر"></div>
-    <div class="stats" id="todayStats"></div>
-    <div class="list" id="todayList"><div class="empty">جارٍ تحميل قائمة الطلبة…</div></div>
-    <p class="note">اضغط «ح» للحضور و«ج» للحضور الجزئي و«غ» للغياب، واضغط مرة أخرى للمسح. عدد الأثمان المحفوظة يُسجَّل في خانة الثمن، وتسجيل ثمن يجعل الطالب حاضرًا تلقائيًا.</p>
+    </div>
   </section>
 
   <section id="v-month" hidden>
@@ -1543,7 +1556,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.1</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.2</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3367,7 +3380,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.1"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.2"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4115,6 +4128,41 @@ button.stuhz-row{cursor:pointer}
 .stuhz-c{text-align:center;line-height:1.1}.stuhz-c b{display:block;font-size:1.35rem;color:var(--accent)}.stuhz-c em{font-style:normal;font-size:.72rem;color:var(--muted)}.stuhz-c.none{color:var(--muted)}
 .stuhz-row.stuhz-f{background:var(--surface-2);font-weight:800;color:var(--accent)}.stuhz-row.stuhz-f span:last-child{font-size:1.15rem}
 `;document.head.appendChild(spgst);
+</script>
+<script>
+/* ===== «حصة اليوم» in two swipeable pages: 1) absences and sending cards, 2) attendance (males / females) ===== */
+const TPG={i:1};try{TPG.i=localStorage.getItem("halaqa.tdpg")==="0"?0:1}catch(_){}
+function renderTodayAbs(){const el=document.getElementById("todayAbs");if(!el)return;
+  if(!S.studentsLoaded){el.innerHTML="";return}
+  const dd=dayData(S.date),L=active().filter(s=>dd.att[s.id]===A);
+  const ab=absStreaks(S.date).length;
+  if(!L.length){el.innerHTML=ab?"":`<div class="empty">لا يوجد غائبون في هذا اليوم. سجّل الحضور من الصفحة التالية ← مرّر إلى اليسار.</div>`;return}
+  const row=s=>`<div class="tdabs-row"><button type="button" class="linkname" data-hzopen="${s.id}">${esc(s.name)}</button><button type="button" class="btn sm" data-wacabs="${s.id}">🔒 بطاقة غياب</button></div>`;
+  const m=L.filter(s=>!isF(s)),f=L.filter(isF);
+  el.innerHTML=`<div class="hznote abs tdabs"><b>غائبون في هذا اليوم <span class="num">(${L.length})</span></b>
+    ${m.length?`${f.length?`<div class="tdabs-h">الذكور</div>`:""}${m.map(row).join("")}`:""}
+    ${f.length?`${m.length?`<div class="tdabs-h fem">الإناث</div>`:""}${f.map(row).join("")}`:""}</div>`}
+const _rtTd=renderToday;renderToday=function(){_rtTd();renderTodayAbs();tdNav();tdFit()};
+const tdPager=()=>document.getElementById("tdPager");
+function tdNav(){document.querySelectorAll("[data-tdpg]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.tdpg===TPG.i)));
+  document.querySelectorAll(".tddots i").forEach((x,k)=>x.classList.toggle("on",k===TPG.i))}
+function tdFit(){const p=tdPager();if(!p)return;const pg=p.children[TPG.i];if(pg&&pg.offsetHeight)p.style.height=pg.offsetHeight+"px"}
+function tdGo(i,smooth){const p=tdPager();if(!p)return;TPG.i=i;try{localStorage.setItem("halaqa.tdpg",String(i))}catch(_){}
+  p.scrollTo({left:(getComputedStyle(p).direction==="rtl"?-1:1)*i*p.clientWidth,behavior:smooth?"smooth":"auto"});tdNav();tdFit()}
+(function(){const p=tdPager();if(!p)return;let t;
+  p.addEventListener("scroll",()=>{clearTimeout(t);t=setTimeout(()=>{if(!p.clientWidth)return;const i=Math.round(Math.abs(p.scrollLeft)/p.clientWidth);if(i!==TPG.i){TPG.i=i;try{localStorage.setItem("halaqa.tdpg",String(i))}catch(_){}tdNav()}tdFit()},90)},{passive:true});
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>tdFit());[...p.children].forEach(c=>ro.observe(c))}
+  window.addEventListener("resize",()=>tdGo(TPG.i,false));
+  document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(b&&b.dataset.v==="today")requestAnimationFrame(()=>tdGo(TPG.i,false))});
+  requestAnimationFrame(()=>tdGo(TPG.i,false))})();
+document.addEventListener("click",e=>{const g=e.target.closest&&e.target.closest("[data-tdpg]");if(g)tdGo(+g.dataset.tdpg,true)});
+const tdst=document.createElement("style");tdst.textContent=`
+.bar.tdbar{margin-bottom:8px}
+.bar.tdsend .btn{flex:1;min-height:44px}
+#tdPager{margin-top:4px}
+.tdabs .tdabs-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.tdabs .tdabs-h{margin-top:8px;font-weight:800;font-size:.9rem;color:#1B3557}.tdabs .tdabs-h.fem{color:#8E3567}
+`;document.head.appendChild(tdst);
 </script>
 </body>
 </html>
