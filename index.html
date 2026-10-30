@@ -1556,7 +1556,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.2</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.3</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3380,7 +3380,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.2"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.3"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4080,14 +4080,36 @@ function schStuHTML(){
     return `<div class="lhead sexh ${f?"fem":"mal"}"><span>${f?"قسم الإناث":"قسم الذكور"}</span><b class="num">${R.length}</b></div>
     <div class="stuhz-list"><div class="stuhz-row stuhz-h"><span>#</span><span>${f?"اسم الطالبة":"اسم الطالب"}</span><span>الأحزاب التي أتمّها</span></div>
     ${R.map((r,k)=>{const i=r.i;const sub=!i?"لم يُحدَّد حزبه بعد":i.khatm?"🏅 "+gw(r.s,"خاتم","خاتمة")+" للقرءان":"وصل إلى الحزب "+i.cur;
-      return `<button type="button" class="stuhz-row" data-hzopen="${r.s.id}"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n"><b>${esc(r.s.name)}</b><em>${sub}</em></span><span class="stuhz-c${i?"":" none"}">${i?`<em>${gw(r.s,"أتمّ","أتمّت")}</em><b class="num">${i.c}</b><em>${hzWord(i.c)}</em>`:"—"}</span></button>`}).join("")}
+      return `<div class="stuhz-row"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n" data-hzopen="${r.s.id}" role="button" tabindex="0"><b>${esc(r.s.name)}</b><em>${sub}</em></span><span class="stuhz-c"><em>${gw(r.s,"أتمّ","أتمّت")}</em><span class="hzstep" data-hzstep="${r.s.id}"><button type="button" class="hzpm" data-hzpm="1" aria-label="زيادة حزب" ${S.canWrite?"":"disabled"}>+</button><input type="number" inputmode="numeric" min="0" max="60" class="num hzin" value="${i?i.c:""}" placeholder="—" aria-label="عدد الأحزاب التي ${gw(r.s,"أتمّها","أتمّتها")} ${esc(r.s.name)}" ${S.canWrite?"":"disabled"}><button type="button" class="hzpm" data-hzpm="-1" aria-label="إنقاص حزب" ${S.canWrite?"":"disabled"}>−</button></span></span></div>`}).join("")}
     <div class="stuhz-row stuhz-f"><span></span><span>${f?"مجموع ما أتمّته الإناث":"مجموع ما أتمّه الذكور"}</span><span class="num">${t}</span></div></div>`};
   const m=rows.filter(r=>!isF(r.s)).length,f=rows.length-m;
   return `<div class="stats mini"><div class="stat"><b class="num">${rows.length}</b><span>طالبًا</span></div><div class="stat"><b class="num">${m}</b><span>ذكور</span></div><div class="stat"><b class="num">${f}</b><span>إناث</span></div><div class="stat"><b class="num">${sum(rows)}</b><span>حزبًا أُتِمّ</span></div></div>
   <div class="seg hzord"><button type="button" data-hzord="name" aria-selected="${SPG.ord==="name"}">ترتيب حسب الاسم</button><button type="button" data-hzord="hz" aria-selected="${SPG.ord==="hz"}">حسب عدد الأحزاب</button></div>
   ${part(false)}${part(true)}
-  <p class="note">اضغط على اسم لفتح ملفه. يُحسب عدد الأحزاب المُتمَّمة من الحزب المحدَّد لكل طالب ومن الأثمان المسجَّلة في الحصص.</p>`;
+  <p class="note">غيّر عدد الأحزاب بزرّي + و− أو اكتبه مباشرة، فيُحفظ وحده. اضغط على الاسم لفتح ملفه. يُحسب عدد الأحزاب المُتمَّمة من الحزب المحدَّد لكل طالب ومن الأثمان المسجَّلة في الحصص.</p>`;
 }
+
+/* quick edit of «completed ahzab» on the students-and-ahzab page: keeps the eighths already memorized in the current hizb */
+const HZQ={};
+function hzQuickSave(id,n){const s=S.students.find(x=>x.id===id);if(!s)return;
+  n=Math.max(0,Math.min(60,Math.round(n)||0));const i=hzInfo(s),r=i&&n<60?i.r:0;
+  const off=hzClamp(n*8+r)-(thSums()[id]||0),dir=s.hzSet&&s.hzDir?s.hzDir:hzDirDefault();
+  S.db.doc("students/"+id).update({hzSet:true,hzOff:off,hzDir:dir}).then(()=>toast(`حُفظ: ${s.name} ${gw(s,"أتمّ","أتمّت")} ${n?hzCnt(n):"0 حزب"}`)).catch(()=>toast("تعذّر الحفظ"))}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-hzpm]");if(!b)return;e.stopPropagation();
+  const w=b.closest("[data-hzstep]"),inp=w.querySelector("input"),id=w.dataset.hzstep;
+  const v=Math.max(0,Math.min(60,(parseInt(inp.value,10)||0)+(+b.dataset.hzpm)));inp.value=v;
+  clearTimeout(HZQ[id]);HZQ[id]=setTimeout(()=>hzQuickSave(id,v),700)},true);
+document.addEventListener("change",e=>{const inp=e.target.closest&&e.target.closest(".hzin");if(!inp)return;const id=inp.closest("[data-hzstep]").dataset.hzstep;
+  if(inp.value==="")return;clearTimeout(HZQ[id]);hzQuickSave(id,parseInt(inp.value,10))});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("hzin"))e.target.blur()});
+const hzqst=document.createElement("style");hzqst.textContent=`
+.hzstep{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);margin-top:2px}
+.hzpm{width:34px;height:38px;border:0;background:var(--surface-2);color:var(--accent);font:inherit;font-size:1.25rem;font-weight:800;cursor:pointer;padding:0}
+.hzpm:disabled{opacity:.4}
+.hzin{width:44px;height:38px;border:0;text-align:center;font:inherit;font-size:1.15rem;font-weight:800;color:var(--accent);background:transparent;-moz-appearance:textfield;padding:0}
+.hzin::-webkit-outer-spin-button,.hzin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stuhz-n[data-hzopen]{cursor:pointer}
+`;document.head.appendChild(hzqst);
 const _renderSchoolP=renderSchool;
 renderSchool=function(){_renderSchoolP();const b=document.getElementById("schStu");if(b)b.innerHTML=schStuHTML();schNavMark();schFit()};
 const schPager=()=>document.getElementById("schPager");
@@ -4119,7 +4141,7 @@ const spgst=document.createElement("style");spgst.textContent=`
 .seg.hzord{margin:10px 0}
 #schStu .stats.mini{grid-template-columns:repeat(4,minmax(0,1fr))}
 .stuhz-list{background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;overflow:hidden;margin-bottom:14px}
-.stuhz-row{display:grid;grid-template-columns:30px minmax(0,1fr) 84px;gap:8px;align-items:center;width:100%;padding:10px 12px;border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;text-align:start}
+.stuhz-row{display:grid;grid-template-columns:26px minmax(0,1fr) 118px;gap:8px;align-items:center;width:100%;padding:10px 12px;border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;text-align:start}
 button.stuhz-row{cursor:pointer}
 .stuhz-row.stuhz-h{border-top:0;background:var(--surface-2);font-size:.78rem;font-weight:700;color:var(--muted);padding:8px 12px}
 .stuhz-row.stuhz-h span:last-child,.stuhz-row.stuhz-f span:last-child{text-align:center}
