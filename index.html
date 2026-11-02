@@ -1671,7 +1671,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.2</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.3</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1999,14 +1999,36 @@ function makePDF(imgs){
   return new Blob(parts,{type:"application/pdf"});
 }
 const docKey=(id,slot)=>id+"|"+slot;
+// 10.3: national ID card — the front and the back are put together on one page (front above, back below)
+function idCombine(srcs){
+  const dim=k=>[k.naturalWidth||k.width,k.naturalHeight||k.height];
+  const cards=srcs.map(k=>{const[w,h]=dim(k);if(h<=w*1.15)return k;              // an ID card lies landscape: stand a portrait shot on its side
+    const c=document.createElement("canvas");c.width=h;c.height=w;const x=c.getContext("2d");x.translate(h,0);x.rotate(Math.PI/2);x.drawImage(k,0,0,w,h);return c});
+  const PW=1654,PH=2339,M=120,G=90,n=cards.length,boxW=Math.min(PW-2*M,1240),boxH=(PH-2*M-G*(n-1))/n;   // A4 at 200 dpi
+  const c=document.createElement("canvas");c.width=PW;c.height=PH;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,PW,PH);
+  const ds=cards.map(k=>{const[w,h]=dim(k),r=Math.min(boxW/w,boxH/h);return[w*r,h*r]});
+  let y=(PH-ds.reduce((a,d)=>a+d[1],0)-G*(n-1))/2;
+  cards.forEach((k,i)=>{const[w,h]=ds[i],l=(PW-w)/2;x.drawImage(k,l,y,w,h);x.strokeStyle="#d4d4d4";x.lineWidth=2;x.strokeRect(l,y,w,h);y+=h+G});
+  return c;
+}
+async function idSave(id,srcs){
+  srcs=srcs.slice(0,4);const c=srcs.length>1?idCombine(srcs):srcs[0];
+  const w0=c.naturalWidth||c.width,h0=c.naturalHeight||c.height,r=Math.min(1,(srcs.length>1?2400:1800)/Math.max(w0,h0));
+  const t=document.createElement("canvas");t.width=Math.max(1,Math.round(w0*r));t.height=Math.max(1,Math.round(h0*r));
+  const x=t.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,t.width,t.height);x.drawImage(c,0,0,t.width,t.height);
+  const b=await new Promise(ok=>t.toBlob(ok,"image/jpeg",.84));
+  await DOCDB.put(docKey(id,"nid"),{buf:await b.arrayBuffer(),type:"image/jpeg",w:t.width,h:t.height,at:Date.now(),sides:srcs.length});
+}
+const idToast=n=>toast(n>1?"حُفظ وجها البطاقة في صفحة واحدة":"حُفظ وجه واحد فقط؛ أعد المسح وصوّر الوجه ثم الظهر");
 async function renderDocs(id){
   const box=document.getElementById("docList");if(!box)return;
   const have={};for(const [slot] of DOCS){try{have[slot]=await DOCDB.get(docKey(id,slot))}catch(_){have[slot]=null}}
   const cnt=DOCS.filter(([k])=>have[k]).length;
   box.innerHTML=DOCS.map(([k,lb])=>{const r=have[k];
-    return `<div class="docrow"><span class="dl"><b>${lb}</b><em class="${r?"ok":""}">${r?"✓ محفوظة":"لم تُضف بعد"}</em></span>
-      <span class="da">${r?`<button type="button" class="btn sm" data-docview="${k}">عرض</button><button type="button" class="btn sm" data-docscan="${k}">إعادة المسح</button><button type="button" class="btn sm danger" data-docdel="${k}">حذف</button>`:`<button type="button" class="btn sm primary" data-docscan="${k}">📷 مسح ضوئي</button><label class="btn sm" for="docIn-${k}">من الصور</label>`}
-      <input type="file" id="docIn-${k}" class="docIn" data-slot="${k}" data-id="${id}" accept="image/*" hidden></span></div>`}).join("");
+    const nid=k==="nid",two=nid&&r&&r.sides>1;
+    return `<div class="docrow"><span class="dl"><b>${lb}</b><em class="${r?"ok":""}">${r?(two?"✓ محفوظة (الوجهان في صفحة واحدة)":"✓ محفوظة"):(nid?"صوّر الوجه ثم الظهر، فيجمعهما التطبيق في صفحة واحدة":"لم تُضف بعد")}</em></span>
+      <span class="da">${r?`<button type="button" class="btn sm" data-docview="${k}">عرض</button><button type="button" class="btn sm" data-docscan="${k}">إعادة المسح</button><button type="button" class="btn sm danger" data-docdel="${k}">حذف</button>`:`<button type="button" class="btn sm primary" data-docscan="${k}">${nid?"📷 مسح الوجهين":"📷 مسح ضوئي"}</button><label class="btn sm" for="docIn-${k}">${nid?"من الصور (اختر الصورتين)":"من الصور"}</label>`}
+      <input type="file" id="docIn-${k}" class="docIn" data-slot="${k}" data-id="${id}" accept="image/*"${nid?" multiple":""} hidden></span></div>`}).join("");
   const c=document.getElementById("docCount");if(c)c.textContent=cnt+" من "+DOCS.length;
   const p=document.getElementById("docPdf");if(p)p.disabled=!cnt;
 }
@@ -2022,8 +2044,9 @@ function addDocSection(id){
 const _openInfoDocs=openInfo;openInfo=function(id){_openInfoDocs(id);addDocSection(id)};
 document.addEventListener("change",async e=>{
   const inp=e.target.closest&&e.target.closest(".docIn");if(!inp)return;
-  const f=inp.files&&inp.files[0];inp.value="";if(!f)return;
+  const fs=[...(inp.files||[])],f=fs[0];inp.value="";if(!f)return;
   const id=inp.dataset.id,slot=inp.dataset.slot;
+  if(slot==="nid"){try{toast("جارٍ الحفظ…");const im=[];for(const x of fs.slice(0,2))im.push(await scLoadFile(x));await idSave(id,im);idToast(im.length)}catch(_){toast("تعذّر حفظ الصورة، جرّب صورة أخرى")}renderDocs(id);return}
   try{toast("جارٍ الحفظ…");
     const {blob,w,h}=await shrinkImage(f,/^ph/.test(slot)?1000:1800);
     await DOCDB.put(docKey(id,slot),{buf:await blob.arrayBuffer(),type:"image/jpeg",w,h,at:Date.now()});
@@ -2053,6 +2076,9 @@ document.addEventListener("click",async e=>{
   if(vw){viewDoc(id,vw.dataset.docview);return}
   const sc=e.target.closest("[data-docscan]");
   if(sc){const slot=sc.dataset.docscan,s=S.students.find(x=>x.id===id),lb=(DOCS.find(d=>d[0]===slot)||[])[1]||"";
+    if(slot==="nid"){openScanner({title:"بطاقة التعريف: الوجه ثم الظهر"+(s?" · "+s.name:""),multi:true,onDone:async pages=>{
+      try{const im=[];for(const p of pages.slice(0,2))im.push(await scLoadFile(p.blob));await idSave(id,im);idToast(im.length)}catch(_){toast("تعذّر الحفظ، حاول مرة أخرى")}
+      renderDocs(id)}});return}
     openScanner({title:lb+(s?" · "+s.name:""),photo:/^ph/.test(slot),onDone:async pages=>{const p=pages[0];
       await DOCDB.put(docKey(id,slot),{buf:await p.blob.arrayBuffer(),type:"image/jpeg",w:p.w,h:p.h,at:Date.now()});
       toast("حُفظت الوثيقة");renderDocs(id)}});return}
@@ -3514,7 +3540,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.2"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.3"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5070,8 +5096,11 @@ async function stfSave(){
       await stfPutDoc(ids[g.id],"form",g.form.page);files++;
       if(g.form.photo){await stfPutDoc(ids[g.id],"ph1",g.form.photo);files++}
     }
+    const nidOf={};   // 10.3: all ID-card pages of one student (front, back) become one page
     for(const d of docs){if(d.slot==="skip"||!d.to)continue;const id=d.to.startsWith("s:")?d.to.slice(2):ids[d.to];if(!id)continue;
+      if(d.slot==="nid"){(nidOf[id]=nidOf[id]||[]).push(d.c);continue}
       await stfPutDoc(id,d.slot,d.c);files++}
+    for(const id in nidOf){await idSave(id,nidOf[id]);files++}
     docs.forEach(d=>{if(d._u)URL.revokeObjectURL(d._u)});
     stfClose();
     toast([added?(added===1?"أُضيف طالب":"أُضيف "+added+" طلبة"):"",updated?(updated===1?"وأُكمل ملف طالب":"وأُكمل ملف "+updated+" طلبة"):"",files?"وحُفظت "+files+" وثيقة":""].filter(Boolean).join(" ")||"تم الحفظ");
