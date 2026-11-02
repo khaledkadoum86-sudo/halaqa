@@ -218,6 +218,20 @@ h2{font-family:var(--display);font-size:1.15rem;margin:18px 0 10px;color:var(--i
 .dchip.rec::after{content:"";position:absolute;bottom:4px;width:6px;height:6px;border-radius:50%;background:var(--present)}
 .dchip.td{border-color:var(--gold)}
 .dchip.fut{opacity:.4;cursor:default}
+.dchip.off{background:var(--line);border-style:dashed}
+.dchip.off b{color:var(--muted);text-decoration:line-through}
+.dchip.occ::before{content:"★";position:absolute;top:1px;inset-inline-start:5px;font-size:.62rem;color:var(--gold)}
+#offNote .offcard,#offNote .occask{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;margin:10px 0;padding:14px;border-radius:16px;border:1px solid var(--gold);background:var(--surface)}
+#offNote .offcard{background:linear-gradient(135deg,var(--accent),#0a4549);color:#fff;border-color:transparent}
+#offNote .offcard .note{color:rgba(255,255,255,.85)}
+#offNote .offic{font-size:2rem;line-height:1}
+#offNote .offtx{display:flex;flex-direction:column;gap:3px;min-width:0}
+#offNote .offtx b{font-size:1.08rem}
+#offNote .offk{font-size:.78rem;font-weight:700;letter-spacing:.02em;opacity:.9}
+#offNote .offbtns{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#offNote .offcard .btn:not(.wa){background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.35)}
+#offNote .occmini{margin:8px 0;padding:8px 12px;border-radius:12px;border:1px dashed var(--line);font-size:.88rem;color:var(--muted)}
+#offNote .offn{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:8px 0;padding:10px 14px;border:1px dashed var(--line);border-radius:12px;background:var(--surface)}
 .dchip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);opacity:1}
 .dchip.on span{color:var(--accent-ink)}
 .dchip.on.rec::after{background:var(--accent-ink)}
@@ -698,6 +712,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
       </div>
     </div>
     <div class="strip" id="dayStrip" aria-label="أيام الشهر"></div>
+    <div id="offNote"></div>
     <div class="schnav" role="tablist" aria-label="صفحات حصة اليوم"><button type="button" role="tab" data-tdpg="0" aria-selected="true">⚠️ الغيابات والإرسال</button><span class="schdots tddots" aria-hidden="true"><i></i><i></i></span><button type="button" role="tab" data-tdpg="1" aria-selected="false">✍️ تسجيل الحضور</button></div>
     <div class="schpager" id="tdPager">
     <div class="schpg" id="tdPg1">
@@ -716,6 +731,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
         <option value="all">الكل</option><option value="p">الحاضرون</option><option value="j">حضور جزئي</option><option value="a">الغائبون</option><option value="none">غير مسجَّل</option>
       </select>
         <button class="btn" id="allPresent">الباقي حاضر</button>
+        <button class="btn" id="offBtn" type="button">📅 لا حصة (عطلة)</button>
       </div>
       <div class="stats" id="todayStats"></div>
       <div class="list" id="todayList"><div class="empty">جارٍ تحميل قائمة الطلبة…</div></div>
@@ -891,8 +907,10 @@ const monthKey=s=>s.slice(0,7);
 const fmtDate=s=>{const d=parse(s);return DAYN[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]};
 const isStudy=d=>STUDY.includes(d.getDay());
 function shiftStudy(s,dir){const d=parse(s);do{d.setDate(d.getDate()+dir)}while(!isStudy(d));return iso(d)}
-function studyDays(mk){const [y,m]=mk.split("-").map(Number);const out=[];const d=new Date(y,m-1,1);
-  while(d.getMonth()===m-1){if(isStudy(d))out.push(iso(d));d.setDate(d.getDate()+1)}return out}
+/* a day marked «لا حصة (عطلة)» (days/<date>.off) is left out of the month, the statistics and «غير المسجَّل ← …» */
+const isOff=d=>{const r=S.days[d]||(typeof LDB!=="undefined"&&LDB.peek?LDB.peek("days/"+d):null);return !!(r&&r.off)};
+function studyDays(mk,all){const [y,m]=mk.split("-").map(Number);const out=[];const d=new Date(y,m-1,1);
+  while(d.getMonth()===m-1){if(isStudy(d)){const x=iso(d);if(all||!isOff(x))out.push(x)}d.setDate(d.getDate()+1)}return out}
 function age(s){const b=parse(s),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--;return a}
 const dmy=s=>{if(!s)return "";const [y,m,d]=s.split("-").map(Number);return d+" "+MON[m-1]+" "+y};
 function hizb(n){if(!n)return "0";const h=Math.floor(n/8),t=n%8;
@@ -996,11 +1014,15 @@ function renderToday(){
 function renderTodayInner(){
   document.getElementById("dateLbl").textContent=fmtDate(S.date);
   document.getElementById("dateIn").value=S.date;document.getElementById("dateIn").max=iso(new Date());
-  {const ds=studyDays(monthKey(S.date)),td=iso(new Date()),x0=parse(S.date);
+  {const ds=studyDays(monthKey(S.date),true),td=iso(new Date()),x0=parse(S.date);
    document.getElementById("dayStrip").innerHTML=`<span class="smon">${MON[x0.getMonth()]}</span>`+ds.map(d=>{const x=parse(d),a=dayData(d).att;
      const rec=Object.values(a).some(isRec);
-     return `<button class="dchip${d===S.date?" on":""}${rec?" rec":""}${d>td?" fut":""}${d===td?" td":""}" data-d="${d}" aria-pressed="${d===S.date}"><span>${DAYN[x.getDay()]}</span><b class="num">${x.getDate()}</b></button>`}).join("");}
+     const off=isOff(d),oc=!off&&occOf(d);
+     return `<button class="dchip${oc?" occ":""}${d===S.date?" on":""}${rec&&!off?" rec":""}${off?" off":""}${d>td?" fut":""}${d===td?" td":""}" data-d="${d}" aria-pressed="${d===S.date}"${oc?` title="${esc(oc.name)}"`:""}><span>${off?"عطلة":DAYN[x.getDay()]}</span><b class="num">${x.getDate()}</b></button>`}).join("");}
+  renderOffNote();
   const dd=dayData(S.date), list=active();
+  if(isOff(S.date)){document.getElementById("todayStats").innerHTML="";
+    const r0=dayRec(S.date)||{};document.getElementById("todayList").innerHTML=`<div class="empty">📅 لا حصة يوم ${fmtDate(S.date)}${r0.offName?" بمناسبة "+esc(r0.offName):" (عطلة)"}. لا يُسجَّل فيه حضور، ولا يُحسب في الإحصاءات.</div>`;return}
   let p=0,a=0,j=0,t=0;
   list.forEach(s=>{const v=dd.att[s.id];if(v===P)p++;else if(v===A)a++;else if(v===J)j++;t+=Number(dd.th[s.id])||0});
   document.getElementById("todayStats").innerHTML=
@@ -1218,8 +1240,63 @@ function shiftMonth(dir){const [y,m]=S.month.split("-").map(Number);const d=new 
 document.getElementById("prevMonth").onclick=()=>shiftMonth(-1);
 document.getElementById("nextMonth").onclick=()=>shiftMonth(1);
 
+// ---- a day without a session («لا حصة»: عطلة، مناسبة…) ----
+/* ---- national and religious holidays and official occasions (Algeria) ----
+   1 = عطلة رسمية مدفوعة الأجر، 0 = مناسبة ليست عطلة رسمية. Hijri dates follow the Umm al-Qura calendar and may
+   differ by a day from the moon sighting, so the teacher always confirms: nothing is marked without «نعم». */
+const OCC_G={"01-01":["رأس السنة الميلادية",1],"01-12":["رأس السنة الأمازيغية (يناير)",1],"02-18":["اليوم الوطني للشهيد",0],
+  "03-19":["عيد النصر",0],"04-16":["يوم العلم",0],"05-01":["عيد العمال",1],"05-08":["اليوم الوطني للذاكرة (8 ماي 1945)",0],
+  "07-05":["عيد الاستقلال والشباب",1],"08-20":["اليوم الوطني للمجاهد",0],"10-17":["اليوم الوطني للهجرة",0],
+  "11-01":["عيد اندلاع الثورة التحريرية المجيدة",1],"12-11":["ذكرى مظاهرات 11 ديسمبر 1960",0]};
+const OCC_H={"1-1":["رأس السنة الهجرية",1],"1-10":["عاشوراء",1],"3-12":["المولد النبوي الشريف",1],"7-27":["ذكرى الإسراء والمعراج",0],
+  "9-1":["أول أيام رمضان المبارك",0],"9-27":["ليلة القدر",0],"10-1":["عيد الفطر المبارك (اليوم الأول)",1],"10-2":["عيد الفطر المبارك (اليوم الثاني)",1],
+  "12-9":["يوم عرفة",0],"12-10":["عيد الأضحى المبارك (اليوم الأول)",1],"12-11":["عيد الأضحى المبارك (اليوم الثاني)",1]};
+const HIJF=(()=>{for(const c of["islamic-umalqura","islamic-civil","islamic"]){try{const f=new Intl.DateTimeFormat("en-u-ca-"+c+"-nu-latn",{day:"numeric",month:"numeric",year:"numeric",timeZone:"UTC"});
+  if(/^islamic/.test(f.resolvedOptions().calendar))return f}catch(_){}}return null})();
+function hijri(d){if(!HIJF)return null;const [y,m,dd]=d.split("-").map(Number),o={};
+  try{for(const x of HIJF.formatToParts(new Date(Date.UTC(y,m-1,dd,12))))o[x.type]=x.value}catch(_){return null}
+  return{d:+o.day,m:+o.month,y:parseInt(o.year)}}
+/* the occasion of a day: {name, off:1|0, rel:true for the Hijri ones} or null */
+function occOf(d){const g=OCC_G[d.slice(5)];if(g)return{name:g[0],off:g[1],rel:false};
+  const h=hijri(d),x=h&&OCC_H[h.m+"-"+h.d];return x?{name:x[0],off:x[1],rel:true}:null}
+const dayRec=d=>S.days[d]||(typeof LDB!=="undefined"&&LDB.peek?LDB.peek("days/"+d):null);
+function renderOffNote(){const el=document.getElementById("offNote");if(!el)return;
+  const d=S.date,off=isOff(d),r=dayRec(d),oc=occOf(d),dis=S.canWrite?"":"disabled";
+  if(off){const nm=(r&&r.offName)||"";
+    el.innerHTML=`<div class="offcard"><div class="offic">${r&&r.offRel?"🌙":nm?"🇩🇿":"📅"}</div><div class="offtx"><span class="offk">عطلة · لا حصة</span><b>${esc(nm||"لا حصة في هذا اليوم")}</b><span class="note">${fmtDate(d)} ${parse(d).getFullYear()}، لا يُسجَّل فيه حضور ولا يُحسب في الإحصاءات</span></div>
+      <div class="offbtns"><button type="button" class="btn sm wa" data-offwa ${dis}>📤 إعلان للأولياء</button><button type="button" class="btn sm" data-offset="0" ${dis}>إلغاء العطلة</button></div></div>`}
+  else if(oc&&!(r&&r.off===false)){
+    el.innerHTML=`<div class="occask"><div class="offic">${oc.rel?"🌙":"🇩🇿"}</div><div class="offtx"><b>${esc(oc.name)}</b><span class="note">${oc.off?"عطلة رسمية":"مناسبة، ليست عطلة رسمية"}${oc.rel?" · قد يختلف التاريخ بيوم حسب رؤية الهلال":""}</span><span>هل هذا اليوم عطلة لا حصة فيه؟</span></div>
+      <div class="offbtns"><button type="button" class="btn sm primary" data-offset="1" ${dis}>نعم، عطلة</button><button type="button" class="btn sm" data-offno ${dis}>لا، توجد حصة</button></div></div>`}
+  else if(oc)el.innerHTML=`<div class="occmini">${oc.rel?"🌙":"🇩🇿"} ${esc(oc.name)}</div>`;
+  else el.innerHTML="";
+  const b=document.getElementById("offBtn");if(b)b.hidden=off;
+  const ap=document.getElementById("allPresent");if(ap)ap.hidden=off}
+/* a moon-dependent holiday may fall a day before or after the calculated date */
+function occNear(d){const o=occOf(d);if(o)return o;const sh=k=>{const x=parse(d);x.setDate(x.getDate()+k);return iso(x)};
+  for(const k of[1,-1]){const n=occOf(sh(k));if(n&&n.rel&&n.off)return n}return null}
+async function setOff(d,on){
+  if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
+  if(on){const a=dayData(d).att;const n=Object.values(a).filter(isRec).length;
+    if(n&&!confirm(`سُجّل في هذا اليوم ${n} طالبًا. سيبقى ما سُجّل محفوظًا، لكن اليوم لن يُحسب في الحضور ولا في الإحصاءات. متابعة؟`))return}
+  if(S.pending[d]){clearTimeout(timers[d]);await flush(d)}
+  const oc=on===true?occNear(d):null,extra=on===true?{offName:oc?oc.name:"",offRel:!!(oc&&oc.rel)}:{};
+  const ref=S.db.doc("days/"+d);
+  try{const cur=await ref.get(),was=!!(cur.exists&&cur.data()&&cur.data().off),val=Object.assign({off:on},extra);
+    if(cur.exists)await ref.update(val);else await ref.set(Object.assign({date:d,month:monthKey(d),att:{},th:{}},val));
+    const b=S.days[d]||(S.days[d]={date:d,month:monthKey(d),att:{},th:{}});Object.assign(b,val);
+    toast(on?"سُجّل اليوم عطلة، لا حصة فيه":was?"أُلغيت العطلة، صار يوم دراسة":"حُفظ: توجد حصة في هذا اليوم");render()}
+  catch(_){toast("تعذّر الحفظ")}}
+document.getElementById("offBtn").onclick=()=>setOff(S.date,true);
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-offset]");if(b){setOff(S.date,b.dataset.offset==="1");return}
+  if(e.target.closest("[data-offno]")){setOff(S.date,false);return}
+  if(e.target.closest("[data-offwa]")&&typeof openWaCard==="function"){const r=dayRec(S.date)||{};openWaCard("nosess");
+    if(r.offName){WAC.f.nsReason="بمناسبة "+r.offName;const fe=document.getElementById("wacFields");if(fe)fe.innerHTML=wacFields();wacDraw()}}
+});
 document.getElementById("allPresent").onclick=()=>{
   if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
+  if(isOff(S.date)){toast("هذا اليوم عطلة، لا حصة فيه");return}
   const dd=dayData(S.date);let c=0;
   active().forEach(s=>{const v=dd.att[s.id];if(!isRec(v)){queue(S.date,"att",s.id,P);c++}});
   toast(c?`سُجِّل ${c} طالبًا حاضرًا`:"كل الطلبة مسجَّلون");
@@ -1559,7 +1636,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.6</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.7</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3255,14 +3332,18 @@ const syncClone=o=>JSON.parse(JSON.stringify(o));
 function fillGaps(base,loc){for(const k in loc){const a=base[k],b=loc[k];
   if(!(k in base))base[k]=syncClone(b);
   else if(a&&b&&typeof a==="object"&&typeof b==="object"&&!Array.isArray(a)&&!Array.isArray(b))fillGaps(a,b)}return base}
+/* both copies exist and are plain records (a day, a student…): they can be merged field by field */
+const mergeable=(a,b)=>!!a&&!!b&&typeof a==="object"&&typeof b==="object"&&!Array.isArray(a)&&!Array.isArray(b);
 const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pulled:false,pushing:false,unsub:null,t:null,err:"",big:"",started:false,
   skip:p=>p.startsWith("data/users/")||p==="meta/backup",
   load(){let s=null;try{s=JSON.parse(localStorage.getItem(SYNC_KEY)||"null")}catch(_){}
-    this.st=Object.assign({meta:{},dirty:[],cursor:null,uid:"",email:"",lastOk:0},s||{});this.dirty=new Set(this.st.dirty)},
-  persist(){clearTimeout(this.pt);this.pt=null;this.st.dirty=[...this.dirty];try{localStorage.setItem(SYNC_KEY,JSON.stringify(this.st))}catch(_){}},
+    this.st=Object.assign({meta:{},dirty:[],force:[],cursor:null,uid:"",email:"",lastOk:0},s||{});this.dirty=new Set(this.st.dirty);this.force=new Set(this.st.force)},
+  persist(){clearTimeout(this.pt);this.pt=null;this.st.dirty=[...this.dirty];this.st.force=[...this.force];try{localStorage.setItem(SYNC_KEY,JSON.stringify(this.st))}catch(_){}},
+  /* set while a backup is restored: those records replace the other devices' copies instead of being merged with them */
+  restoring:false,
+  touch(p){if(this.skip(p))return;if(this.restoring)this.force.add(p);this.st.meta[p]=Date.now();this.dirty.add(p);this.persistSoon();this.schedule()},
   /* many quick edits → one save of the sync list (at once if the app is going to the background) */
   persistSoon(){if(document.visibilityState==="hidden"){this.persist();return}if(!this.pt)this.pt=setTimeout(()=>this.persist(),300)},
-  touch(p){if(this.skip(p))return;this.st.meta[p]=Date.now();this.dirty.add(p);this.persistSoon();this.schedule()},
   schedule(ms){clearTimeout(this.t);if(this.ready&&this.pulled)this.t=setTimeout(()=>this.push(),ms==null?1500:ms)},
   col(){return this.db.collection("users").doc(this.user.uid).collection("recs")},
   async libs(){
@@ -3305,7 +3386,15 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
       const s=[r.st.seconds,r.st.nanoseconds];if(!max||s[0]>max[0]||(s[0]===max[0]&&s[1]>max[1]))max=s;
       const p=r.p;if(this.skip(p))return;
       const la=this.st.meta[p];
-      if(la!=null&&r.at<=la)return; // already have it, or ours is newer
+      if(la!=null&&r.at<=la){ // already have it, or ours is newer
+        // ours is newer, but the other device may have added things ours lacks: take them, keep ours where both wrote
+        if(r.at<la){const loc=LDB._raw()[p];let out=loc;
+          if(!r.rep&&!r.del&&!this.force.has(p)){let v;try{v=JSON.parse(r.j)}catch(_){v=null}
+            if(mergeable(v,loc)){const m=fillGaps(syncClone(loc),v);if(JSON.stringify(m)!==JSON.stringify(loc)){out=m;apply.push([p,m])}}}
+          // an older copy reached the account after ours (sent late by a device that was offline): send ours again
+          const oj=out===undefined?null:JSON.stringify(out);
+          if(oj!==(r.del?null:r.j))this.dirty.add(p)}
+        return}
       let v;try{v=r.del?undefined:JSON.parse(r.j)}catch(_){return}
       const loc=LDB._raw()[p];
       if(la===-1&&this.dirty.has(p)){ // this device is the reference: keep its copy, take only what it lacks
@@ -3315,11 +3404,17 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
         const m=fillGaps(syncClone(v),loc);
         if(JSON.stringify(m)!==JSON.stringify(v)){this.st.meta[p]=Date.now();apply.push([p,m]);return} // merged copy goes back up
       }
-      this.st.meta[p]=r.at;this.dirty.delete(p);apply.push([p,v]);
+      // two devices changed the same record (e.g. the same day, different students): the newer copy wins
+      // where both wrote, and whatever only this device has is kept and sent back up, so nothing is lost
+      if(!r.rep&&!this.force.has(p)&&mergeable(v,loc)){
+        const m=fillGaps(syncClone(v),loc);
+        if(JSON.stringify(m)!==JSON.stringify(v)){this.st.meta[p]=Date.now();this.dirty.add(p);apply.push([p,m]);return}
+      }
+      this.st.meta[p]=r.at;this.dirty.delete(p);this.force.delete(p);apply.push([p,v]);
     });
     if(apply.length)LDB._applyRemote(apply);
     this.st.cursor=max;this.st.lastOk=Date.now();this.err="";this.persist();
-    if(!this.pulled){this.pulled=true;this.schedule(200)}
+    if(!this.pulled){this.pulled=true;this.schedule(200)}else if(this.dirty.size)this.schedule(300); // merged copies go back up
     if(apply.length)setSync("متزامن ✓");
     renderSyncSec();
   },
@@ -3334,10 +3429,11 @@ const SYNC={st:null,dirty:new Set(),auth:null,db:null,user:null,ready:false,pull
           let at=this.st.meta[p];if(!(at>0)){at=Date.now();this.st.meta[p]=at}
           const has=Object.prototype.hasOwnProperty.call(raw,p),j=has?JSON.stringify(raw[p]):null;
           if(j&&j.length>900000){this.big=p;this.dirty.delete(p);continue}
-          b.set(this.col().doc(encodeURIComponent(p)),{p,j,del:!has,at,dev:DEV,st:SV()});sent.push([p,at]);
+          const rep=this.force.has(p);
+          b.set(this.col().doc(encodeURIComponent(p)),{p,j,del:!has,at,dev:DEV,st:SV(),rep});sent.push([p,at,rep]);
         }
         if(sent.length)await b.commit();
-        for(const [p,at] of sent)if(this.st.meta[p]===at)this.dirty.delete(p);
+        for(const [p,at,rep] of sent)if(this.st.meta[p]===at){this.dirty.delete(p);if(rep)this.force.delete(p)}
         this.persist();
       }
       this.err="";this.st.lastOk=Date.now();this.persist();setSync("متزامن ✓");
@@ -3383,7 +3479,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.6"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.7"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -3436,6 +3532,8 @@ addEventListener("online",()=>{if(!SYNC.started)SYNC.start();else{SYNC.listen();
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")SYNC.push();else if(SYNC.ready){SYNC.listen();SYNC.schedule(500)}});
 SYNC.load();
 window.SYNCHOOK=p=>SYNC.touch(p);
+/* restoring a backup replaces the records on the other devices too (no merging with what they had) */
+{const _ldSync=LDB.load;LDB.load=function(d){SYNC.restoring=true;try{return _ldSync(d)}finally{SYNC.restoring=false}}}
 if(FB_CONFIG)setTimeout(()=>SYNC.start(),300);
 </script>
 
