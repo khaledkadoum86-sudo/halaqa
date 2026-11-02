@@ -5855,8 +5855,7 @@ window.halaqaScanToBox=function(){
     try{const cs=[];for(const p of pages)cs.push(await stfFromBlob(p.blob));await ibxAdd(cs)}catch(_){toast("تعذّر حفظ الصور، حاول مرة أخرى");return}
     if(S.view!=="students")document.getElementById("tab-students")?.click();ibxSort()}});
 };
-(function(){const g=HM_GROUPS.find(x=>x[0]==="الطلبة");if(!g||g[1].some(t=>t[0]==="@scan"))return;
-  const i=g[1].findIndex(t=>t[0]==="@stf");g[1].splice(i+1,0,["@scan","📷","مسح وثائق","صوّر، ويرتّب وحده"])})();
+/* 10.2: no separate «مسح وثائق» tile on the home page; «صندوق الوثائق» opens the box, whose «📷 تصوير أوراق» button opens the same scanner */
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest('[data-hm="@scan"]');if(!t)return;e.stopImmediatePropagation();halaqaScanToBox()},true);
 try{if(document.querySelector(".hmgrid"))renderHome()}catch(_){}
 </script>
