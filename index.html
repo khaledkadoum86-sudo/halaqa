@@ -1653,7 +1653,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.5</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.6</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3496,7 +3496,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.5"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.6"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5151,20 +5151,27 @@ const stfst=document.createElement("style");stfst.textContent=`
    The key is kept on the student (portalKey) so every device of the teacher shares the same link. */
 const PT_URL="https://khaledkadoum86-sudo.github.io/halaqa/talib.html";
 const PT_ST="halaqa.portal.v1";
-const PT_RULES=`rules_version = '2';
+/* The rules are written for this teacher's own account only (their uid), so a stranger who makes an account
+   in the same Firebase project can neither write summaries nor store anything at all. */
+function ptRules(){const u=(SYNC&&SYNC.user&&SYNC.user.uid||"").replace(/[^A-Za-z0-9]/g,"");
+  const me=u?`request.auth != null && request.auth.uid == "${u}"`:`request.auth != null && request.auth.uid == uid`;
+  return `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if ${u?me+" && uid == \""+u+"\"":me};
     }
     match /portal/{key} {
       allow get: if true;
-      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
-      allow update: if request.auth != null && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+      allow list: if false;
+      allow create, update: if ${u?me+" && request.resource.data.owner == \""+u+"\"":"false"};
+      allow delete: if ${u?me:"false"};
+    }
+    match /{other=**} {
+      allow read, write: if false;
     }
   }
-}`;
+}`}
 const PT={t:null,busy:false,err:"",last:0};
 function ptState(){let s=null;try{s=JSON.parse(localStorage.getItem(PT_ST)||"null")}catch(_){}return Object.assign({sent:{},drop:[]},s||{})}
 function ptSave(s){try{localStorage.setItem(PT_ST,JSON.stringify(s))}catch(_){}}
@@ -5221,7 +5228,7 @@ async function ptRevoke(id,renew){
 function ptStatusHtml(){
   if(!ptOn())return `<div class="ptwarn">روابط المتابعة تعمل عبر حسابك في المزامنة. ادخل إلى حساب المزامنة من الإعدادات أولًا، ثم عُد إلى هنا.</div>`;
   if(PT.err==="rules")return `<div class="ptwarn"><b>خطوة واحدة في Firebase:</b> افتح مشروعك في Firebase ← Firestore Database ← Règles (القواعد)، واستبدل ما فيها بهذا النص ثم اضغط «Publier»:
-    <textarea readonly class="ptrules">${esc(PT_RULES)}</textarea><button type="button" class="btn sm" data-pt="copyrules">نسخ القواعد</button> <button type="button" class="btn sm" data-pt="retry">أعد المحاولة</button></div>`;
+    <textarea readonly class="ptrules">${esc(ptRules())}</textarea><button type="button" class="btn sm" data-pt="copyrules">نسخ القواعد</button> <button type="button" class="btn sm" data-pt="retry">أعد المحاولة</button></div>`;
   if(PT.err==="net")return `<div class="note">لم تُحدَّث الصفحات بعد (لا يوجد اتصال). ستُحدَّث عند عودة الإنترنت.</div>`;
   return PT.last?`<div class="note">صفحات المتابعة محدَّثة ✓</div>`:`<div class="note">تُحدَّث صفحات المتابعة وحدها بعد كل تسجيل.</div>`;
 }
@@ -5237,6 +5244,9 @@ function ptOpen(only){
     <h3>رابط متابعة ${only?"":"الطلبة"}</h3>
     <div class="note">لكل طالب رابط خاص يرسله إلى واتساب الولي أو الطالب، فيرى فيه حضوره وغيابه وموضع حفظه، ويتحدّث وحده. لا يظهر فيه الهاتف ولا العنوان ولا الوثائق ولا الملاحظات.</div>
     <div id="ptState">${ptStatusHtml()}</div>
+    ${ptOn()?`<details class="ptsec" style="margin:8px 0"><summary style="cursor:pointer;font-weight:600">🔒 قواعد الحماية الخاصة بحسابك (مرة واحدة)</summary>
+      <div class="note">هذه القواعد تجعل الكتابة في قاعدة بياناتك لحسابك أنت وحده، فلا يستطيع أحد غيرك إنشاء رابط أو تغيير صفحة طالب. افتح Firebase ← Firestore Database ← Règles، واستبدل ما فيها بهذا النص ثم اضغط «Publier».</div>
+      <textarea readonly class="ptrules">${esc(ptRules())}</textarea><button type="button" class="btn sm" data-pt="copyrules">نسخ القواعد</button></details>`:""}
     ${!only&&list.some(s=>!s.portalKey)?`<button type="button" class="btn" data-pt="makeall" ${ptOn()&&S.canWrite?"":"disabled"} style="margin:8px 0">إنشاء الروابط لكل الطلبة</button>`:""}
     <div class="ptlist" id="ptList">${list.map(ptRow).join("")||`<div class="note">لا يوجد طلبة.</div>`}</div>
     <div style="margin-top:14px;display:flex;justify-content:flex-end"><button class="btn" type="button" data-act="close">إغلاق</button></div>
@@ -5251,7 +5261,7 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest&&e.target.closest(".ptsheet [data-pt]");if(!b)return;
   const a=b.dataset.pt,row=b.closest("[data-ptid]"),id=row&&row.dataset.ptid,s=id&&S.students.find(x=>x.id===id);
   try{
-    if(a==="copyrules")return ptCopy(PT_RULES);
+    if(a==="copyrules")return ptCopy(ptRules());
     if(a==="retry"){PT.err="";ptPaintState();return ptPublish()}
     if(a==="make"){b.disabled=true;await ptCreate(id);ptRefresh();return}
     if(a==="makeall"){b.disabled=true;for(const x of S.students)if(x.active!==false&&!x.portalKey)await ptCreate(x.id);ptRefresh();toast("أُنشئت الروابط");return}

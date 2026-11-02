@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://firestore.googleapis.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0e5a4f">
@@ -74,6 +75,24 @@ const mname=k=>{const[y,m]=k.split("-").map(Number);return MON[m-1]+" "+y};
 const th=n=>n===1?"ثمن واحد":n===2?"ثمنان":n<=10?n+" أثمان":n+" ثمنًا";
 const hzc=c=>c===1?"حزب واحد":c===2?"حزبان":c<=10?c+" أحزاب":c+" حزبًا";
 const rate=(p,j,a)=>(p+j+a)?Math.round(100*(p+j/2)/(p+j+a)):null;
+/* Every value is checked before it reaches the page: numbers stay numbers, dates stay dates,
+   statuses stay p/a/j, and text is escaped. A forged or damaged summary can show nothing harmful. */
+const N=v=>{v=Math.floor(Number(v));return isFinite(v)&&v>=0&&v<100000?v:0};
+const DT=v=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)?v:null;
+const MK=v=>typeof v==="string"&&/^\d{4}-\d{2}$/.test(v)?v:null;
+const STS=v=>v==="p"||v==="a"||v==="j"?v:null;
+const ARR=v=>Array.isArray(v)?v.slice(0,400):[];
+function clean(d){
+  if(!d||typeof d!=="object")throw 0;
+  const mon=m=>({m:MK(m&&m.m),p:N(m&&m.p),a:N(m&&m.a),j:N(m&&m.j),th:N(m&&m.th),abs:ARR(m&&m.abs).map(DT).filter(Boolean),part:ARR(m&&m.part).map(DT).filter(Boolean)});
+  const z=d.hz&&typeof d.hz==="object"?{cur:Math.min(N(d.hz.cur),60),c:Math.min(N(d.hz.c),60),r:Math.min(N(d.hz.r),8),t:Math.min(N(d.hz.t),480),khatm:d.hz.khatm===true}:null;
+  const y=d.year||{},up=Number(d.upd);
+  return{name:String(d.name==null?"":d.name).slice(0,120),sex:d.sex==="f"?"f":"m",active:d.active!==false,
+    teacher:d.teacher?String(d.teacher).slice(0,120):"",upd:isFinite(up)&&up>0?up:Date.now(),hz:z,
+    year:{p:N(y.p),a:N(y.a),j:N(y.j),th:N(y.th)},
+    months:ARR(d.months).slice(0,24).map(mon).filter(m=>m.m),
+    recent:ARR(d.recent).slice(0,30).map(x=>({d:DT(x&&x.d),s:STS(x&&x.s),th:N(x&&x.th)})).filter(x=>x.d&&x.s)};
+}
 const key=(location.hash||"").replace(/^#/,"").replace(/[^A-Za-z0-9]/g,"");
 const out=document.getElementById("out");
 function fail(t){out.innerHTML=`<div class="msg">${t}</div>`}
@@ -84,12 +103,12 @@ async function load(){
   catch(_){fail("لا يوجد اتصال بالإنترنت. أعد المحاولة بعد قليل.");return}
   if(r.status===404||r.status===403){fail("هذا الرابط غير صالح أو أوقفه المعلّم.<br>اطلب من المعلّم الرابط الجديد.");return}
   if(!r.ok){fail("تعذّر التحميل، أعد المحاولة بعد قليل.");return}
-  let d;try{d=JSON.parse((await r.json()).fields.j.stringValue)}catch(_){fail("تعذّر قراءة البيانات.");return}
+  let d;try{d=clean(JSON.parse((await r.json()).fields.j.stringValue))}catch(_){fail("تعذّر قراءة البيانات.");return}
   paint(d);
 }
 function paint(d){
   const f=d.sex==="f",T=f?"الطالبة":"الطالب",g=(m,w)=>f?w:m;
-  document.title="متابعة "+d.name;
+  document.title="متابعة "+d.name.replace(/[<>]/g,"");
   const cur=d.months&&d.months[0],now=new Date(),nowK=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
   const thisM=d.months.find(m=>m.m===nowK)||{m:nowK,p:0,a:0,j:0,th:0,abs:[],part:[]};
   let h=`<div class="who"><small>متابعة ${T}</small><h1>${esc(d.name)}</h1>
