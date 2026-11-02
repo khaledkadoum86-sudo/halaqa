@@ -2,6 +2,7 @@ import UIKit
 import WebKit
 import LocalAuthentication
 import QuickLook
+import Vision
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/")!
 let appHost = "khaledkadoum86-sudo.github.io"
@@ -26,6 +27,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         content.addUserScript(WKUserScript(source: "window.HALAQA_NATIVE=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBio")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBook")
+        content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaOCR")
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -49,6 +51,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         if message.name == "halaqaBook" { handleBook(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
+        if message.name == "halaqaOCR" { handleOCR(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         let action = (message.body as? [String: Any])?["action"] as? String ?? ""
         let context = LAContext()
         var error: NSError?
@@ -58,6 +61,41 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         context.localizedCancelTitle = "استخدام الرمز السري"
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "فتح سجل متابعة الطلبة") { ok, _ in
             DispatchQueue.main.async { replyHandler(ok, nil) }
+        }
+    }
+
+    // MARK: - Reading forms and documents (window.webkit.messageHandlers.halaqaOCR) — Apple's text recognition, on this device
+
+    private func handleOCR(_ body: [String: Any], reply: @escaping (Any?, String?) -> Void) {
+        guard let s = body["img"] as? String, let data = Data(base64Encoded: s), let image = UIImage(data: data)?.cgImage else {
+            reply(["text": "", "lines": [], "ar": false], nil); return
+        }
+        let digits = (body["mode"] as? String) == "digits"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let request = VNRecognizeTextRequest()
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = !digits
+            let supported = (try? request.supportedRecognitionLanguages()) ?? []
+            var langs: [String] = []
+            if !digits { langs += ["ar-SA", "ars-SA"].filter { supported.contains($0) } }
+            langs += ["fr-FR", "en-US"].filter { supported.contains($0) }
+            if !langs.isEmpty { request.recognitionLanguages = langs }
+            var lines: [[String: Any]] = []
+            try? VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+            for obs in request.results ?? [] {
+                guard let top = obs.topCandidates(1).first else { continue }
+                let b = obs.boundingBox
+                lines.append(["t": top.string, "c": Double(top.confidence), "x": Double(b.minX), "y": Double(1 - b.maxY), "w": Double(b.width), "h": Double(b.height)])
+            }
+            // reading order for Arabic pages: top to bottom, right to left
+            lines.sort { a, b in
+                let ay = a["y"] as? Double ?? 0, by = b["y"] as? Double ?? 0, ah = a["h"] as? Double ?? 0
+                if abs(ay - by) > ah * 0.5 { return ay < by }
+                return (a["x"] as? Double ?? 0) > (b["x"] as? Double ?? 0)
+            }
+            let text = lines.compactMap { $0["t"] as? String }.joined(separator: "\n")
+            let arabic = langs.contains { $0.hasPrefix("ar") }
+            DispatchQueue.main.async { reply(["text": text, "lines": lines, "ar": digits || arabic], nil) }
         }
     }
 
