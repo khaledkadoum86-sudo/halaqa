@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>استمارة تسجيل طالب</title>
+<!--
+  مصدر الاستمارة الورقية (الإصدار 2، نوفمبر 2026).
+  تُطبع إلى PDF بحجم A4 دون هوامش (Chrome: --print-to-pdf --no-pdf-header-footer).
+  كل شيء موضوع بالمليمتر من أعلى يسار الصفحة، وخانات القراءة تطابق STF_L في index.html:
+  أي تغيير في موضع خانة يجب أن يُنقل إلى STF_L، وإلا قرأ التطبيق الخانات الخطأ.
+  الخطوط: IBM Plex Sans Arabic و Reem Kufi (Google Fonts).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@700&display=block" rel="stylesheet">
+<style>
+@page{size:210mm 297mm;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#0E5A4F;--ink:#16302B;--gray:#5D6F69;--light:#9FB0AA;--gold:#B9852A;--soft:#EAEFE9}
+html,body{width:210mm;height:297mm;background:#fff}
+body{position:relative;font-family:"IBM Plex Sans Arabic",sans-serif;color:var(--ink);line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+.a{position:absolute;white-space:nowrap}
+.mk{position:absolute;width:9mm;height:9mm;background:#000}
+.mk.hole::after{content:"";position:absolute;inset:2.1mm;background:#fff}
+.c{left:0;right:0;text-align:center}
+.g{color:var(--gray)}
+.box{position:absolute;border:.45mm solid var(--ink);border-radius:1.1mm;background:#fff}
+.tick{position:absolute;border:.4mm solid var(--ink);border-radius:.9mm}
+.num{position:absolute;width:6.1mm;height:6.1mm;border-radius:50%;background:var(--green);color:#fff;font-weight:700;font-size:9.5pt;line-height:6.1mm;text-align:center}
+.h{font-weight:700;font-size:12.5pt}
+.hint{font-size:9.5pt;color:var(--gray)}
+.lab{font-size:9pt;color:var(--gray)}
+.line{position:absolute;height:0;border-top:.3mm solid var(--ink)}
+.sub{font-size:8.5pt;color:var(--gray);text-align:center}
+.zero{display:flex;align-items:center;justify-content:center;font-weight:700;font-style:italic;font-size:14pt;color:var(--gray)}
+</style>
+</head>
+<body>
+
+<!-- markers: the one with the white hole marks the top right -->
+<div class="mk" style="left:4.95mm;top:5.05mm"></div>
+<div class="mk hole" style="left:195.96mm;top:5.05mm"></div>
+<div class="mk" style="left:4.95mm;top:283.08mm"></div>
+<div class="mk" style="left:195.96mm;top:283.08mm"></div>
+
+<div class="a c" style="top:13.1mm;font-weight:600;font-size:12pt">بسم الله الرحمن الرحيم</div>
+<div class="a c g" style="top:20.3mm;font-size:10.5pt">اللهم صل على سيدنا محمد وءاله الأكرمين</div>
+
+<!-- photo -->
+<div class="a g" style="left:17.1mm;width:25.8mm;top:29.4mm;text-align:center;font-size:9.5pt;line-height:1.6">الصق هنا<br>صورة شمسية</div>
+<div style="position:absolute;left:17.1mm;top:41.8mm;width:25.8mm;height:31.9mm;border:.3mm dashed var(--light);border-radius:2mm"></div>
+
+<!-- school -->
+<img src="mosque.jpg" alt="" style="position:absolute;left:169.1mm;top:39.6mm;width:24mm;height:24mm;border-radius:3mm;border:.3mm solid #E2E5E4;object-fit:cover">
+<div class="a" style="right:46mm;top:38.2mm;font-family:'Reem Kufi',sans-serif;font-weight:700;font-size:20pt;color:var(--green);line-height:1.5">المدرسة القرءانية النموذجية</div>
+<div class="a g" style="right:46mm;top:47.8mm;font-size:10.5pt">مسجد القطب الأمير عبد القادر — قسنطينة</div>
+<div class="a" style="left:114.7mm;width:49.2mm;top:54.8mm;height:9.4mm;border-radius:2.4mm;background:var(--green);color:#fff;font-weight:700;font-size:13pt;line-height:9.4mm;text-align:center">استمارة تسجيل طالب</div>
+
+<div style="position:absolute;left:17.14mm;width:175.9mm;top:77.2mm;height:.5mm;background:var(--green)"></div>
+
+<div class="a" style="left:17.14mm;width:175.9mm;top:81.2mm;height:9.7mm;border-radius:2.6mm;background:var(--soft)"></div>
+<div class="a" style="right:20.5mm;top:83.1mm;font-size:9.5pt;line-height:6mm"><b>تُملأ بقلم أزرق أو أسود وبخط واضح.</b> <span class="g">اكتب رقمًا واحدًا في كل مربع، وضع علامة <b style="color:var(--ink)">✕</b> داخل المربع المناسب. لا تكتب خارج الخانات.</span></div>
+
+<!-- 1 name -->
+<div class="num" style="left:186.9mm;top:96.2mm">1</div>
+<div class="a h" style="right:25.7mm;top:95.75mm">اسم ولقب الطالب</div>
+<div class="line" style="left:108.5mm;width:84.6mm;top:114.1mm"></div>
+<div class="line" style="left:17.1mm;width:84.4mm;top:114.1mm"></div>
+<div class="a lab" style="right:17mm;top:115.1mm">اللقب</div>
+<div class="a lab" style="right:108.5mm;top:115.1mm">الاسم</div>
+
+<!-- 2 sex -->
+<div class="num" style="left:186.9mm;top:124.2mm">2</div>
+<div class="a h" style="right:25.7mm;top:123.8mm">الجنس</div>
+<div class="tick" style="left:185.6mm;top:132.9mm;width:7.5mm;height:7.5mm"></div>
+<div class="a" style="right:27mm;top:133.3mm;font-weight:600;font-size:12.5pt">ذكر</div>
+<div class="tick" style="left:158.3mm;top:132.9mm;width:7.5mm;height:7.5mm"></div>
+<div class="a" style="right:54.3mm;top:133.3mm;font-weight:600;font-size:12.5pt">أنثى</div>
+
+<!-- 3 birth date -->
+<div class="num" style="left:186.9mm;top:144.6mm">3</div>
+<div class="a h" style="right:25.7mm;top:144.2mm">تاريخ الميلاد</div>
+<div class="box" style="left:107.6mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:117.4mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:131.3mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:141.1mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:155.1mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:164.9mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:174.7mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:184.5mm;top:152.9mm;width:8.6mm;height:10.5mm"></div>
+<div class="a" style="left:127.5mm;top:157.2mm;font-size:16pt;color:var(--light);line-height:1.5">/</div>
+<div class="a" style="left:151.2mm;top:157.2mm;font-size:16pt;color:var(--light);line-height:1.5">/</div>
+<div class="a sub" style="left:107.6mm;width:18.4mm;top:164mm">اليوم</div>
+<div class="a sub" style="left:131.3mm;width:18.4mm;top:164mm">الشهر</div>
+<div class="a sub" style="left:155.1mm;width:38mm;top:164mm">السنة</div>
+
+<!-- 4 birth place -->
+<div class="num" style="left:94.35mm;top:144.6mm">4</div>
+<div class="a h" style="right:118.2mm;top:144.2mm">مكان الميلاد</div>
+<div class="line" style="left:17.1mm;width:83.3mm;top:164.4mm"></div>
+
+<!-- 5 phones -->
+<div class="num" style="left:186.9mm;top:172.9mm">5</div>
+<div class="a h" style="right:25.7mm;top:172.5mm">رقم الهاتف</div>
+<div class="a hint" style="right:47.6mm;top:173.6mm">(هاتف الولي الذي يبقى في اتصال بالمدرسة)</div>
+<!-- phone 1: y 181.1 -->
+<div class="box zero" style="left:17.1mm;top:181.1mm;width:8.3mm;height:10.5mm">0</div>
+<div class="box" style="left:26.9mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:37.1mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:46.9mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:57.1mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:66.9mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:77.1mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:86.9mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:97.1mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:106.9mm;top:181.1mm;width:8.6mm;height:10.5mm"></div>
+<div class="a" style="right:25.7mm;top:183mm;font-weight:600;font-size:11pt">الهاتف الأول</div>
+<!-- phone 2: y 194.6 -->
+<div class="box zero" style="left:17.1mm;top:194.6mm;width:8.3mm;height:10.5mm">0</div>
+<div class="box" style="left:26.9mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:37.1mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:46.9mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:57.1mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:66.9mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:77.1mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:86.9mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:97.1mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:106.9mm;top:194.6mm;width:8.6mm;height:10.5mm"></div>
+<div class="a" style="right:25.7mm;top:196.5mm;font-weight:600;font-size:11pt">الهاتف الثاني <span class="hint" style="font-weight:400">(إن وُجد)</span></div>
+
+<!-- 6 address -->
+<div class="num" style="left:186.9mm;top:209.4mm">6</div>
+<div class="a h" style="right:25.7mm;top:209mm">العنوان الشخصي</div>
+<div class="line" style="left:17.1mm;width:176mm;top:227.1mm"></div>
+
+<!-- 7 hizb -->
+<div class="num" style="left:186.9mm;top:232.3mm">7</div>
+<div class="a h" style="right:25.7mm;top:231.9mm">الحزب الذي يحفظه الآن</div>
+<div class="a hint" style="right:68.2mm;top:233mm">(رصيد الطالب من الحفظ)</div>
+<div class="a" style="left:37.6mm;top:232.4mm;font-weight:600;font-size:12pt">الحزب رقم</div>
+<div class="box" style="left:17.1mm;top:230.2mm;width:8.6mm;height:10.5mm"></div>
+<div class="box" style="left:26.9mm;top:230.2mm;width:8.6mm;height:10.5mm"></div>
+
+<!-- signature -->
+<div class="a" style="right:17mm;top:243.6mm;font-weight:600;font-size:10.5pt">التوقيع</div>
+<div class="line" style="left:155.6mm;width:37.5mm;top:254.1mm"></div>
+<div class="a" style="right:117.7mm;top:243.6mm;font-weight:600;font-size:10.5pt">التاريخ</div>
+<div class="line" style="left:60.6mm;width:37.6mm;top:254.1mm"></div>
+
+<!-- school only -->
+<div style="position:absolute;left:17.1mm;top:259.6mm;width:176mm;height:21.5mm;border:.3mm dashed var(--gold);border-radius:3mm"></div>
+<div class="a" style="right:21.3mm;top:262.5mm;font-weight:700;font-size:11pt;color:var(--gold)">خاص بالمدرسة</div>
+<div class="a" style="right:21.3mm;top:271.1mm;font-weight:600;font-size:10.5pt">رقم الملف</div>
+<div class="box" style="left:140.9mm;top:269.7mm;width:7mm;height:8.5mm;border-radius:1mm"></div>
+<div class="box" style="left:148.9mm;top:269.7mm;width:7mm;height:8.5mm;border-radius:1mm"></div>
+<div class="box" style="left:156.9mm;top:269.7mm;width:7mm;height:8.5mm;border-radius:1mm"></div>
+<div class="box" style="left:164.9mm;top:269.7mm;width:7mm;height:8.5mm;border-radius:1mm"></div>
+<div class="tick" style="left:131.9mm;top:271.4mm;width:5mm;height:5mm;border-width:.3mm"></div>
+<div class="a" style="right:79.8mm;top:271.5mm;font-size:9.5pt">شهادة الميلاد</div>
+<div class="tick" style="left:104.6mm;top:271.4mm;width:5mm;height:5mm;border-width:.3mm"></div>
+<div class="a" style="right:107.1mm;top:271.5mm;font-size:9.5pt">صورتان شمسيتان</div>
+<div class="tick" style="left:71.8mm;top:271.4mm;width:5mm;height:5mm;border-width:.3mm"></div>
+<div class="a" style="right:139.9mm;top:271.5mm;font-size:9.5pt">بطاقة تعريف الولي</div>
+
+<div class="a g" style="right:17mm;top:283.4mm;font-size:7.5pt">سجل متابعة الطلبة</div>
+<div class="a g" style="left:17mm;top:283.4mm;font-size:7.5pt;direction:ltr">HALAQA · FORM-STU-2</div>
+</body>
+</html>
