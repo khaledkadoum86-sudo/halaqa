@@ -1636,7 +1636,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.1</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.2</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3479,7 +3479,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.1"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.2"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5079,8 +5079,12 @@ if(typeof halaqaBookPoll==="function"&&typeof libNative==="function"){
   };
   window.halaqaBookPoll=halaqaBookPoll;
 }
-(function(){const tools=document.querySelector("#v-students .stutools");if(!tools||document.getElementById("stfBtn"))return;
-  const b=document.createElement("button");b.type="button";b.className="linkbtn";b.id="stfBtn";b.textContent="🗂️ التسجيل من الاستمارات والوثائق";tools.prepend(b)})();
+/* quick buttons right under «إضافة طالب», so they are found without scrolling past the whole list */
+function stuTopBar(){let bar=document.getElementById("stuTop");if(bar)return bar;const row=document.querySelector("#v-students .addrow");if(!row)return null;
+  bar=document.createElement("div");bar.id="stuTop";bar.className="stutop";row.after(bar);
+  const st=document.createElement("style");st.textContent=".stutop{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}.stutop .linkbtn{justify-content:center;text-align:center;min-height:48px;border-style:solid}@media (max-width:360px){.stutop{grid-template-columns:1fr}}";document.head.appendChild(st);return bar}
+(function(){const bar=stuTopBar();if(!bar||document.getElementById("stfBtn"))return;
+  const b=document.createElement("button");b.type="button";b.className="linkbtn";b.id="stfBtn";b.textContent="🗂️ التسجيل من الاستمارات";bar.prepend(b)})();
 
 const stfst=document.createElement("style");stfst.textContent=`
 #stfView{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch}
@@ -5246,8 +5250,8 @@ document.addEventListener("click",async e=>{
 {const _openStudentPt=openStudent;openStudent=function(id){_openStudentPt(id);
   const bar=document.querySelector(`#modal [data-card="${id}"]`);
   if(bar&&!document.querySelector("#modal [data-ptopen]")){const x=document.createElement("button");x.type="button";x.className="btn";x.dataset.ptopen=id;x.textContent="🔗 رابط المتابعة";bar.after(x)}}}
-(function(){const tools=document.querySelector("#v-students .stutools");if(!tools||document.getElementById("ptBtn"))return;
-  const b=document.createElement("button");b.type="button";b.className="linkbtn";b.id="ptBtn";b.textContent="🔗 روابط متابعة الطلبة";tools.prepend(b)})();
+(function(){const bar=stuTopBar();if(!bar||document.getElementById("ptBtn"))return;
+  const b=document.createElement("button");b.type="button";b.className="linkbtn";b.id="ptBtn";b.textContent="🔗 روابط متابعة الطلبة";bar.append(b)})();
 const ptst=document.createElement("style");ptst.textContent=`
 .ptlist{display:grid;gap:8px;max-height:56vh;overflow:auto;margin-top:8px}
 .ptrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
