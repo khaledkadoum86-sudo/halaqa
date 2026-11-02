@@ -1636,7 +1636,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.2</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.3</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3479,7 +3479,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.2"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.3"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5260,6 +5260,126 @@ const ptst=document.createElement("style");ptst.textContent=`
 .ptwarn{margin:8px 0;padding:10px 12px;border-radius:12px;border:1px solid var(--gold);background:var(--gold-bg,#fbf1dc);font-size:.9rem;line-height:1.8}
 .ptrules{width:100%;height:150px;direction:ltr;text-align:left;font:12px/1.4 ui-monospace,Menlo,monospace;margin:6px 0;border:1px solid var(--line);border-radius:8px;padding:6px}
 `;document.head.appendChild(ptst);
+
+</script>
+<script>
+/* ================= الصفحة الرئيسية والتنقّل =================
+   The app opens on «الرئيسية»: today's summary and one big button per task. Every other page drops the big banner,
+   shows its title in a slim header, and slides in gently; each page remembers where it was scrolled to. */
+const HM_PAGES={home:"الرئيسية",today:"حصة اليوم",month:"الجدول الشهري",students:"الطلبة",school:"المدرسة",lib:"الخزانة العلمية"};
+const HM_ICO={
+  home:'<path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  today:'<path d="M9 11.5l2 2 4-4M5 4h14a1 1 0 011 1v15a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1zM8 2v4M16 2v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  month:'<path d="M4 4h16v16H4zM4 9h16M4 14h16M9 4v16M14 4v16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+  students:'<path d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M16 3.5a4 4 0 010 7.5M18 14a5 5 0 014 5v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  school:'<path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6M12 5V2.5M12 2.5h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  lib:'<path d="M4 19V5a1 1 0 011-1h3v16H5a1 1 0 01-1-1zM8 4h4v16H8zM13.5 5.2l3.4-.9 3.6 13.6-3.4.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'};
+const HM_GROUPS=[
+  ["اليوم",[["today","✍️","حصة اليوم","الحضور والحفظ"],["#reportBtn","📤","تقرير اليوم","لمجموعة واتساب"],["#absRepBtn","❌","تقرير الغيابات","غيابات اليوم"],["#waCardBtn","🔒","بطاقة واتساب","عطلة، إعلان، تغيير موعد"]]],
+  ["الطلبة",[["students","👥","الطلبة","البطاقات والمعلومات"],["#addStuBtn","➕","إضافة طالب","طالب جديد"],["@stf","🗂️","التسجيل من الاستمارات","الاستمارات والوثائق"],["@pt","🔗","روابط المتابعة","صفحة كل طالب"]]],
+  ["السجلات",[["month","🗓️","الجدول الشهري","الشهر والسنة وExcel"],["school","🕌","المدرسة","الصور والجرد والأحداث"],["lib","📚","الخزانة","الكتب العلمية"],["#notesBtn","📝","الملاحظات","والتذكيرات والأولياء"],["#teacherFilesBtn","📁","ملفاتي","ملفات الأستاذ"]]],
+  ["الحساب",[["#cloudBtn","☁️","نسخ إلى iCloud","نسخة احتياطية"],["#lockBtn","⚙️","الإعدادات","المزامنة والحماية"]]]];
+function hmToday(){const d=new Date();return iso(d)}
+function hmSummary(){
+  const t=hmToday(),list=S.students.filter(s=>s.active!==false),d=new Date();
+  if(!isStudy(d))return{msg:`${fmtDate(t)} · لا دراسة اليوم`,off:true};
+  if(isOff(t)){const r=dayRec(t)||{};return{msg:`${fmtDate(t)} · عطلة${r.offName?" بمناسبة "+r.offName:""}`,off:true}}
+  const a=dayData(t).att;let p=0,ab=0,j=0;list.forEach(s=>{const v=a[s.id];if(v===P)p++;else if(v===A)ab++;else if(v===J)j++});
+  return{msg:fmtDate(t),p,a:ab,j,none:list.length-p-ab-j,n:list.length};
+}
+function renderHome(){
+  const box=document.getElementById("v-home");if(!box)return;
+  const sm=hmSummary(),done=!sm.off&&sm.n&&!sm.none;
+  box.innerHTML=`<div class="hmday">
+      <div class="hmd"><b>${esc(sm.msg)}</b>${sm.off?"":S.studentsLoaded?`<span>${sm.n?`${sm.p} حاضر · ${sm.j} جزئي · ${sm.a} غائب${sm.none?` · <em>${sm.none} لم يُسجَّل</em>`:" · ✓ اكتمل التسجيل"}`:"لا يوجد طلبة بعد"}</span>`:"<span>جارٍ التحميل…</span>"}</div>
+      ${sm.off?"":`<button type="button" class="btn primary hmgo" data-hm="today">${done?"عرض حصة اليوم":"✍️ تسجيل حضور اليوم"}</button>`}
+    </div>
+    ${HM_GROUPS.map(([g,tiles])=>`<h3 class="hmh">${g}</h3><div class="hmgrid">${tiles.map(([k,ic,t,sub])=>`<button type="button" class="hmtile" data-hm="${k}"><span class="hmic" aria-hidden="true">${ic}</span><b>${t}</b><small>${sub}</small></button>`).join("")}</div>`).join("")}`;
+}
+/* the home tab and page */
+(function(){
+  const nav=document.querySelector(".tabs"),main=document.querySelector("main");if(!nav||!main||document.getElementById("tab-home"))return;
+  const b=document.createElement("button");b.className="tab";b.setAttribute("role","tab");b.id="tab-home";b.dataset.v="home";b.setAttribute("aria-selected","false");
+  b.innerHTML=`<svg class="ti" viewBox="0 0 24 24" aria-hidden="true">${HM_ICO.home}</svg><span>الرئيسية</span>`;nav.prepend(b);
+  const ms=document.querySelector("#tab-month span");if(ms)ms.textContent="الجدول";
+  const sec=document.createElement("section");sec.id="v-home";sec.hidden=true;main.prepend(sec);
+})();
+const _renderHome=render;render=function(){if(S.view==="home"){document.getElementById("countLbl").textContent=S.studentsLoaded?countText():"";renderHome()}else _renderHome()};
+/* remember the scroll of each page, show the new page gently, keep the header title right */
+const HM={scroll:{},cur:null};
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;HM.scroll[S.view]=window.scrollY},true);
+function hmShown(v){
+  document.getElementById("v-home").hidden=v!=="home";
+  document.body.dataset.view=v;
+  const h=document.querySelector(".brand h1");if(h)h.textContent=v==="home"?"سجل متابعة الطلبة":HM_PAGES[v]||"";
+  const sec=document.getElementById("v-"+v);
+  if(sec&&HM.cur!==v){sec.classList.remove("vin");void sec.offsetWidth;sec.classList.add("vin")}
+  if(HM.cur!==v){const y=HM.scroll[v]||0;requestAnimationFrame(()=>window.scrollTo(0,y))}
+  HM.cur=v;
+}
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(b)hmShown(b.dataset.v)});
+function hmGo(v){const t=document.getElementById("tab-"+v);if(t)t.click()}
+document.addEventListener("click",e=>{
+  const t=e.target.closest&&e.target.closest("[data-hm]");if(!t)return;const k=t.dataset.hm;
+  if(HM_PAGES[k]){hmGo(k);return}
+  if(k==="@stf"){stfStart();return}
+  if(k==="@pt"){ptOpen("");return}
+  if(k[0]==="#"){const el=document.querySelector(k);if(!el){toast("غير متاح في هذا الإصدار");return}
+    if(k==="#absRepBtn"||k==="#reportBtn"||k==="#waCardBtn"){let d=new Date();while(!isStudy(d))d.setDate(d.getDate()-1);const t=iso(d);if(S.date!==t)setDate(t)}
+    el.click()}
+});
+// live refresh of the home summary
+LDB._watch(ch=>{for(const k of ch)if(k.startsWith("days/")||k.startsWith("students/"))return true;return false},()=>{if(S.view==="home")renderHome()});
+// the app always opens on the home page
+try{localStorage.setItem("halaqa.view","home")}catch(_){}
+setTimeout(()=>{hmGo("home")},0);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&S.view==="home")renderHome()});
+
+/* ---- one-time: 1 November 2026 was a national holiday (عيد اندلاع الثورة التحريرية) ---- */
+(function(){
+  const D="2026-11-01",F="halaqa.fix.nov1-2026";
+  try{if(localStorage.getItem(F))return}catch(_){}
+  let tries=0;
+  const run=async()=>{
+    if(!S.db||!S.studentsLoaded||!S.canWrite){if(++tries<60)setTimeout(run,2000);return}
+    if(typeof SYNC!=="undefined"&&SYNC.user&&!SYNC.pulled){if(++tries<60)setTimeout(run,2000);return} // wait for the other devices' records first
+    try{
+      const ref=S.db.doc("days/"+D),cur=await ref.get(),r=cur.exists?cur.data():null;
+      if(!(r&&r.off)){const val={off:true,offName:"عيد اندلاع الثورة التحريرية المجيدة",offRel:false};
+        if(cur.exists)await ref.update(val);else await ref.set(Object.assign({date:D,month:"2026-11",att:{},th:{}},val));
+        const b=S.days[D];if(b)Object.assign(b,val);render()}
+      try{localStorage.setItem(F,"1")}catch(_){}
+    }catch(_){if(++tries<60)setTimeout(run,4000)}
+  };
+  setTimeout(run,1500);
+})();
+
+const hmst=document.createElement("style");hmst.textContent=`
+#v-home{padding-top:2px}
+.hmday{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.hmd b{display:block;font-family:var(--display);font-size:1.2rem;color:var(--accent)}
+.hmd span{color:var(--muted);font-size:.92rem}.hmd em{font-style:normal;color:var(--absent);font-weight:600}
+.hmgo{min-height:54px;font-size:1.05rem;border-radius:14px}
+.hmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.hmtile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;min-height:104px;
+  transition:transform .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
+.hmtile:active{transform:scale(.97)}
+@media (hover:hover){.hmtile:hover{box-shadow:0 4px 14px rgb(0 0 0 / .08)}}
+.hmic{font-size:1.6rem;line-height:1;margin-bottom:6px}
+.hmtile b{font-size:1rem;color:var(--ink)}.hmtile small{font-size:.78rem;color:var(--muted);line-height:1.35}
+@media (max-width:380px){.hmgrid{grid-template-columns:1fr 1fr}.hmtile{min-height:96px;padding:12px}}
+/* inner pages: no big banner, a slim header with the page title */
+body:not([data-view="home"]) .banner,body:not([data-view="home"]) .banner-txt{display:none}
+body:not([data-view="home"]) .brand h1{display:block!important;font-size:1.2rem}
+#cloudBtn,#notesBtn,#teacherFilesBtn,#lockBtn{display:none!important}
+.hmh{margin:18px 4px 8px;font-size:.85rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
+/* gentle page entrance */
+@keyframes vin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+main>section.vin{animation:vin .22s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion:reduce){main>section.vin{animation:none}}
+.tab{transition:color .15s ease}
+html{scroll-behavior:auto}
+`;document.head.appendChild(hmst);
 
 </script>
 </body>
