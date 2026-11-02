@@ -6,6 +6,8 @@
 /* If a student's link (talib.html) was answered by an old offline copy of the app on this device,
    drop that old copy and load the real student page from the internet — never the teacher's lock screen. */
 (function(){if(!/talib\.html$/.test(location.pathname))return;
+  var direct=function(){fetch("talib?n="+Date.now(),{cache:"no-store"}).then(function(r){return r.text()}).then(function(t){document.open();document.write(t);document.close()})};
+  if(/[?&]r=/.test(location.search)){direct();return}  /* second try: never loop, load the student page directly */
   var go=function(){location.replace(location.pathname+"?r="+Date.now()+location.hash)};
   try{var w=[];if(navigator.serviceWorker)w.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister()}))}));
     if(window.caches)w.push(caches.keys().then(function(k){return Promise.all(k.map(function(x){return caches.delete(x)}))}));
