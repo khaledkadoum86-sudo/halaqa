@@ -106,6 +106,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
         let scheme = (url.scheme ?? "").lowercased()
         if ["blob", "data", "about"].contains(scheme) { decisionHandler(.allow); return }
+        // the students' follow-up page opens in Safari, not in place of the app
+        if scheme == "https" && url.host == appHost && url.path.hasSuffix("talib.html") { UIApplication.shared.open(url); decisionHandler(.cancel); return }
         if scheme == "https" && url.host == appHost { decisionHandler(.allow); return }
         let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
         if isMainFrame {
@@ -122,7 +124,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url {
-            if url.host == appHost { webView.load(navigationAction.request) } else { UIApplication.shared.open(url) }
+            if url.host == appHost && !url.path.hasSuffix("talib.html") { webView.load(navigationAction.request) } else { UIApplication.shared.open(url) }
         }
         return nil
     }
