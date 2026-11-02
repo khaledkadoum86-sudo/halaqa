@@ -1671,7 +1671,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.0</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.1</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3514,7 +3514,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.0"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.1"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5098,18 +5098,38 @@ async function stfBlank(){
   try{const r=await fetch("استمارة-التسجيل.pdf");if(!r.ok)throw 0;await shareOrDownload("استمارة التسجيل.pdf",await r.blob())}
   catch(err){if(!(err&&err.code==="declined"))toast("تعذّر فتح الاستمارة، تحتاج إلى الإنترنت أول مرة")}
 }
-// a PDF shared into the native app: forms go here, other PDFs to the library as before
+/* ---- pages sent from a scanner app (native 10.1+): photos and scanned PDFs go to «صندوق الوثائق» and are sorted at once;
+   long PDFs (books) go to the library as before. The app keeps every file until the page has taken it. ---- */
 if(typeof halaqaBookPoll==="function"&&typeof libNative==="function"){
-  const _libPoll=halaqaBookPoll;let stfPolling=false;
+  const _libPoll=halaqaBookPoll;let shPolling=false,shSortT=0;
+  const SH_SCANNER=/scan|camscanner|genius|lens|notes|quartz|vision|tinyscan|turboscan|clear ?scan|swiftscan|scanbot|adobe/i;
+  async function shPdfInfo(blob){const lib=await stfPdfLib(),doc=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
+    let prod="",text=0;try{const m=await doc.getMetadata(),i=(m&&m.info)||{};prod=(i.Producer||"")+" "+(i.Creator||"")}catch(_){}
+    try{const p=await doc.getPage(1),t=await p.getTextContent();text=t.items.map(x=>x.str).join("").replace(/\s/g,"").length}catch(_){}
+    return{n:doc.numPages,scanner:SH_SCANNER.test(prod),text}}
+  function shSortSoon(){clearTimeout(shSortT);shSortT=setTimeout(()=>{
+    if(STF.busy||STF.res){toast("وصلت صفحات جديدة إلى صندوق الوثائق");return}   // a review is open: keep them for the next sort
+    if(S.view!=="students")document.getElementById("tab-students")?.click();
+    ibxSort()},1200)}
   halaqaBookPoll=async function(manual){
-    if(!libNative()||stfPolling||STF.busy)return _libPoll(manual);
-    stfPolling=true;let found=null;
-    try{const r=await libPost({action:"pending"}),books=r&&Array.isArray(r.books)?r.books:[];
-      for(const b of books){try{const parts=await libPull("read",b.id);if(!parts.length)continue;
-        const blob=new Blob(parts,{type:"application/pdf"}),pages=await stfPdfPages(blob);
-        if(pages.some(p=>stfMarkers(p))){await libPost({action:"done",id:b.id});found=(found||[]).concat(pages)}}catch(_){}}}
-    catch(_){}finally{stfPolling=false}
-    if(found){if(S.view!=="students")document.getElementById("tab-students")?.click();stfRun(async()=>found)}
+    if(!libNative()||shPolling)return _libPoll(manual);
+    shPolling=true;let added=0;
+    try{const r=await libPost({action:"pending",all:true}),items=r&&Array.isArray(r.books)?r.books:[];
+      for(const b of items){try{
+        const img=b.type==="image";
+        const parts=await libPull("read",b.id);if(!parts.length)continue;
+        if(img){const cs=await ibxFromFiles([new File(parts,b.name||"صورة.jpg",{type:"image/jpeg"})]);await ibxAdd(cs);await libPost({action:"drop",id:b.id});added+=cs.length;continue}
+        const blob=new Blob(parts,{type:"application/pdf"}),inf=await shPdfInfo(blob);
+        if(inf.n>8)continue;                                   // a book: the library takes it below
+        let docs=inf.scanner||inf.text<40;
+        if(!docs){toast("جارٍ فحص الملف…");const pg=await stfPdfPages(blob);docs=pg.some(p=>stfMarkers(p))}
+        if(!docs)docs=confirm("وصل ملف PDF «"+libTitle(b.name)+"» ("+ibxPages(inf.n)+").\nهل هو وثائق طلبة؟\n\nموافق: إلى صندوق الوثائق\nإلغاء: إلى الخزانة العلمية");
+        if(!docs)continue;
+        const cs=await ibxFromFiles([new File([blob],b.name||"وثائق.pdf",{type:"application/pdf"})]);await ibxAdd(cs);
+        await libPost({action:"drop",id:b.id});added+=cs.length}
+      catch(_){toast("تعذّر استقبال «"+libTitle(b.name||"الملف")+"»")}}}
+    catch(_){}finally{shPolling=false}
+    if(added){toast("وصلت "+ibxPages(added)+" إلى صندوق الوثائق، جارٍ الترتيب…");shSortSoon()}
     return _libPoll(manual);
   };
   window.halaqaBookPoll=halaqaBookPoll;
@@ -5796,6 +5816,47 @@ const ibxst=document.createElement("style");ibxst.textContent=`
 .ibxok .btn{min-height:50px;font-size:1.02rem}
 `;document.head.appendChild(ibxst);
 
+/* ================= ماسح Apple داخل التطبيق (الإصدار 10.1) =================
+   In the native app every camera button opens Apple's own document scanner (the one in Notes and Files):
+   it finds the paper, cuts it out and straightens it by itself, page after page. The pages come back here
+   exactly as the old in-app scanner gave them ({blob,w,h}), so every caller (student documents, the document box,
+   teacher files) works unchanged. The document box then sorts them at once. In the browser the old scanner stays. */
+const asOK=()=>!!(window.HALAQA_SCAN&&window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.halaqaScan);
+let asBusy=false;
+const _asOpen=openScanner;
+openScanner=async function(opt){
+  if(!asOK()||(opt&&opt.web))return _asOpen(opt);
+  if(asBusy)return;asBusy=true;
+  try{const r=await window.webkit.messageHandlers.halaqaScan.postMessage({multi:!!(opt&&opt.multi)});
+    const list=r&&Array.isArray(r.pages)?r.pages:[];
+    if(r&&r.error==="camera"){toast("اسمح للتطبيق باستعمال الكاميرا من الإعدادات");return}
+    if(!list.length)return;                                   // cancelled
+    const pages=[];
+    for(const p of (opt&&opt.multi?list:list.slice(0,1))){const blob=new Blob([libB64(p.b)],{type:"image/jpeg"});pages.push({blob,w:p.w,h:p.h})}
+    if(opt&&opt.onDone)await opt.onDone(pages);
+  }catch(_){toast("تعذّر فتح ماسح Apple، سأفتح الماسح العادي");_asOpen(opt)}
+  finally{asBusy=false}
+};
+/* the document box: after Apple's scanner, sort and distribute straight away (one tap «موافق» remains) */
+document.addEventListener("click",e=>{
+  if(!asOK())return;const b=e.target.closest&&e.target.closest('#stfView [data-ibx="cam"]');if(!b)return;
+  e.stopImmediatePropagation();e.preventDefault();
+  openScanner({title:"صندوق الوثائق",multi:true,onDone:async pages=>{
+    try{const cs=[];for(const p of pages)cs.push(await stfFromBlob(p.blob));await ibxAdd(cs)}catch(_){toast("تعذّر حفظ الصور، حاول مرة أخرى");ibxStart();return}
+    ibxSort()}});
+},true);
+/* the camera button on the home page goes straight to the scanner, then the sorting */
+window.halaqaScanToBox=function(){
+  if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
+  if(!asOK()){ibxStart();setTimeout(()=>document.querySelector('#stfView [data-ibx="cam"]')?.click(),80);return}
+  openScanner({title:"صندوق الوثائق",multi:true,onDone:async pages=>{
+    try{const cs=[];for(const p of pages)cs.push(await stfFromBlob(p.blob));await ibxAdd(cs)}catch(_){toast("تعذّر حفظ الصور، حاول مرة أخرى");return}
+    if(S.view!=="students")document.getElementById("tab-students")?.click();ibxSort()}});
+};
+(function(){const g=HM_GROUPS.find(x=>x[0]==="الطلبة");if(!g||g[1].some(t=>t[0]==="@scan"))return;
+  const i=g[1].findIndex(t=>t[0]==="@stf");g[1].splice(i+1,0,["@scan","📷","مسح وثائق","صوّر، ويرتّب وحده"])})();
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest('[data-hm="@scan"]');if(!t)return;e.stopImmediatePropagation();halaqaScanToBox()},true);
+try{if(document.querySelector(".hmgrid"))renderHome()}catch(_){}
 </script>
 <script>
 /* depth: the photo moves slower than the page while scrolling */

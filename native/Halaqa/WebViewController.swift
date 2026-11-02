@@ -3,16 +3,19 @@ import WebKit
 import LocalAuthentication
 import QuickLook
 import Vision
+import VisionKit
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/")!
 let appHost = "khaledkadoum86-sudo.github.io"
 private let pageBackground = UIColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1)
 
-final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandlerWithReply, QLPreviewControllerDataSource {
+final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandlerWithReply, QLPreviewControllerDataSource, VNDocumentCameraViewControllerDelegate {
     private var webView: WKWebView!
     private var offlineView: UIView?
     private var downloads: [ObjectIdentifier: URL] = [:]
     private var openBook: BookItem?
+    private var scanReply: ((Any?, String?) -> Void)?
+    private var scanMulti = true
 
     override func loadView() {
         let config = WKWebViewConfiguration()
@@ -28,6 +31,11 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBio")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBook")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaOCR")
+        // Apple's document scanner (as in Notes and Files) for every camera button of the page
+        if VNDocumentCameraViewController.isSupported {
+            content.addUserScript(WKUserScript(source: "window.HALAQA_SCAN=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaScan")
+        }
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -52,6 +60,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         if message.name == "halaqaBook" { handleBook(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         if message.name == "halaqaOCR" { handleOCR(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
+        if message.name == "halaqaScan" { startScan(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         let action = (message.body as? [String: Any])?["action"] as? String ?? ""
         let context = LAContext()
         var error: NSError?
@@ -97,6 +106,59 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             let arabic = langs.contains { $0.hasPrefix("ar") }
             DispatchQueue.main.async { reply(["text": text, "lines": lines, "ar": digits || arabic], nil) }
         }
+    }
+
+    // MARK: - Apple's document scanner (window.webkit.messageHandlers.halaqaScan)
+    // It finds the paper, cuts it out and straightens it; the pages go back to the page as JPEG (base64).
+
+    private func startScan(_ body: [String: Any], reply: @escaping (Any?, String?) -> Void) {
+        guard scanReply == nil, VNDocumentCameraViewController.isSupported else { reply(["pages": [], "error": "busy"], nil); return }
+        scanReply = reply
+        scanMulti = (body["multi"] as? Bool) ?? true
+        let scanner = VNDocumentCameraViewController()
+        scanner.delegate = self
+        scanner.modalPresentationStyle = .fullScreen
+        top().present(scanner, animated: true)
+    }
+
+    private func finishScan(_ result: [String: Any]) {
+        let reply = scanReply
+        scanReply = nil
+        reply?(result, nil)
+    }
+
+    func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
+        let count = scanMulti ? scan.pageCount : min(scan.pageCount, 1)
+        let images = (0..<count).map { scan.imageOfPage(at: $0) }
+        controller.dismiss(animated: true)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let pages: [[String: Any]] = images.compactMap { image in
+                let small = WebViewController.fit(image, longest: 2400)
+                guard let data = small.jpegData(compressionQuality: 0.86) else { return nil }
+                return ["b": data.base64EncodedString(), "w": Int(small.size.width), "h": Int(small.size.height)]
+            }
+            DispatchQueue.main.async { self.finishScan(["pages": pages]) }
+        }
+    }
+
+    func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+        controller.dismiss(animated: true)
+        finishScan(["pages": []])
+    }
+
+    func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+        controller.dismiss(animated: true)
+        finishScan(["pages": [], "error": "camera"])
+    }
+
+    static func fit(_ image: UIImage, longest: CGFloat) -> UIImage {
+        let side = max(image.size.width, image.size.height)
+        guard side > longest else { return image }
+        let scale = longest / side
+        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
     }
 
     // MARK: - Links: the app stays inside, WhatsApp / phone / other sites open outside
@@ -213,11 +275,15 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             reply(true, nil)
         case "pending":
             // books shared into the app and waiting for the page, plus copies left by an older version
-            reply(["books": BookInbox.shared.pending(), "cached": BookCache.cachedIDs()], nil)
+            reply(["books": BookInbox.shared.pending(all: (body["all"] as? Bool) ?? false), "cached": BookCache.cachedIDs()], nil)
         case "read":
             reply(BookInbox.shared.piece(id, index: (body["i"] as? NSNumber)?.intValue ?? 0), nil)
         case "done":
             BookInbox.shared.finish(id)
+            reply(true, nil)
+        case "drop":
+            // a page or a scanned PDF taken into «صندوق الوثائق»: the app's copy is no longer needed
+            BookInbox.shared.drop(id)
             reply(true, nil)
         case "readCached":
             reply(BookInbox.piece(of: BookCache.url(for: id), index: (body["i"] as? NSNumber)?.intValue ?? 0), nil)
@@ -333,6 +399,15 @@ final class BookInbox {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let id = "b" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36)
+        if url.pathExtension.lowercased() != "pdf" {
+            // a photo from a scanner app (JPEG, PNG, HEIC…): kept as JPEG, which the page can always open
+            guard let data = try? Data(contentsOf: url), let image = UIImage(data: data),
+                  let jpeg = WebViewController.fit(image, longest: 3000).jpegData(compressionQuality: 0.9),
+                  (try? jpeg.write(to: folder.appendingPathComponent(id + ".jpg"))) != nil else { return false }
+            try? url.lastPathComponent.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
+            if url.path.contains("/Inbox/") { try? fm.removeItem(at: url) }
+            return true
+        }
         let dest = folder.appendingPathComponent(id + ".pdf")
         do { try fm.copyItem(at: url, to: dest) } catch { return false }
         try? url.lastPathComponent.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
@@ -340,22 +415,34 @@ final class BookInbox {
         return true
     }
 
-    func pending() -> [[String: Any]] {
+    /// `all`: photos too (pages from 10.1 on); without it only PDFs, as older pages expect.
+    func pending(all: Bool = false) -> [[String: Any]] {
         let systemInbox = fm.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Inbox", isDirectory: true)
-        for f in (try? fm.contentsOfDirectory(at: systemInbox, includingPropertiesForKeys: nil)) ?? [] where f.pathExtension.lowercased() == "pdf" {
+        for f in (try? fm.contentsOfDirectory(at: systemInbox, includingPropertiesForKeys: nil)) ?? [] where ["pdf", "jpg", "jpeg", "png", "heic", "heif", "tif", "tiff"].contains(f.pathExtension.lowercased()) {
             take(f)
         }
         let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-        return files.filter { $0.pathExtension == "pdf" }.map { f in
+        return files.filter { $0.pathExtension == "pdf" || (all && $0.pathExtension == "jpg") }.map { f in
             let id = f.deletingPathExtension().lastPathComponent
-            let name = (try? String(contentsOf: folder.appendingPathComponent(id + ".name"), encoding: .utf8)) ?? "كتاب.pdf"
+            let image = f.pathExtension == "jpg"
+            let name = (try? String(contentsOf: folder.appendingPathComponent(id + ".name"), encoding: .utf8)) ?? (image ? "صورة.jpg" : "كتاب.pdf")
             let size = (try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            return ["id": id, "name": name, "size": size]
+            return ["id": id, "name": name, "size": size, "type": image ? "image" : "pdf"]
         }
     }
 
+    private func file(_ id: String) -> URL {
+        let safe = BookCache.safe(id), jpg = folder.appendingPathComponent(safe + ".jpg")
+        return fm.fileExists(atPath: jpg.path) ? jpg : folder.appendingPathComponent(safe + ".pdf")
+    }
+
     func piece(_ id: String, index: Int) -> String {
-        BookInbox.piece(of: folder.appendingPathComponent(BookCache.safe(id) + ".pdf"), index: index)
+        BookInbox.piece(of: file(id), index: index)
+    }
+
+    func drop(_ id: String) {
+        let safe = BookCache.safe(id)
+        for ext in ["jpg", "pdf", "name"] { try? fm.removeItem(at: folder.appendingPathComponent(safe + "." + ext)) }
     }
 
     /// Piece number `index` of a file as base64, or "" after the last piece.
