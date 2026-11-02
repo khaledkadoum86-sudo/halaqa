@@ -1671,7 +1671,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3514,7 +3514,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.9"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.0"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5427,7 +5427,7 @@ html{scroll-behavior:auto}
 `;document.head.appendChild(hmst);
 
 
-/* ================= صندوق الوثائق (الإصدار 9.9) =================
+/* ================= صندوق الوثائق (الإصدار 10.0) =================
    The teacher photographs papers whenever they come (one now, three tomorrow, a PDF from a scanner app…).
    Every page waits in the box on this device (DOCDB "inbox|<time>"), so nothing is lost if the app is closed.
    «رتّب ووزّع» reads all of them with stfProcess: forms start students, documents go to the right file.
@@ -5562,7 +5562,7 @@ document.addEventListener("change",async e=>{
   const v=document.getElementById("stfView");
   if(v&&STF.res&&v.contains(e.target)&&e.target.closest(".stfcard")){try{stfCollect();ibxPlan()}catch(_){}}
   if(e.target.id!=="ibxFiles")return;const fs=[...(e.target.files||[])];e.target.value="";if(!fs.length)return;
-  try{stfProg("جارٍ التحضير…");const cs=await stfPagesFromFiles(fs,stfProg);await ibxAdd(cs);toast("أُضيفت "+ibxPages(cs.length)+" إلى الصندوق")}
+  try{stfProg("جارٍ التحضير…");const cs=await ibxFromFiles(fs,stfProg);await ibxAdd(cs);toast("أُضيفت "+ibxPages(cs.length)+" إلى الصندوق")}
   catch(err){toast(String(err&&err.message)==="pdfjs"?"تعذّر فتح ملف PDF: يحتاج التطبيق إلى الإنترنت أول مرة":"تعذّر فتح الملف")}
   ibxStart();
 });
@@ -5606,6 +5606,179 @@ stfSave=async function(){
 };
 const ibxst2=document.createElement("style");ibxst2.textContent=".ibxnew{font:inherit;padding:9px;border-radius:9px;border:2px solid var(--present,#2e7d5b);width:100%;box-sizing:border-box}";document.head.appendChild(ibxst2);
 setTimeout(ibxCount,800);
+
+/* ================= الماسح: التقاط الوثيقة وحدها (الإصدار 10.0) =================
+   scFind looks for the paper three ways (bright paper, different from the background around it, closed outline of edges),
+   turns each candidate into the best four-cornered shape, and keeps the one whose sides lie on real edges.
+   The camera shows the outline live and can take the picture by itself once the paper holds still;
+   a confident find skips the corner screen and the page comes out cut to the paper only. */
+function scFind(c,side){
+  const W=c.width,H=c.height,inset=()=>{const mx=W*.06,my=H*.06;return[[mx,my],[W-mx,my],[W-mx,H-my],[mx,H-my]]};
+  try{
+    const r=Math.min(1,(side||360)/Math.max(W,H)),w=Math.max(16,Math.round(W*r)),h=Math.max(16,Math.round(H*r)),n=w*h;
+    const s=document.createElement("canvas");s.width=w;s.height=h;const x=s.getContext("2d",{willReadFrequently:true});x.drawImage(c,0,0,w,h);
+    const d=x.getImageData(0,0,w,h).data;
+    // blurred colour (3×3) to calm paper texture and camera noise
+    const R0=new Float32Array(n),G0=new Float32Array(n),B0=new Float32Array(n);for(let i=0;i<n;i++){R0[i]=d[i*4];G0[i]=d[i*4+1];B0[i]=d[i*4+2]}
+    const blur=a=>{const o=new Float32Array(n);for(let y=0;y<h;y++)for(let X=0;X<w;X++){let t=0,k=0;for(let j=-1;j<=1;j++){const yy=y+j;if(yy<0||yy>=h)continue;for(let i=-1;i<=1;i++){const xx=X+i;if(xx<0||xx>=w)continue;t+=a[yy*w+xx];k++}}o[y*w+X]=t/k}return o};
+    const R=blur(R0),G=blur(G0),B=blur(B0),L=new Float32Array(n),Sat=new Float32Array(n);
+    for(let i=0;i<n;i++){L[i]=.299*R[i]+.587*G[i]+.114*B[i];Sat[i]=Math.max(R[i],G[i],B[i])-Math.min(R[i],G[i],B[i])}
+    // edges: strongest of the three colour channels (a white sheet on a light table still differs in tint)
+    const E=new Float32Array(n);let eSum=0;
+    for(let y=1;y<h-1;y++)for(let X=1;X<w-1;X++){const i=y*w+X;let m=0;
+      for(const A of[R,G,B]){const gx=A[i+1]-A[i-1]+.5*(A[i-w+1]-A[i-w-1]+A[i+w+1]-A[i+w-1]),gy=A[i+w]-A[i-w]+.5*(A[i+w-1]-A[i-w-1]+A[i+w+1]-A[i-w+1]);const v=Math.abs(gx)+Math.abs(gy);if(v>m)m=v}
+      E[i]=m;eSum+=m}
+    const eMean=eSum/n+1;
+    const otsu=(v,lo,hi)=>{const hs=new Float64Array(256),sc=255/(hi-lo||1);for(let i=0;i<n;i++)hs[Math.max(0,Math.min(255,((v[i]-lo)*sc)|0))]++;
+      let sum=0;for(let i=0;i<256;i++)sum+=i*hs[i];let sB=0,wB=0,best=-1,t=128;
+      for(let i=0;i<256;i++){wB+=hs[i];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=i*hs[i];const a=sB/wB,b=(sum-sB)/wF,q=wB*wF*(a-b)*(a-b);if(q>best){best=q;t=i}}return lo+t/sc};
+    const masks=[];
+    { const v=new Float32Array(n);let lo=1e9,hi=-1e9;for(let i=0;i<n;i++){v[i]=L[i]-.6*Sat[i];if(v[i]<lo)lo=v[i];if(v[i]>hi)hi=v[i]}
+      const t=otsu(v,lo,hi),m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=v[i]>t?1:0;masks.push(m)}
+    { let br=0,bg=0,bb=0,k=0;const add=i=>{br+=R[i];bg+=G[i];bb+=B[i];k++};
+      for(let X=0;X<w;X++)for(const y of[0,1,2,h-3,h-2,h-1])add(y*w+X);for(let y=3;y<h-3;y++)for(const X of[0,1,2,w-3,w-2,w-1])add(y*w+X);
+      br/=k;bg/=k;bb/=k;const v=new Float32Array(n);let hi=0;for(let i=0;i<n;i++){v[i]=Math.abs(R[i]-br)+Math.abs(G[i]-bg)+Math.abs(B[i]-bb);if(v[i]>hi)hi=v[i]}
+      if(hi>30){const t=Math.max(24,otsu(v,0,hi)),m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=v[i]>t?1:0;masks.push(m)}}
+    const sortedE=Array.from(E).sort((a,b)=>a-b);
+    for(const tg of[Math.max(sortedE[(n*.85)|0],eMean*1.6),Math.max(sortedE[(n*.7)|0],eMean*1.1),eMean*.8]){ const ed=new Uint8Array(n);
+      for(let i=0;i<n;i++)if(E[i]>tg){ed[i]=1}
+      const dl=new Uint8Array(n);for(let y=0;y<h;y++)for(let X=0;X<w;X++){const i=y*w+X;if(!ed[i])continue;for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){const yy=y+j,xx=X+k;if(yy>=0&&yy<h&&xx>=0&&xx<w)dl[yy*w+xx]=1}}
+      const out=new Uint8Array(n),st=new Int32Array(n);let sp=0;
+      const seed=i=>{if(!dl[i]&&!out[i]){out[i]=1;st[sp++]=i}};for(let X=0;X<w;X++){seed(X);seed((h-1)*w+X)}for(let y=0;y<h;y++){seed(y*w);seed(y*w+w-1)}
+      while(sp){const p=st[--sp],px=p%w;if(px>0)seed(p-1);if(px<w-1)seed(p+1);if(p>=w)seed(p-w);if(p<n-w)seed(p+w)}
+      const m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=out[i]?0:1;masks.push(m)}
+    const lab=new Int32Array(n),st=new Int32Array(n);
+    const largest=m=>{lab.fill(0);let L2=0,bl=0,ba=0;
+      for(let i=0;i<n;i++){if(!m[i]||lab[i])continue;L2++;let sp=0,a=0;st[sp++]=i;lab[i]=L2;
+        while(sp){const p=st[--sp];a++;const px=p%w;
+          if(px>0&&m[p-1]&&!lab[p-1]){lab[p-1]=L2;st[sp++]=p-1}if(px<w-1&&m[p+1]&&!lab[p+1]){lab[p+1]=L2;st[sp++]=p+1}
+          if(p>=w&&m[p-w]&&!lab[p-w]){lab[p-w]=L2;st[sp++]=p-w}if(p<n-w&&m[p+w]&&!lab[p+w]){lab[p+w]=L2;st[sp++]=p+w}}
+        if(a>ba){ba=a;bl=L2}}
+      return{bl,ba}};
+    const hull=P=>{P.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];
+      for(const p of P){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}
+      for(let i=P.length-1;i>=0;i--){const p=P[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}
+      lo.pop();up.pop();return lo.concat(up)};
+    const area=q=>Math.abs(q.reduce((t,p,i)=>{const o=q[(i+1)%q.length];return t+p[0]*o[1]-o[0]*p[1]},0))/2;
+    const thin=(hl,max)=>{ // keep the hull points that matter most (biggest turn), so the brute-force search stays small
+      let p=hl.slice();while(p.length>max){let bi=0,bv=1e18;for(let i=0;i<p.length;i++){const a=p[(i-1+p.length)%p.length],b=p[i],c2=p[(i+1)%p.length];
+        const v=Math.abs((b[0]-a[0])*(c2[1]-a[1])-(b[1]-a[1])*(c2[0]-a[0]));if(v<bv){bv=v;bi=i}}p.splice(bi,1)}return p};
+    const edgeAt=(X,Y)=>{let m=0;const x0=Math.round(X),y0=Math.round(Y);for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){const xx=x0+k,yy=y0+j;if(xx>0&&yy>0&&xx<w-1&&yy<h-1){const v=E[yy*w+xx];if(v>m)m=v}}return m};
+    let best=null;
+    for(const m of masks){const{bl,ba}=largest(m);if(ba<n*.08)continue;
+      const P=[];for(let i=0;i<n;i++){if(lab[i]!==bl)continue;const px=i%w,py=(i/w)|0;
+        if(px===0||py===0||px===w-1||py===h-1||lab[i-1]!==bl||lab[i+1]!==bl||lab[i-w]!==bl||lab[i+w]!==bl)P.push([px+.5,py+.5])}
+      const hl=thin(hull(P),14);if(hl.length<4)continue;
+      let bq=null,bA=0;const k=hl.length;
+      for(let a=0;a<k;a++)for(let b=a+1;b<k;b++)for(let c2=b+1;c2<k;c2++)for(let e=c2+1;e<k;e++){const q=[hl[a],hl[b],hl[c2],hl[e]],A=area(q);if(A>bA){bA=A;bq=q}}
+      if(!bq||bA<n*.1)continue;
+      // the four angles must look like a sheet seen by a camera
+      let okAng=true;for(let i=0;i<4;i++){const a=bq[(i+3)%4],b=bq[i],c2=bq[(i+1)%4],v1=[a[0]-b[0],a[1]-b[1]],v2=[c2[0]-b[0],c2[1]-b[1]];
+        const cs=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2)+1e-9),ang=Math.acos(Math.max(-1,Math.min(1,cs)))*180/Math.PI;if(ang<50||ang>130)okAng=false}
+      if(!okAng)continue;
+      let es=0,ns=0,onEdge=0,border=0,step=0,nst=0;const qc=[bq.reduce((t,p)=>t+p[0],0)/4,bq.reduce((t,p)=>t+p[1],0)/4];
+      const col=(X,Y)=>{const xx=Math.max(0,Math.min(w-1,Math.round(X))),yy=Math.max(0,Math.min(h-1,Math.round(Y))),i=yy*w+xx;return[R[i],G[i],B[i]]};
+      for(let i=0;i<4;i++){const a=bq[i],b=bq[(i+1)%4],len=Math.hypot(b[0]-a[0],b[1]-a[1]),N=Math.max(12,Math.round(len/3));
+        // a side lying on the picture's border is the picture's edge, not the paper's
+        const onB=(Math.max(a[0],b[0])<3||Math.min(a[0],b[0])>w-4||Math.max(a[1],b[1])<3||Math.min(a[1],b[1])>h-4);if(onB)border++;
+        // across a real paper side the colour changes the same way all along it; along printed text it comes and goes
+        let nx=-(b[1]-a[1])/(len||1),ny=(b[0]-a[0])/(len||1);const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;if(nx*(qc[0]-mx)+ny*(qc[1]-my)>0){nx=-nx;ny=-ny}
+        for(let j=1;j<N;j++){const t=j/N,X=a[0]+(b[0]-a[0])*t,Y=a[1]+(b[1]-a[1])*t,v=edgeAt(X,Y);es+=v;ns++;if(v>eMean*2.2)onEdge++;
+          if(!onB){const o1=col(X+nx*4,Y+ny*4),i1=col(X-nx*4,Y-ny*4);nst++;if(Math.abs(o1[0]-i1[0])+Math.abs(o1[1]-i1[1])+Math.abs(o1[2]-i1[2])>24)step++}}}
+      step=nst?step/nst:0;
+      const fill=Math.min(1,ba/bA),eR=es/ns/eMean,cover=onEdge/ns,frac=bA/n;
+      const score=Math.min(eR,8)*(.4+cover)*fill*fill*Math.pow(frac,.25)*(border?Math.pow(.6,border):1)*(.3+step);
+      const cand={q:bq,score,fill,cover,eR,frac,border,step};cand.ok=fill>.82&&cover>.55&&eR>2&&border<2&&frac<.97&&step>.6;
+      // the paper is the outermost good outline: what is printed on it makes smaller outlines inside it
+      if(!best||(cand.ok&&!best.ok)||(cand.ok===best.ok&&(cand.ok?frac>best.frac*1.08||(frac>best.frac*.92&&score>best.score):score>best.score)))best=cand}
+    if(!best)return{q:inset(),ok:false,score:0};
+    const q=scOrder(best.q.map(p=>[Math.min(W,Math.max(0,p[0]/r)),Math.min(H,Math.max(0,p[1]/r))]));
+    const ok=best.ok;
+    return{q,ok,score:best.score,info:best};
+  }catch(_){return{q:inset(),ok:false,score:0}}
+}
+/* sharpen the outline found on a small copy: each side is moved onto the strongest colour step near it (on a 1400px copy),
+   the sides are crossed again for the corners, and a hair is trimmed so no table shows along the edges */
+function scRefine(c,q0){
+  try{const q=scOrder(q0),r=Math.min(1,1400/Math.max(c.width,c.height)),w=Math.round(c.width*r),h=Math.round(c.height*r);
+    const s=document.createElement("canvas");s.width=w;s.height=h;const x=s.getContext("2d",{willReadFrequently:true});x.drawImage(c,0,0,w,h);
+    const d=x.getImageData(0,0,w,h).data,px=(X,Y)=>{const xx=Math.max(0,Math.min(w-1,X|0)),yy=Math.max(0,Math.min(h-1,Y|0)),i=(yy*w+xx)*4;return[d[i],d[i+1],d[i+2]]};
+    const P=q.map(p=>[p[0]*r,p[1]*r]),cx=P.reduce((t,p)=>t+p[0],0)/4,cy=P.reduce((t,p)=>t+p[1],0)/4,lines=[];
+    for(let i=0;i<4;i++){const a=P[i],b=P[(i+1)%4],len=Math.hypot(b[0]-a[0],b[1]-a[1])||1;let nx=-(b[1]-a[1])/len,ny=(b[0]-a[0])/len;
+      const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;if(nx*(cx-mx)+ny*(cy-my)<0){nx=-nx;ny=-ny} // n points inside
+      let bo=0,bv=-1;for(let o=-12;o<=12;o++){let v=0;for(let j=1;j<40;j++){const t=.1+.8*j/40,X=a[0]+(b[0]-a[0])*t+nx*o,Y=a[1]+(b[1]-a[1])*t+ny*o;
+          const p1=px(X+nx*2,Y+ny*2),p0=px(X-nx*2,Y-ny*2);v+=Math.abs(p1[0]-p0[0])+Math.abs(p1[1]-p0[1])+Math.abs(p1[2]-p0[2])}
+        if(v>bv){bv=v;bo=o}}
+      const o=bo+2.5; // just inside the step
+      lines.push([[a[0]+nx*o,a[1]+ny*o],[b[0]+nx*o,b[1]+ny*o]])}
+    const cross=(L1,L2)=>{const[p,p2]=L1,[q1,q2]=L2,d1=[p2[0]-p[0],p2[1]-p[1]],d2=[q2[0]-q1[0],q2[1]-q1[1]],den=d1[0]*d2[1]-d1[1]*d2[0];
+      if(Math.abs(den)<1e-6)return null;const t=((q1[0]-p[0])*d2[1]-(q1[1]-p[1])*d2[0])/den;return[p[0]+d1[0]*t,p[1]+d1[1]*t]};
+    const out=[];for(let i=0;i<4;i++){const k=cross(lines[(i+3)%4],lines[i]);if(!k)return q;out.push([Math.min(c.width,Math.max(0,k[0]/r)),Math.min(c.height,Math.max(0,k[1]/r))])}
+    // never move a corner far: if the step was not found, keep the first outline
+    const diag=Math.hypot(c.width,c.height);if(out.some((p,i)=>Math.hypot(p[0]-q[i][0],p[1]-q[i][1])>diag*.03))return q;
+    return out;
+  }catch(_){return q0}
+}
+scDetect=function(c){return scFind(c).q};
+/* a confident find goes straight to the cut page; the corners can still be moved from there */
+scSetSource=function(c){SC.src=c;const f=scFind(c);if(f.ok)f.q=scRefine(c,f.q);SC.quad=f.q;
+  if(!f.ok){scCrop();return}
+  try{SC.warped=scWarp(c,f.q,SC.opt.photo?1200:2000);SC.fc={};SC.rot=0;scEdit()}catch(_){scCrop()}};
+const _sc2Edit=scEdit;scEdit=function(){_sc2Edit();const b=SC.el&&SC.el.querySelector('[data-sc="back"]');if(b)b.textContent="✂️ الأطراف"};
+/* ---- live outline on the camera, and taking the picture by itself ---- */
+const SCL={t:null,hist:[],small:null,on:(()=>{try{return localStorage.getItem("halaqa.scauto")!=="0"}catch(_){return true}})()};
+function scLiveStop(){if(SCL.t){clearTimeout(SCL.t);SCL.t=null}SCL.hist=[]}
+function scLiveTick(){
+  SCL.t=null;if(!SC.el||SC.screen!=="cam")return;
+  const v=document.getElementById("scVideo"),svg=document.getElementById("scLive");
+  if(!v||!svg||!v.videoWidth){SCL.t=setTimeout(scLiveTick,300);return}
+  const vw=v.videoWidth,vh=v.videoHeight,c=scToCanvas(v,vw,vh,280),f=scFind(c),k=vw/c.width;
+  // video drawn with object-fit: contain → where its pixels land on screen
+  const bw=v.clientWidth,bh=v.clientHeight,s=Math.min(bw/vw,bh/vh),ox=(bw-vw*s)/2,oy=(bh-vh*s)/2;
+  svg.setAttribute("viewBox",`0 0 ${bw} ${bh}`);
+  const poly=svg.querySelector("polygon"),hint=document.querySelector("#scanner .schint");
+  if(f.ok){poly.setAttribute("points",f.q.map(p=>(ox+p[0]*k*s).toFixed(1)+","+(oy+p[1]*k*s).toFixed(1)).join(" "));poly.style.display=""}
+  else poly.style.display="none";
+  // still enough? the corners moved less than 2.5% of the picture over the last frames
+  const diag=Math.hypot(c.width,c.height);
+  SCL.hist.push(f.ok?f.q:null);if(SCL.hist.length>5)SCL.hist.shift();
+  const steady=SCL.hist.length===5&&SCL.hist.every(q=>q)&&SCL.hist.every(q=>q.every((p,i)=>Math.hypot(p[0]-SCL.hist[0][i][0],p[1]-SCL.hist[0][i][1])<diag*.025));
+  poly.classList.toggle("steady",!!steady);
+  if(hint)hint.textContent=!f.ok?"وجّه الكاميرا نحو الوثيقة، على سطح مختلف اللون، في إضاءة جيدة":SCL.on?(steady?"ثبات… جارٍ الالتقاط":"وجدتُ الوثيقة، اثبت قليلًا"):"وجدتُ الوثيقة، اضغط زر الالتقاط";
+  if(steady&&SCL.on&&!SC.busy){scLiveStop();if(navigator.vibrate)try{navigator.vibrate(30)}catch(_){}scSnap();return}
+  SCL.t=setTimeout(scLiveTick,260);
+}
+const _sc2Cam=scCam;scCam=function(){scLiveStop();_sc2Cam();
+  const st=SC.el&&SC.el.querySelector(".scstage");if(!st)return;
+  const g=st.querySelector(".scguide");if(g)g.remove();
+  st.insertAdjacentHTML("beforeend",`<svg id="scLive" class="sclive" aria-hidden="true"><polygon/></svg>`);
+  const chips=document.createElement("div");chips.className="scchips";
+  chips.innerHTML=`<button type="button" class="scchip${SCL.on?" on":""}" data-scauto>${SCL.on?"⚡ التقاط تلقائي":"التقاط يدوي"}</button>`;
+  st.after(chips);SCL.t=setTimeout(scLiveTick,500)};
+const _sc2Snap=scSnap;scSnap=function(){scLiveStop();_sc2Snap()};
+const _sc2Close=scClose;scClose=function(f){scLiveStop();return _sc2Close(f)};
+const _sc2Crop=scCrop;scCrop=function(){scLiveStop();_sc2Crop()};
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#scanner [data-scauto]");if(!b)return;
+  SCL.on=!SCL.on;try{localStorage.setItem("halaqa.scauto",SCL.on?"1":"0")}catch(_){}
+  b.classList.toggle("on",SCL.on);b.textContent=SCL.on?"⚡ التقاط تلقائي":"التقاط يدوي";SCL.hist=[]});
+/* photos chosen from the library for the document box: the paper is cut out of them too */
+async function ibxFromFiles(files,prog){
+  const out=[];let k=0;
+  for(const f of files){k++;
+    const isPdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name||"");
+    if(isPdf){out.push(...await stfPdfPages(f,(i,n)=>prog&&prog(`جارٍ فتح الملف ${k}: الصفحة ${i} من ${n}`)));continue}
+    prog&&prog(`جارٍ قصّ الصورة ${k} من ${files.length}`);await new Promise(r=>setTimeout(r,20));
+    const img=await scLoadFile(f),c=scToCanvas(img,img.naturalWidth,img.naturalHeight,3000),fd=scFind(c);if(fd.ok)fd.q=scRefine(c,fd.q);
+    out.push(fd.ok?scFilter(scWarp(c,fd.q,2000),"enh"):stfCanvas(c,c.width,c.height))}
+  return out;
+}
+const scst2=document.createElement("style");scst2.textContent=`
+#scanner .sclive{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#scanner .sclive polygon{fill:rgba(224,178,90,.18);stroke:#e0b25a;stroke-width:3;stroke-linejoin:round;transition:all .18s ease}
+#scanner .sclive polygon.steady{fill:rgba(90,200,140,.22);stroke:#5ac88c}
+#scanner .scchips:has([data-scauto]){padding-top:8px}
+`;document.head.appendChild(scst2);
+
 const ibxst=document.createElement("style");ibxst.textContent=`
 .ibxh{margin:18px 0 8px;font-size:1rem}
 .ibxgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
