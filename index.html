@@ -1636,7 +1636,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3479,7 +3479,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.7"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.8"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4305,6 +4305,172 @@ const tdst=document.createElement("style");tdst.textContent=`
 .tdabs .tdabs-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
 .tdabs .tdabs-h{margin-top:8px;font-weight:800;font-size:.9rem;color:#1B3557}.tdabs .tdabs-h.fem{color:#8E3567}
 `;document.head.appendChild(tdst);
+</script>
+<script>
+/* ================= الملاحظات: ملاحظات الطلبة، ملاحظات الحصص، التذكيرات، التواصل مع الأولياء =================
+   Each note is one record notes/<id> {kind:"stu"|"ses"|"rem"|"con", date, text, sid?, toParent?, toReport?, due?, done?, via?, auto?, at}
+   so it is saved on the device, in the backups, and synced between devices like everything else. */
+const NT={list:[],tab:"stu",q:"",sid:"",ready:false};
+const NT_KINDS=[["stu","👤","ملاحظات الطلبة"],["ses","📖","ملاحظات الحصص"],["rem","⏰","التذكيرات"],["con","📞","التواصل مع الأولياء"]];
+const NT_VIA=["واتساب","مكالمة","لقاء","رسالة نصية"];
+const ntToday=()=>iso(new Date());
+const ntStu=id=>S.students.find(x=>x.id===id);
+const ntDue=()=>NT.list.filter(n=>n.kind==="rem"&&!n.done&&(n.due||n.date)<=ntToday());
+const ntFmt=d=>{if(!d)return "";const x=parse(d);return fmtDate(d)+(x.getFullYear()!==new Date().getFullYear()?" "+x.getFullYear():"")};
+async function ntAdd(o){if(!S.canWrite||!S.db){toast("ليست لديك صلاحية التعديل");return null}
+  const id="n"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  await S.db.doc("notes/"+id).set(Object.assign({date:ntToday(),text:"",at:Date.now()},o));return id}
+const ntUpd=(id,o)=>S.db.doc("notes/"+id).update(o);
+const ntDel=id=>S.db.doc("notes/"+id).delete();
+/* a message sent to a parent from the app is written in the contact log by itself */
+function ntLogContact(sid,text){if(!sid||!S.db||!S.canWrite)return;const d=ntToday();
+  if(NT.list.some(n=>n.kind==="con"&&n.auto&&n.sid===sid&&n.date===d&&n.text===text))return;
+  ntAdd({kind:"con",sid,via:"واتساب",text,auto:true}).catch(()=>{})}
+
+// ---- header button with the number of reminders due ----
+(function(){const lb=document.getElementById("teacherFilesBtn")||document.getElementById("lockBtn");if(!lb||document.getElementById("notesBtn"))return;
+  const b=document.createElement("button");b.type="button";b.className="lockbtn";b.id="notesBtn";b.setAttribute("aria-label","الملاحظات");
+  b.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>الملاحظات</span><b class="ntbadge" id="ntBadge" hidden></b>';
+  b.addEventListener("click",()=>openNotes());lb.before(b)})();
+function ntBadge(){const b=document.getElementById("ntBadge");if(!b)return;const n=ntDue().length;b.hidden=!n;b.textContent=n}
+
+// ---- the notes sheet ----
+function ntStuSel(id,sel,all){const lst=[...S.students].filter(s=>s.active!==false||s.id===sel).sort(byName);
+  return `<select id="${id}" class="ntin">${all?`<option value="">${all}</option>`:`<option value="">اختر الطالب…</option>`}${lst.map(s=>`<option value="${s.id}"${s.id===sel?" selected":""}>${esc(s.name)}</option>`).join("")}</select>`}
+function ntForm(){const t=NT.tab,dis=S.canWrite?"":"disabled",td=ntToday();
+  const dt=(id,v)=>`<input type="date" id="${id}" class="ntin" value="${v}">`;
+  if(t==="stu")return `${ntStuSel("ntSid",NT.sid)}<textarea id="ntText" class="ntin" rows="3" placeholder="ملاحظة عن الطالب: أخطاء التجويد، السلوك، ما يحتاج مراجعته…"></textarea>
+    <div class="ntrow">${dt("ntDate",td)}<label class="repck"><input type="checkbox" id="ntPar"> تظهر في بطاقة الولي</label></div>`;
+  if(t==="ses"){const ex=NT.list.find(n=>n.kind==="ses"&&n.date===S.date);
+    return `<div class="ntrow">${dt("ntDate",S.date)}<label class="repck"><input type="checkbox" id="ntRep" checked> تُضاف إلى تقرير واتساب اليومي</label></div>
+    <textarea id="ntText" class="ntin" rows="3" placeholder="ما قُرئ في الحصة، وما يُراجَع غدًا…">${ex?esc(ex.text):""}</textarea>`}
+  if(t==="rem")return `<input type="text" id="ntText" class="ntin" placeholder="مثل: الاتصال بولي فلان، تجهيز شهادة فلان…" autocomplete="off">
+    <div class="ntrow"><label class="ntlab">يذكّرني يوم ${dt("ntDue",td)}</label>${ntStuSel("ntSid",NT.sid,"دون طالب معيّن")}</div>`;
+  return `${ntStuSel("ntSid",NT.sid)}<div class="ntrow"><select id="ntVia" class="ntin">${NT_VIA.map(v=>`<option>${v}</option>`).join("")}</select>${dt("ntDate",td)}</div>
+    <input type="text" id="ntText" class="ntin" placeholder="سبب التواصل وما اتُّفق عليه…" autocomplete="off">`}
+function ntItem(n){const s=n.sid&&ntStu(n.sid),dis=S.canWrite?"":"disabled";
+  const who=s?`<button type="button" class="linkname" data-hzopen="${s.id}">${esc(s.name)}</button>`:"";
+  const tags=[n.kind==="stu"&&n.toParent?"في بطاقة الولي":"",n.kind==="ses"&&n.toReport?"في التقرير":"",n.kind==="con"?(n.via||"")+(n.auto?" · تلقائي":""):""].filter(Boolean);
+  const when=n.kind==="rem"?(n.done?"✓ تمّ":"يوم "+ntFmt(n.due||n.date)):ntFmt(n.date);
+  const late=n.kind==="rem"&&!n.done&&(n.due||n.date)<ntToday();
+  return `<div class="ntitem${n.done?" done":""}${late?" late":""}" data-nid="${n.id}">
+    <div class="nthd"><span class="note">${when}</span>${who}${tags.map(x=>`<span class="nttag">${esc(x)}</span>`).join("")}</div>
+    <div class="nttx">${esc(n.text||"")}</div>
+    <div class="ntacts">${n.kind==="rem"?`<button type="button" class="btn sm${n.done?"":" primary"}" data-ntdone ${dis}>${n.done?"إرجاع":"تمّ ✓"}</button>`:""}<button type="button" class="btn sm" data-ntdel ${dis}>حذف</button></div></div>`}
+function ntListHTML(){const t=NT.tab,q=norm(NT.q);
+  let L=NT.list.filter(n=>n.kind===t&&(!NT.sid||t==="ses"||n.sid===NT.sid));
+  if(q)L=L.filter(n=>norm(n.text||"").includes(q)||(n.sid&&ntStu(n.sid)&&norm(ntStu(n.sid).name).includes(q)));
+  if(t==="rem")L.sort((a,b)=>(a.done?1:0)-(b.done?1:0)||(a.done?(b.at||0)-(a.at||0):(a.due||a.date).localeCompare(b.due||b.date)));
+  else L.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.at||0)-(a.at||0));
+  return L.length?L.slice(0,200).map(ntItem).join(""):`<div class="empty">لا توجد ${NT_KINDS.find(k=>k[0]===t)[2]}${NT.sid&&t!=="ses"?" لهذا الطالب":""} بعد.</div>`}
+function openNotes(tab,sid){if(tab)NT.tab=tab;NT.sid=sid||"";NT.q="";
+  const md=document.getElementById("modal");
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet ntsheet" role="dialog" aria-modal="true" aria-label="الملاحظات">
+    <h3>الملاحظات</h3><div class="note">تُحفظ في التطبيق وفي النسخ الاحتياطية، وتتزامن بين أجهزتك.</div>
+    <div class="nttabs" role="tablist">${NT_KINDS.map(([k,i,l])=>`<button type="button" role="tab" data-nttab="${k}" aria-selected="${k===NT.tab}">${i} ${l}${k==="rem"&&ntDue().length?` <b class="ntbadge">${ntDue().length}</b>`:""}</button>`).join("")}</div>
+    <div id="ntBody"></div></div></div>`;md.hidden=false;ntRenderBody()}
+function ntRenderBody(){const el=document.getElementById("ntBody");if(!el)return;const t=NT.tab,dis=S.canWrite?"":"disabled";
+  document.querySelectorAll("[data-nttab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.nttab===t));
+  el.innerHTML=`<form class="ntform" id="ntForm">${ntForm()}<button type="submit" class="btn primary" ${dis}>${t==="ses"?"حفظ ملاحظة الحصة":"إضافة"}</button></form>
+    <div class="ntfilter"><span class="sbox"><input type="search" id="ntQ" placeholder="بحث في الملاحظات…" value="${esc(NT.q)}"></span>${t==="ses"?"":ntStuSel("ntFil",NT.sid,"كل الطلبة")}</div>
+    <div id="ntList" class="ntlist">${ntListHTML()}</div>`}
+function ntRefresh(){ntBadge();const l=document.getElementById("ntList");if(l)l.innerHTML=ntListHTML();
+  document.querySelectorAll("[data-nttab=rem]").forEach(b=>{const n=ntDue().length;b.innerHTML=`⏰ التذكيرات${n?` <b class="ntbadge">${n}</b>`:""}`});
+  if(S.view==="today")ntRenderToday();ntStuSection()}
+document.addEventListener("click",async e=>{
+  const tb=e.target.closest("[data-nttab]");if(tb){NT.tab=tb.dataset.nttab;ntRenderBody();return}
+  const it=e.target.closest("[data-nid]");
+  if(it&&e.target.closest("[data-ntdel]")){const b=e.target.closest("[data-ntdel]");
+    if(!b.dataset.sure){b.dataset.sure="1";b.textContent="متأكد؟";setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent="حذف"}},3000);return}
+    try{await ntDel(it.dataset.nid);toast("حُذفت")}catch(_){toast("تعذّر الحذف")}return}
+  if(it&&e.target.closest("[data-ntdone]")){const n=NT.list.find(x=>x.id===it.dataset.nid);if(n)try{await ntUpd(n.id,{done:!n.done});toast(n.done?"أُرجع التذكير":"أحسنت، تمّ ✓")}catch(_){toast("تعذّر الحفظ")}return}
+  const ad=e.target.closest("[data-ntadd]");if(ad){openNotes(ad.dataset.ntadd,ad.dataset.sid||"");return}
+});
+document.addEventListener("input",e=>{if(e.target.id==="ntQ"){NT.q=e.target.value;const l=document.getElementById("ntList");if(l)l.innerHTML=ntListHTML()}});
+document.addEventListener("change",e=>{if(e.target.id==="ntFil"){NT.sid=e.target.value;const s=document.getElementById("ntSid");if(s&&NT.sid)s.value=NT.sid;const l=document.getElementById("ntList");if(l)l.innerHTML=ntListHTML()}
+  if(e.target.id==="ntDate"&&NT.tab==="ses"){const ex=NT.list.find(n=>n.kind==="ses"&&n.date===e.target.value),ta=document.getElementById("ntText");if(ta)ta.value=ex?ex.text:""}});
+document.addEventListener("submit",async e=>{if(e.target.id!=="ntForm")return;e.preventDefault();
+  const g=id=>{const x=document.getElementById(id);return x?(x.type==="checkbox"?x.checked:x.value.trim()):""};
+  const t=NT.tab,text=g("ntText"),sid=g("ntSid");
+  if(!text){toast("اكتب الملاحظة أولًا");return}
+  if((t==="stu"||t==="con")&&!sid){toast("اختر الطالب");return}
+  try{
+    if(t==="stu")await ntAdd({kind:"stu",sid,text,date:g("ntDate")||ntToday(),toParent:g("ntPar")});
+    else if(t==="ses"){const d=g("ntDate")||S.date,ex=NT.list.find(n=>n.kind==="ses"&&n.date===d);
+      if(ex)await ntUpd(ex.id,{text,toReport:g("ntRep"),at:Date.now()});else await ntAdd({kind:"ses",text,date:d,toReport:g("ntRep")})}
+    else if(t==="rem")await ntAdd({kind:"rem",text,due:g("ntDue")||ntToday(),sid:sid||"",done:false});
+    else await ntAdd({kind:"con",sid,text,via:g("ntVia")||"واتساب",date:g("ntDate")||ntToday()});
+    toast(t==="ses"?"حُفظت ملاحظة الحصة":"أُضيفت");
+    if(t!=="ses"){const x=document.getElementById("ntText");if(x)x.value=""}
+  }catch(_){toast("تعذّر الحفظ")}});
+
+// ---- today: reminders due and the session note ----
+function ntRenderToday(){let el=document.getElementById("ntToday");
+  if(!el){const a=document.getElementById("hzAlerts");if(!a)return;el=document.createElement("div");el.id="ntToday";a.before(el)}
+  if(!NT.ready||(typeof isOff==="function"&&isOff(S.date))){el.innerHTML="";return}
+  const due=ntDue(),ses=NT.list.find(n=>n.kind==="ses"&&n.date===S.date),dis=S.canWrite?"":"disabled";let h="";
+  if(due.length)h+=`<div class="hznote ntrem"><b>⏰ تذكيرات اليوم</b>${due.map(n=>{const s=n.sid&&ntStu(n.sid);
+    return `<div class="hzrow" data-nid="${n.id}">${s?`<button type="button" class="linkname" data-hzopen="${s.id}">${esc(s.name)}</button>`:""}<span class="note">${esc(n.text)}${(n.due||n.date)<ntToday()?` · منذ ${ntFmt(n.due||n.date)}`:""}</span><span class="hzacts"><button type="button" class="btn sm primary" data-ntdone ${dis}>تمّ ✓</button></span></div>`}).join("")}</div>`;
+  h+=ses?`<div class="hznote ntses"><b>📖 ملاحظة الحصة${ses.toReport?" · تُضاف إلى التقرير":""}</b><div class="nttx">${esc(ses.text)}</div><div><button type="button" class="btn sm" data-ntadd="ses">تعديل</button></div></div>`
+    :`<button type="button" class="linkbtn ntaddses" data-ntadd="ses" ${dis}>📖 ＋ ملاحظة الحصة (ما قُرئ، وما يُراجَع غدًا)</button>`;
+  el.innerHTML=h}
+{const _rtNt=renderToday;renderToday=function(){_rtNt();ntRenderToday()}}
+
+// ---- student sheet: his notes and contacts ----
+function ntStuSection(){const sh=document.querySelector("#modal .stusheet");if(!sh)return;const id=document.getElementById("modal").dataset.cur;if(!id)return;
+  let box=sh.querySelector(".ntstu");if(!box){box=document.createElement("div");box.className="ntstu";const hz=sh.querySelector(".hzbox")||sh.querySelector(".stats");if(hz)hz.after(box);else sh.appendChild(box)}
+  const L=NT.list.filter(n=>n.sid===id&&n.kind!=="ses").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.at||0)-(a.at||0));
+  box.innerHTML=`<div class="hzhd"><b>📝 الملاحظات والتواصل</b><span class="note">${L.length||""}</span></div>
+    ${L.length?L.slice(0,5).map(ntItem).join(""):`<div class="note" style="margin:4px 0 8px">لا توجد ملاحظات بعد.</div>`}
+    <div class="ntacts" style="justify-content:flex-start"><button type="button" class="btn sm" data-ntadd="stu" data-sid="${id}">＋ ملاحظة</button><button type="button" class="btn sm" data-ntadd="con" data-sid="${id}">＋ تواصل مع الولي</button><button type="button" class="btn sm" data-ntadd="rem" data-sid="${id}">＋ تذكير</button>${L.length>5?`<button type="button" class="btn sm" data-ntadd="stu" data-sid="${id}">الكل (${L.length})</button>`:""}</div>`}
+{const _osNt=openStudent;openStudent=function(id){_osNt(id);ntStuSection()}}
+
+// ---- daily WhatsApp report: the session note ----
+{const _brNt=buildReport;buildReport=function(o){const out=_brNt(o),n=NT.list.find(x=>x.kind==="ses"&&x.date===S.date&&x.toReport&&x.text);if(!n)return out;
+  const add="📖 *ملاحظة الحصة:*\n"+n.text,k=out.lastIndexOf("\n\n");return k<0?out+"\n\n"+add:out.slice(0,k)+"\n\n"+add+out.slice(k)}}
+
+// ---- parent card: put a note meant for the parent; sending the card is logged ----
+{const _ocNt=openCard;openCard=async function(id,mk){await _ocNt(id,mk);const inp=document.getElementById("cardNote");if(!inp)return;
+  const L=NT.list.filter(n=>n.kind==="stu"&&n.sid===id&&n.toParent&&n.text).sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,4);if(!L.length)return;
+  const w=document.createElement("div");w.className="ntchips";w.innerHTML=`<span class="note">من ملاحظاتك:</span>`+L.map(n=>`<button type="button" class="btn sm" data-ntcard="${n.id}">${esc(n.text.length>40?n.text.slice(0,40)+"…":n.text)}</button>`).join("");inp.after(w)}}
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-ntcard]");if(c){const n=NT.list.find(x=>x.id===c.dataset.ntcard),inp=document.getElementById("cardNote");if(n&&inp){inp.value=n.text;CARD.note=n.text;drawCard()}return}
+  if(e.target.closest("#cardShare")&&CARD.id){const [y,m]=(CARD.mk||S.month).split("-").map(Number);ntLogContact(CARD.id,`أُرسلت بطاقة المتابعة لشهر ${MON[m-1]} ${y}`);return}
+  const wa=e.target.closest(".hznote.abs a.btn.wa");if(wa){const r=wa.closest(".hzrow"),o=r&&r.querySelector("[data-hzopen]");if(o)ntLogContact(o.dataset.hzopen,"تنبيه غياب متتالٍ");return}
+},true);
+
+// ---- start ----
+(async()=>{try{const db=await claude.use("db");if(!db)return;
+  db.collection("notes").onSnapshot(snap=>{NT.list=snap.docs.map(d=>Object.assign({id:d.id},d.data()));NT.ready=true;ntRefresh()})}catch(_){}})();
+
+const ntst=document.createElement("style");ntst.textContent=`
+#notesBtn{position:relative}
+header .top>span{flex-wrap:wrap;justify-content:flex-end;row-gap:6px;min-width:0;max-width:100%}
+.ntbadge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--absent);color:#fff;font-size:.7rem;font-weight:800;margin-inline-start:2px}
+.nttabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
+.nttabs button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 8px;font:inherit;font-size:.86rem;font-weight:700;min-height:44px;cursor:pointer}
+.nttabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ntform{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+.ntin{width:100%;min-height:44px;font:inherit;font-size:16px;box-sizing:border-box}
+textarea.ntin{min-height:80px;resize:vertical}
+.ntrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ntrow>*{flex:1 1 140px}
+.ntlab{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+.ntfilter{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px}.ntfilter>*{flex:1 1 150px}.ntfilter .sbox input{width:100%;min-height:44px}
+.ntlist{display:grid;gap:8px}
+.ntitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);display:grid;gap:6px}
+.ntitem.done{opacity:.6}.ntitem.done .nttx{text-decoration:line-through}
+.ntitem.late{border-inline-start:4px solid var(--absent)}
+.nthd{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.nthd .note{margin:0}
+.nttag{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--accent)}
+.nttx{white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}
+.ntacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.ntstu{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;display:grid;gap:8px}
+.ntstu .hzhd{display:flex;justify-content:space-between;align-items:center}
+.hznote.ntrem{border-inline-start-color:var(--gold)}.hznote.ntses{border-inline-start-color:var(--accent)}
+.ntaddses{margin:8px 0;width:100%;justify-content:center}
+#ntToday{display:grid;gap:8px;margin:8px 0}
+.ntchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 10px}
+`;document.head.appendChild(ntst);
 </script>
 </body>
 </html>
