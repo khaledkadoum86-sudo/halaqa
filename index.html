@@ -693,15 +693,28 @@ html.ipad .basmala .b1{font-size:1.9rem}
 .hzacts{display:flex;gap:6px}.hzacts .btn.wa{min-height:34px;font-size:.85rem;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center}
 .linkname{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;text-align:start}
 .certseg button[aria-checked="true"]{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-/* the republic's name, in a band above the banner photo */
-.rdz{position:relative;z-index:2;background:var(--accent);color:var(--accent-ink);text-align:center;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));
-  font-family:var(--display);font-weight:700;font-size:clamp(.95rem,4vw,1.25rem);letter-spacing:.01em;border-bottom:3px solid var(--gold);line-height:1.5}
+/* the photo in depth: rounded frame, soft shadow, slow drift and parallax; the republic's name engraved on top */
+.ph3d{position:relative;overflow:hidden;border-radius:0 0 26px 26px;box-shadow:0 18px 30px -14px rgba(0,0,0,.55),0 2px 0 var(--gold);isolation:isolate;transform:translateZ(0)}
+.ph3d>img{transform:translate3d(0,var(--py,0px),0) scale(1.12);transform-origin:50% 60%;will-change:transform;animation:phdrift 22s ease-in-out infinite alternate}
+@keyframes phdrift{from{object-position:center 74%}to{object-position:center 62%}}
+.ph3d::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(8,20,30,.72) 0%,rgba(8,20,30,.25) 26%,transparent 46%,transparent 72%,rgba(8,20,30,.45) 100%),
+  radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.35) 100%)}
+.ph3d::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 -40px 60px -40px rgba(0,0,0,.5)}
+.rdz{position:absolute;z-index:2;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:10px 12px 0;padding-top:calc(10px + env(safe-area-inset-top,0px));text-align:center;
+  font-family:var(--display);font-weight:800;font-size:clamp(.86rem,4.15vw,1.45rem);line-height:1.4;white-space:nowrap;color:#fff6dc;letter-spacing:.01em;
+  text-shadow:0 1px 0 #d7b46a,0 2px 0 #b9852a,0 3px 0 #8f6418,0 4px 0 #6d4a0f,0 6px 10px rgba(0,0,0,.55),0 12px 24px rgba(0,0,0,.35)}
+.rdz span{padding-bottom:6px;background:linear-gradient(90deg,transparent,#e0b25a 18%,#fff2c9 50%,#e0b25a 82%,transparent) bottom/100% 2px no-repeat}
+.rdz .dzflag{width:24px;height:16px;flex:none;border-radius:3px;box-shadow:0 3px 8px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.5);transform:perspective(60px) rotateY(-14deg)}
+.rdz .dzflag:last-child{transform:perspective(60px) rotateY(14deg)}
 body:not([data-view="home"]) .rdz{display:none}
+@media (prefers-reduced-motion:reduce){.ph3d>img{animation:none;transform:scale(1.04)}}
+@media (max-width:340px){.rdz .dzflag{display:none}}
 </style>
 </head>
 <body>
-<div class="rdz" role="banner"><span>الجمهورية الجزائرية الديمقراطية الشعبية</span></div>
-<div class="banner"><img src="banner.jpg" alt="صحن المسجد والقبة والمئذنتان"><div class="basmala wrap" aria-label="بسم الله الرحمن الرحيم، وصلى الله على سيدنا محمد وءاله"><p class="b1">بسم الله الرحمن الرحيم</p><p class="b2">وصلى الله على سيدنا محمد وءاله</p></div>
+<div class="banner"><div class="ph3d" id="ph3d"><img src="banner.jpg" alt="صحن المسجد والقبة والمئذنتان"><div class="rdz" role="banner"><svg class="dzflag" viewBox="0 0 30 20" aria-hidden="true"><rect width="15" height="20" fill="#006233"/><rect x="15" width="15" height="20" fill="#fff"/><path d="M19.225 7.326A5 5 0 1 0 19.225 12.674A4 4 0 1 1 19.225 7.326Z" fill="#d21034"/><path d="M19.75 10.00L18.26 10.52L18.23 12.09L17.28 10.84L15.77 11.29L16.67 10.00L15.77 8.71L17.28 9.16L18.23 7.91L18.26 9.48Z" fill="#d21034"/></svg><span>الجمهورية الجزائرية الديمقراطية الشعبية</span><svg class="dzflag" viewBox="0 0 30 20" aria-hidden="true"><rect width="15" height="20" fill="#006233"/><rect x="15" width="15" height="20" fill="#fff"/><path d="M19.225 7.326A5 5 0 1 0 19.225 12.674A4 4 0 1 1 19.225 7.326Z" fill="#d21034"/><path d="M19.75 10.00L18.26 10.52L18.23 12.09L17.28 10.84L15.77 11.29L16.67 10.00L15.77 8.71L17.28 9.16L18.23 7.91L18.26 9.48Z" fill="#d21034"/></svg></div></div><div class="basmala wrap" aria-label="بسم الله الرحمن الرحيم، وصلى الله على سيدنا محمد وءاله"><p class="b1">بسم الله الرحمن الرحيم</p><p class="b2">وصلى الله على سيدنا محمد وءاله</p></div>
 <div class="banner-txt wrap"><img class="school-logo" src="logo.webp" alt="شعار المدرسة القرءانية النموذجية" width="86" height="86"><b>سجل متابعة الطلبة</b><span>الحضور والحفظ اليومي</span><span class="teacher" id="teacherLine" hidden></span></div></div>
 <header>
   <div class="wrap">
@@ -1658,7 +1671,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 9.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3501,7 +3514,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.7"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 9.8"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -5413,6 +5426,12 @@ main>section.vin{animation:vin .22s cubic-bezier(.2,.8,.2,1)}
 html{scroll-behavior:auto}
 `;document.head.appendChild(hmst);
 
+</script>
+<script>
+/* depth: the photo moves slower than the page while scrolling */
+(function(){const f=document.getElementById("ph3d");if(!f||matchMedia("(prefers-reduced-motion:reduce)").matches)return;let q=0;
+  const go=()=>{q=0;const y=Math.min(Math.max(scrollY,0),600);f.style.setProperty("--py",(y*.35).toFixed(1)+"px")};
+  addEventListener("scroll",()=>{if(!q)q=requestAnimationFrame(go)},{passive:true});go()})();
 </script>
 </body>
 </html>
