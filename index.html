@@ -1636,7 +1636,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.8</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 8.9</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3215,7 +3215,7 @@ const absHidden=()=>{try{return JSON.parse(localStorage.getItem(ABS_HIDE)||"{}")
 const hisas=n=>n<=10?n+" حصص":n+" حصة";
 function absStreaks(upTo){
   const held=[];const ds=hzDays();
-  for(let k=ds.length-1;k>=0&&held.length<40;k--){const [d,r]=ds[k];if(d>upTo)continue;const a=r.att||{};for(const id in a)if(isRec(a[id])){held.push([d,a]);break}}
+  for(let k=ds.length-1;k>=0&&held.length<40;k--){const [d,r]=ds[k];if(d>upTo||r.off)continue;const a=r.att||{};for(const id in a)if(isRec(a[id])){held.push([d,a]);break}}
   const out=[],hide=absHidden();
   for(const s of active()){let n=0,since="";
     for(const [d,a] of held){const v=a[s.id];if(v===A){n++;since=d}else if(v===P||v===J)break}
@@ -3479,7 +3479,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.8"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 8.9"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4471,6 +4471,153 @@ textarea.ntin{min-height:80px;resize:vertical}
 #ntToday{display:grid;gap:8px;margin:8px 0}
 .ntchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 10px}
 `;document.head.appendChild(ntst);
+</script>
+<script>
+/* ================= تقرير الغيابات اليومي =================
+   One message with the day's absentees (males / females), how many sessions in a row each one missed, and those
+   who came partly. Sent to the teacher's own WhatsApp (then forwarded to the group). The day remembers it was sent
+   (days/<date>.absSent) so «حصة اليوم» reminds the teacher until it is. */
+const ABR_KEY="halaqa.absrep";
+const abrOpts=()=>{try{return Object.assign({partial:true,run:true,close:"نرجو من أولياء الغائبين إعلامنا بسبب الغياب، وجزاكم الله خيرًا."},JSON.parse(localStorage.getItem(ABR_KEY)||"{}"))}catch(_){return{partial:true,run:true,close:""}}};
+const abrSave=o=>{try{localStorage.setItem(ABR_KEY,JSON.stringify(o))}catch(_){}};
+/* sessions in a row the student missed, ending on day d (days without any record or marked «لا حصة» are skipped) */
+function absRun(sid,d){let n=0;const ds=hzDays();
+  for(let k=ds.length-1;k>=0;k--){const [x,r]=ds[k];if(x>d||r.off)continue;const a=r.att||{};if(!Object.values(a).some(isRec))continue;
+    const v=a[sid];if(v===A)n++;else if(v===P||v===J)break}return n}
+const ordW=n=>(["","الأولى","الثانية","الثالثة","الرابعة","الخامسة","السادسة","السابعة","الثامنة","التاسعة","العاشرة"][n])||(n+"");
+function buildAbsReport(){const o=abrOpts(),d=S.date,x=parse(d),dd=dayData(d),list=active();
+  const ab=list.filter(s=>dd.att[s.id]===A),pj=list.filter(s=>dd.att[s.id]===J),rec=list.filter(s=>isRec(dd.att[s.id])).length;
+  const L=[`❌ *تقرير الغيابات*`,`${DAYN[x.getDay()]} ${x.getDate()} ${MON[x.getMonth()]} ${x.getFullYear()}`,"المدرسة القرءانية النموذجية",""];
+  if(!ab.length)L.push("✅ لا غياب اليوم، حضر جميع الطلبة والحمد لله.");
+  else{L.push(`عدد الغائبين: ${ab.length} من ${rec||list.length}`);
+    const line=s=>{const n=o.run?absRun(s.id,d):0;return "• "+s.name+(n>=2?` — ${gw(s,"غائب","غائبة")} للمرة ${ordW(n)} على التوالي`:"")};
+    const m=ab.filter(s=>!isF(s)),f=ab.filter(isF);
+    if(m.length&&f.length){L.push("");L.push(`*الذكور (${m.length}):*`);L.push(m.map(line).join("\n"));L.push("");L.push(`*الإناث (${f.length}):*`);L.push(f.map(line).join("\n"))}
+    else{L.push("");L.push(ab.map(line).join("\n"))}}
+  if(o.partial&&pj.length){L.push("");L.push(`🟡 *حضور جزئي (${pj.length}):*`);L.push(pj.map(s=>"• "+s.name).join("\n"))}
+  const c=(o.close||"").trim();if(c&&ab.length){L.push("");L.push(c)}
+  const t=teacherName();if(t)L.push(t);
+  return L.join("\n")}
+async function absMarkSent(){const d=S.date;try{if(S.pending[d]){clearTimeout(timers[d]);await flush(d)}
+  const ref=S.db.doc("days/"+d),cur=await ref.get();if(cur.exists&&!cur.data().absSent){await ref.update({absSent:true});const b=S.days[d];if(b)b.absSent=true}renderToday()}catch(_){}}
+function openAbsReport(){const o=abrOpts(),dd=dayData(S.date),list=active(),un=list.filter(s=>!isRec(dd.att[s.id])).length;
+  const md=document.getElementById("modal");const sent=(dayRec(S.date)||{}).absSent;
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="تقرير الغيابات">
+    <h3>❌ تقرير الغيابات</h3><div class="note">${fmtDate(S.date)} · يمكنك تعديل النص قبل الإرسال.${sent?" · ✓ أُرسل هذا اليوم":""}</div>
+    ${un?`<div class="abrwarn">⚠️ ${un} ${un===1?"طالب لم يُسجَّل":"طلبة لم يُسجَّلوا"} بعد في هذا اليوم. <button type="button" class="btn sm" data-abrgo>إكمال التسجيل</button></div>`:""}
+    <div class="repopts"><label class="repck"><input type="checkbox" data-abr="run" ${o.run?"checked":""}> عدد الغيابات المتتالية</label><label class="repck"><input type="checkbox" data-abr="partial" ${o.partial?"checked":""}> الحضور الجزئي</label></div>
+    <input type="text" id="abrClose" value="${esc(o.close)}" placeholder="جملة الختام (اختياري)" style="min-height:44px;width:100%;margin-bottom:8px" autocomplete="off">
+    <input type="tel" id="repMe" dir="ltr" value="${esc(repExtra().me)}" placeholder="رقم واتساب الخاص بي، مثل 0661234567" style="min-height:44px;width:100%;margin-bottom:8px" autocomplete="off">
+    <textarea id="abrText" dir="rtl" rows="12">${esc(buildAbsReport())}</textarea>
+    <div class="lockset">
+      <button class="btn wa" type="button" id="abrMe">إرسال إلى حسابي في واتساب</button>
+      <div class="note" style="margin:0">يصلك التقرير في محادثتك مع نفسك، ثم تحوّله أنت إلى المجموعة.</div>
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="abrShare" style="flex:1">مشاركة…</button><button class="btn" type="button" id="abrCopy" style="flex:1">نسخ النص</button></div>
+      <button class="btn" type="button" data-act="close">إغلاق</button></div></div></div>`;md.hidden=false}
+document.addEventListener("change",e=>{const k=e.target.dataset&&e.target.dataset.abr;if(!k)return;const o=abrOpts();o[k]=e.target.checked;abrSave(o);const t=document.getElementById("abrText");if(t)t.value=buildAbsReport()});
+document.addEventListener("input",e=>{if(e.target.id!=="abrClose")return;const o=abrOpts();o.close=e.target.value;abrSave(o);const t=document.getElementById("abrText");if(t)t.value=buildAbsReport()});
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#absRepBtn,[data-absrep]")){if(!active().length){toast("لا يوجد طلبة بعد");return}openAbsReport();return}
+  if(e.target.closest("[data-abrgo]")){document.getElementById("modal").hidden=true;if(typeof tdGo==="function")tdGo(1,true);S.filter="none";const f=document.getElementById("filter");if(f)f.value="none";renderToday();return}
+  const ta=document.getElementById("abrText");if(!ta)return;
+  if(e.target.closest("#abrMe")){const n=waNum(repExtra().me);if(!n){toast("اكتب رقم واتساب الخاص بك أولًا");document.getElementById("repMe")?.focus();return}
+    absMarkSent();location.href="https://wa.me/"+n+"?text="+encodeURIComponent(ta.value)}
+  else if(e.target.closest("#abrShare")){if(navigator.share){try{await navigator.share({text:ta.value});absMarkSent()}catch(_){}}else{absMarkSent();location.href="https://wa.me/?text="+encodeURIComponent(ta.value)}}
+  else if(e.target.closest("#abrCopy")){try{await navigator.clipboard.writeText(ta.value);toast("نُسخ التقرير، الصقه في واتساب")}catch(_){ta.select();toast("حدّد النص وانسخه")}absMarkSent()}
+});
+/* button next to «تقرير اليوم», and a reminder on today's page until the report is sent */
+(function(){const r=document.getElementById("reportBtn");if(!r||document.getElementById("absRepBtn"))return;
+  const b=document.createElement("button");b.className="btn";b.id="absRepBtn";b.type="button";b.textContent="❌ تقرير الغيابات";r.after(b)})();
+function renderAbsDue(){let el=document.getElementById("absDue");
+  if(!el){const t=document.getElementById("todayAbs");if(!t)return;el=document.createElement("div");el.id="absDue";t.before(el)}
+  const d=S.date,r=dayRec(d)||{},dd=dayData(d);
+  const show=S.studentsLoaded&&d===iso(new Date())&&!r.off&&!r.absSent&&Object.values(dd.att).some(isRec);
+  el.innerHTML=show?`<div class="absdue"><span>📤 لم يُرسَل <b>تقرير الغيابات</b> اليوم بعد</span><button type="button" class="btn sm wa" data-absrep>إرساله الآن</button></div>`:""}
+{const _rtAb=renderToday;renderToday=function(){_rtAb();renderAbsDue()}}
+
+/* ================= إضافة مجموعة طلبة بأرقام هواتفهم =================
+   Paste a list (one student per line: name and phone, in any order, numbered or not) or open a .txt/.csv/.json file.
+   Each line is matched with the students already in the app: the phone is added to an existing student, or a new
+   student is added. Nothing is saved before «تأكيد»; an automatic copy of the data is kept first. */
+const BI={rows:[]};
+const biDigits=s=>String(s||"").replace(/[٠-٩]/g,c=>"٠١٢٣٤٥٦٧٨٩".indexOf(c)).replace(/[۰-۹]/g,c=>"۰۱۲۳۴۵۶۷۸۹".indexOf(c));
+function biPhone(raw){let d=biDigits(raw).replace(/\D/g,"");if(d.startsWith("00"))d=d.slice(2);if(d.startsWith("213"))d="0"+d.slice(3);if(d.length===9&&/^[5-7]/.test(d))d="0"+d;
+  if(d.length===9&&/^0[2-4]/.test(d))return{ok:true,v:d.replace(/^(\d{3})(\d{2})(\d{2})(\d{2})$/,"$1 $2 $3 $4")}; // landline, e.g. 031 xx xx xx
+  if(d.length!==10||d[0]!=="0")return d?{ok:false,v:d}:null;return{ok:true,v:d.replace(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/,"$1 $2 $3 $4 $5")}}
+/* Algerian numbers: mobile 0[5-7] + 8 digits (or +213 / 00213 / 213 without the 0), landline 0[2-4] + 7 digits; spaces, dots and dashes allowed */
+const BI_PH=/(?<!\d)(?:(?:\+|00)?213[\s.\-]?[5-7](?:[\s.\-]?\d){8}|0[\s.\-]?[5-7](?:[\s.\-]?\d){8}|0[\s.\-]?[2-4](?:[\s.\-]?\d){7}|[5-7](?:[\s.\-]?\d){8})(?!\d)/g;
+function biParse(text){const out=[];
+  for(let line of String(text||"").split(/\r?\n/)){line=biDigits(line).trim();if(!line)continue;
+    const ph=[];line=line.replace(BI_PH,m=>{ph.push(m);return " "}).replace(/(\+?\d[\d\s.\-\/]{7,}\d)/g,m=>{ph.push(m);return " "});
+    let name=line.replace(/^\s*\d{1,3}\s*[-.)–:]\s*/,"").replace(/[,;\t|:،؛]+/g," ").replace(/\s+/g," ").trim();
+    name=name.replace(/^(الاسم|اسم الطالب)\s*/,"");if(!name||/^(الاسم|الهاتف|رقم)/.test(name)&&!ph.length)continue;
+    out.push({name,phones:ph.map(biPhone).filter(Boolean)})}
+  return out}
+function biMatch(name){const tok=x=>norm(x).replace(/[ًٌٍَُِّْ]/g,"").split(/\s+/).map(t=>t.replace(/^ال/,"")).filter(t=>t&&t!=="بن");
+  const ex=S.students.find(s=>norm(s.name)===norm(name));if(ex)return{s:ex,sure:true};
+  const t=tok(name);let best=null,bs=0;
+  for(const s of S.students){const u=tok(s.name||"");const c=t.filter(x=>u.includes(x)).length;if(c>=Math.min(2,t.length)&&c>bs){bs=c;best=s}}
+  return best?{s:best,sure:bs===t.length&&bs===tok(best.name).length}:null}
+function biBuild(text){const L=biParse(text);BI.rows=L.map((r,i)=>{const m=biMatch(r.name),ph=r.phones[0]||null;
+  const g=typeof SEXG!=="undefined"?SEXG.guess(r.name):{sug:null};
+  return{i,name:r.name,phone:ph,extra:r.phones.slice(1),match:m,act:m?(ph&&ph.ok?"upd":"skip"):"new",sex:g&&g.sug==="f"?"f":"m"}});
+  return BI.rows.length}
+function biRowHTML(r){const old=r.match&&r.match.s.phone||"";const ph=r.phone?(r.phone.ok?r.phone.v:`<span class="biwarn">${esc(r.phone.v)} (غير صحيح)</span>`):`<span class="note">دون رقم</span>`;
+  const opts=[r.match?`<option value="upd"${r.act==="upd"?" selected":""}>تحديث «${esc(r.match.s.name)}»</option>`:"",`<option value="new"${r.act==="new"?" selected":""}>إضافة طالب جديد</option>`,`<option value="skip"${r.act==="skip"?" selected":""}>تجاهل</option>`].join("");
+  return `<div class="birow ${r.act}" data-bi="${r.i}"><div class="bihd"><b>${esc(r.name)}</b><span class="num" dir="ltr">${ph}</span></div>
+    ${r.match&&!r.match.sure?`<div class="biwarn">تحقّق: أقرب اسم في التطبيق «${esc(r.match.s.name)}»</div>`:""}
+    ${r.act==="upd"&&old&&r.phone&&r.phone.ok&&old.replace(/\D/g,"")!==r.phone.v.replace(/\D/g,"")?`<div class="note">رقمه الحالي: <span dir="ltr">${esc(old)}</span> ← يُستبدل</div>`:""}
+    ${r.extra.length?`<div class="note">رقم آخر في السطر: <span dir="ltr">${r.extra.map(p=>esc(p.v)).join("، ")}</span> (لا يُحفظ)</div>`:""}
+    <div class="ntrow"><select data-biact>${opts}</select>${r.act==="new"?`<select data-bisex><option value="m"${r.sex==="m"?" selected":""}>ذكر</option><option value="f"${r.sex==="f"?" selected":""}>أنثى</option></select>`:""}</div></div>`}
+function biSummary(){const c=k=>BI.rows.filter(r=>r.act===k).length;return `تحديث ${c("upd")} · إضافة ${c("new")} · تجاهل ${c("skip")}`}
+function openBulkImport(){const md=document.getElementById("modal");BI.rows=[];
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="إضافة مجموعة طلبة">
+    <h3>📥 إضافة مجموعة طلبة وأرقامهم</h3>
+    <div class="note">الصق القائمة: سطر لكل طالب، فيه الاسم ورقم الهاتف. يتعرّف التطبيق على الطلبة الموجودين فيضيف أرقامهم، ويضيف الجدد. لا يُحفظ شيء قبل «تأكيد».</div>
+    <textarea id="biText" dir="rtl" rows="7" placeholder="مثال:&#10;طويل يوسف 0661 23 45 67&#10;حليمي ملاك 0555123456" style="width:100%;margin:10px 0;font-size:16px"></textarea>
+    <div class="lockset"><button class="btn primary" type="button" id="biGo">معاينة</button>
+      <label class="btn" for="biFile" style="text-align:center;cursor:pointer">فتح ملف (txt أو csv أو json)</label><input type="file" id="biFile" accept=".txt,.csv,.json,text/plain,text/csv,application/json" hidden></div>
+    <div id="biOut"></div>
+    <div class="lockset"><button class="btn" type="button" data-act="close">إغلاق</button></div></div></div>`;md.hidden=false}
+function biRender(){const o=document.getElementById("biOut");if(!o)return;
+  if(!BI.rows.length){o.innerHTML=`<div class="empty">لم أجد أسماء في القائمة.</div>`;return}
+  o.innerHTML=`<div class="bisum" id="biSum">${biSummary()}</div><div class="bilist">${BI.rows.map(biRowHTML).join("")}</div>
+    <button class="btn primary" type="button" id="biSave" style="width:100%;margin-top:10px" ${S.canWrite?"":"disabled"}>تأكيد وحفظ</button>`}
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#bulkBtn")){openBulkImport();return}
+  if(e.target.closest("#biGo")){const t=document.getElementById("biText");biBuild(t?t.value:"");biRender();return}
+  if(e.target.closest("#biSave")){const b=e.target.closest("#biSave");if(b.disabled)return;b.disabled=true;
+    try{await autoSnap("قبل إضافة مجموعة طلبة")}catch(_){}
+    let up=0,add=0;let n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0);
+    try{for(const r of BI.rows){
+      if(r.act==="upd"&&r.match&&r.phone&&r.phone.ok){await S.db.doc("students/"+r.match.s.id).update({phone:r.phone.v});up++}
+      else if(r.act==="new"){n++;const id="s"+Date.now().toString(36)+r.i;
+        await S.db.doc("students/"+id).set({n,name:r.name,active:true,sex:r.sex,fileNo:"",birthDate:"",birthPlace:"",phone:r.phone&&r.phone.ok?r.phone.v:"",address:""});add++}}
+      document.getElementById("modal").hidden=true;toast(`تمّ: أُضيف ${add} طالبًا وحُدِّث رقم ${up}`)}
+    catch(_){b.disabled=false;toast("تعذّر الحفظ، حاول مرة أخرى")}}
+});
+document.addEventListener("change",async e=>{
+  const row=e.target.closest&&e.target.closest("[data-bi]");
+  if(row&&e.target.matches("[data-biact]")){const r=BI.rows[+row.dataset.bi];r.act=e.target.value;row.outerHTML=biRowHTML(r);const s=document.getElementById("biSum");if(s)s.textContent=biSummary();return}
+  if(row&&e.target.matches("[data-bisex]")){BI.rows[+row.dataset.bi].sex=e.target.value;return}
+  if(e.target.id==="biFile"){const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;let txt=await f.text();
+    try{const j=JSON.parse(txt);const arr=Array.isArray(j)?j:(j.rows||j.students||[]);txt=arr.map(x=>Array.isArray(x)?x.join(" "):[x.name||x.الاسم||"",x.phone||x.الهاتف||""].join(" ")).join("\n")}catch(_){}
+    const t=document.getElementById("biText");if(t)t.value=txt;biBuild(txt);biRender()}
+});
+(function(){const tools=document.querySelector("#v-students .stutools");if(!tools||document.getElementById("bulkBtn"))return;
+  const b=document.createElement("button");b.type="button";b.className="linkbtn";b.id="bulkBtn";b.textContent="📥 إضافة مجموعة طلبة وأرقامهم";tools.prepend(b)})();
+
+const abst=document.createElement("style");abst.textContent=`
+.absdue{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:8px 0;padding:10px 14px;border-radius:12px;border:1px solid var(--absent);background:var(--absent-bg)}
+.abrwarn{margin:10px 0;padding:8px 12px;border-radius:12px;background:var(--gold-bg);display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
+.bisum{margin:12px 0 8px;font-weight:700;color:var(--accent)}
+.bilist{display:grid;gap:8px;max-height:52vh;overflow:auto}
+.birow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}
+.birow.new{border-inline-start:4px solid var(--present)}.birow.upd{border-inline-start:4px solid var(--blue)}.birow.skip{opacity:.55}
+.bihd{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.birow select{min-height:40px;font:inherit;flex:1 1 160px}
+.biwarn{color:var(--absent);font-size:.85rem}
+`;document.head.appendChild(abst);
 </script>
 </body>
 </html>
