@@ -1084,8 +1084,10 @@ function renderTodayInner(){
       <span class="nmcell"><button class="name" data-act="open">${esc(s.name)}</button>${typeof hzMini==="function"?hzMini(s):""}</span>
       <span class="pa"><button data-act="p" class="${v===P?"on-p":""}" aria-pressed="${v===P}" ${dis} aria-label="حاضر">ح</button><button data-act="j" class="${v===J?"on-j":""}" aria-pressed="${v===J}" ${dis} aria-label="حضور جزئي">ج</button><button data-act="a" class="${v===A?"on-a":""}" aria-pressed="${v===A}" ${dis} aria-label="غائب">غ</button></span>
       <span class="step"><button data-act="minus" ${dis} aria-label="إنقاص">−</button><input class="num" type="number" min="0" step="1" inputmode="numeric" id="th-${s.id}" value="${th==null||th===""?"":th}" ${dis} aria-label="عدد الأثمان"><button data-act="plus" ${dis} aria-label="زيادة">+</button></span>
-    </div>`}).join(""):`<div class="empty">لا يوجد طالب يطابق البحث.</div>`);
+    </div>`}).join(""):(S.filter!=="all"&&!q?`<div class="empty">لا يوجد طالب بفلتر «${FILTER_LBL[S.filter]||""}» في هذا اليوم (${list.length} طالبًا في القائمة). <button type="button" class="btn sm" onclick="resetTodayFilter()">عرض الكل</button></div>`:`<div class="empty">لا يوجد طالب يطابق البحث.</div>`));
 }
+const FILTER_LBL={p:"الحاضرون",j:"حضور جزئي",a:"الغائبون",none:"غير مسجَّل"};
+function resetTodayFilter(){S.filter="all";const f=document.getElementById("filter");if(f)f.value="all";renderToday()}
 
 function monthStats(mk){
   const days=studyDays(mk), list=active(), per={}, dds=days.map(dayData);
@@ -1259,7 +1261,7 @@ document.querySelector(".tabs").addEventListener("click",e=>{
   render();
 });
 function centerDay(){requestAnimationFrame(()=>{const s=document.getElementById("dayStrip"),on=s&&s.querySelector(".chip.on, .dchip.on");if(!on)return;try{const a=s.getBoundingClientRect(),c=on.getBoundingClientRect();s.scrollTo({left:s.scrollLeft+(c.left+c.width/2)-(a.left+a.width/2),behavior:"smooth"})}catch(_){}})}
-function setDate(d){S.date=d;centerDay();const mk=monthKey(d);if(!S.days||mk!==S.lastSubMonthDate){S.lastSubMonthDate=mk;subscribeMonth()}render()}
+function setDate(d){S.date=d;centerDay();if(S.filter&&S.filter!=="all"){S.filter="all";const f0=document.getElementById("filter");if(f0)f0.value="all"}const mk=monthKey(d);if(!S.days||mk!==S.lastSubMonthDate){S.lastSubMonthDate=mk;subscribeMonth()}render()}
 document.getElementById("dayStrip").addEventListener("click",e=>{const b=e.target.closest(".dchip");if(b&&!isFuture(b.dataset.d))setDate(b.dataset.d)});
 document.getElementById("grid").addEventListener("click",e=>{const th=e.target.closest("th[data-d]");if(!th||isFuture(th.dataset.d))return;document.getElementById("tab-today").click();setDate(th.dataset.d)});
 const isFuture=d=>d>iso(new Date());
