@@ -1251,7 +1251,7 @@ const PF_CSS=`.paperSheet{max-width:720px;padding:14px 14px 16px;max-height:94vh
   .pfpage .pfi{background:transparent!important}
 }`;
 function pfFields(s,dis){
-  const D=(g,i,b,v)=>`<input class="pfi pfd" data-g="${g}" data-i="${i}" value="${esc(v||"")}" ${dis} maxlength="1" inputmode="numeric" autocomplete="off" aria-label="${g} ${i+1}" style="left:${b[0]}mm;top:${b[1]}mm;width:${b[2]}mm;height:${b[3]}mm">`;
+  const D=(g,i,b,v)=>`<input class="pfi pfd" data-g="${g}" data-i="${i}" value="${esc(v||"")}" ${dis} inputmode="numeric" autocomplete="off" aria-label="${g} ${i+1}" style="left:${b[0]}mm;top:${b[1]}mm;width:${b[2]}mm;height:${b[3]}mm">`;
   const T=(id,v,b,cls)=>`<input type="text" id="${id}" class="pfi pft ${cls||""}" value="${esc(v||"")}" ${dis} autocomplete="off" style="left:${b[0]}mm;top:${b[1]}mm;width:${b[2]}mm;height:${b[3]}mm">`;
   const SX=(v,key)=>{const c=STF_L[key];return `<button type="button" class="pfi pfsx ${v?"on":""}" data-sx="${key==="c:m"?"m":"f"}" ${dis} style="left:${c[0]}mm;top:${c[1]}mm;width:${c[2]}mm;height:${c[3]}mm">✓</button>`};
   const bdS=(s.birthDate||"").split("-"), bdv=bdS.length===3?bdS[2]+bdS[1]+bdS[0]:"";
@@ -1339,7 +1339,15 @@ document.getElementById("modal").addEventListener("click",e=>{const b=e.target.c
   }).catch(()=>setInfoState("اضغط مطولًا على الخانة واختر «لصق»"));
 });
 document.getElementById("modal").addEventListener("input",e=>{const t=e.target;
-  if(!t.classList||!t.classList.contains("pfd")||t.readOnly||!t.value)return;
+  if(!t.classList||!t.classList.contains("pfd")||t.readOnly)return;
+  const dg=paperDigits(t.value);
+  if(dg.length>1){ // several digits arrived at once (paste, or a keyboard that ignores single-digit limits)
+    if(e.inputType==="insertFromPaste"||e.inputType==="insertFromDrop"){
+      const idx=+t.dataset.i, g=t.dataset.g;
+      pfFillGroup(g,(g==="ph"||g==="ph2")&&idx===0?pfNormPhone(dg):dg,t);
+    } else t.value=dg.slice(-1);
+  }
+  if(!t.value)return;
   const all=[...t.closest("#infoForm").querySelectorAll('.pfd[data-g="'+t.dataset.g+'"]')];
   const n=all[all.indexOf(t)+1]; if(n)n.focus()});
 document.getElementById("modal").addEventListener("click",e=>{const k=e.target.closest(".pfck");if(k&&S.canWrite){k.classList.toggle("on");markInfo();saveInfo();return}
