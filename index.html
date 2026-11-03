@@ -5426,9 +5426,9 @@ function ptStatusHtml(){
   return PT.last?`<div class="note">صفحات المتابعة محدَّثة ✓</div>`:`<div class="note">تُحدَّث صفحات المتابعة وحدها بعد كل تسجيل.</div>`;
 }
 function ptPaintState(){const b=document.getElementById("ptState");if(b)b.innerHTML=ptStatusHtml()}
-function ptRow(s){const k=s.portalKey,wa=waNum(s.phone);
+function ptRow(s){const k=s.portalKey,wa1=waNum(s.phone),wa2=waNum(s.phone2),was=[...new Set([wa1,wa2].filter(Boolean))];
   return `<div class="ptrow" data-ptid="${s.id}"><span class="ptn"><b>${esc(s.name)}</b><em>${k?"الرابط مفعَّل":"لا رابط بعد"}${s.phone?"":" · لا رقم هاتف"}</em></span>
-    <span class="pta">${k?`${wa?`<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(ptMsg(s,k))}" target="_blank" rel="noopener">واتساب</a>`:`<button type="button" class="btn sm" data-pt="share">إرسال</button>`}
+    <span class="pta">${k?`${was.length?was.map(n=>`<a class="btn sm wa" href="https://wa.me/${n}?text=${encodeURIComponent(ptMsg(s,k))}" target="_blank" rel="noopener">${was.length>1?(n===wa1?"واتساب (الأول)":"واتساب (الثاني)"):"واتساب"}</a>`).join(""):`<button type="button" class="btn sm" data-pt="share">إرسال</button>`}
       <button type="button" class="btn sm" data-pt="copy">نسخ</button><button type="button" class="btn sm" data-pt="open">عرض</button><button type="button" class="btn sm" data-pt="more" aria-label="خيارات">⋯</button>`
       :`<button type="button" class="btn sm primary" data-pt="make" ${ptOn()&&S.canWrite?"":"disabled"}>إنشاء الرابط</button>`}</span></div>`}
 function ptOpen(only){
