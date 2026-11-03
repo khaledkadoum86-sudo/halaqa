@@ -5445,7 +5445,7 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 
 /* ---- one-time: 1 November 2026 was a national holiday (ذكرى اندلاع الثورة التحريرية) ---- */
 (function(){
-  const D="2026-11-01",F="halaqa.fix.nov1-2026";
+  const D="2026-11-01",F="halaqa.fix.nov1-2026b";
   try{if(localStorage.getItem(F))return}catch(_){}
   let tries=0;
   const run=async()=>{
@@ -5453,7 +5453,7 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
     if(typeof SYNC!=="undefined"&&SYNC.user&&!SYNC.pulled){if(++tries<60)setTimeout(run,2000);return} // wait for the other devices' records first
     try{
       const ref=S.db.doc("days/"+D),cur=await ref.get(),r=cur.exists?cur.data():null;
-      if(!(r&&r.off)){const val={off:true,offName:"ذكرى اندلاع الثورة التحريرية المجيدة",offRel:false};
+      if(!(r&&r.off)||/عيد اندلاع/.test(r.offName||"")){const val={off:true,offName:"ذكرى اندلاع الثورة التحريرية المجيدة",offRel:false};
         if(cur.exists)await ref.update(val);else await ref.set(Object.assign({date:D,month:"2026-11",att:{},th:{}},val));
         const b=S.days[D];if(b)Object.assign(b,val);render()}
       try{localStorage.setItem(F,"1")}catch(_){}
