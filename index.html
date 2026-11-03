@@ -1229,7 +1229,7 @@ function pfScope(css){return css.replace(/@page\s*\{[^}]*\}/g,"").replace(/([^{}
   const out=sel.split(",").map(x=>x.trim()).filter(Boolean).map(x=>x==="*"?".pfpage *":(/^(html|body|:root)\b/.test(x)?".pfpage":".pfpage "+x));
   return out.join(",")+"{"+body+"}"})}
 const PF_CSS=`.paperSheet{max-width:720px;padding:14px 14px 16px;max-height:94vh;overflow:auto}
-.pfwrap{position:relative;overflow:hidden;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+.pfwrap{position:relative;overflow:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
 .pfpage{position:absolute;left:0;top:0;transform-origin:top left;background:#fff}
 .pfpage .pfi{position:absolute;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;outline:none;-webkit-appearance:none;appearance:none;font-family:"IBM Plex Sans Arabic",sans-serif;color:#16302B;line-height:1.2}
 .pfpage .pfi:focus{background:rgba(185,133,42,.14)}
@@ -1286,7 +1286,7 @@ function openInfo(id){
   if(!st){st=document.createElement("style");st.id="pfCss";document.head.appendChild(st)}
   st.textContent=pfScope(css)+PF_CSS;
   const wrap=md.querySelector("#pfWrap"), page=md.querySelector("#infoForm");
-  const fit=()=>{const k=wrap.clientWidth/page.offsetWidth; if(!k)return; page.style.transform="scale("+k+")"; wrap.style.height=(page.offsetHeight*k)+"px"};
+  const fit=()=>{const k=Math.max(1,wrap.clientWidth/page.offsetWidth); if(!k)return; page.style.transform="scale("+k+")"; wrap.style.height=(page.offsetHeight*k)+"px"};
   fit(); window.addEventListener("resize",fit);
   const cb=md.querySelector("#pfClean");
   cb.onclick=()=>{const on=page.classList.toggle("pfclean"); cb.textContent=on?"👁️ إظهار البيانات":"🖊️ إخفاء البيانات (ورقة فارغة)"};
