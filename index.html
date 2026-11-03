@@ -1239,6 +1239,9 @@ const PF_CSS=`.paperSheet{max-width:720px;padding:14px 14px 16px;max-height:94vh
 .pfpage button.pfsx{font-size:15pt;font-weight:700;line-height:1;text-align:center;cursor:pointer;color:transparent}
 .pfpage button.pfsx.on{color:#0E5A4F}
 .pfpage.pfclean .pfi{color:transparent!important;-webkit-text-fill-color:transparent}
+.pfpage button.pfck{font-size:13pt;font-weight:700;line-height:1;text-align:center;cursor:pointer;color:transparent}
+.pfpage button.pfck.on{color:#0E5A4F}
+.pfpage input.pfro{cursor:default}
 .pfbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;margin-top:12px}
 @media print{
   body *{visibility:hidden!important}
@@ -1265,6 +1268,11 @@ function pfFields(s,dis){
   h+=T("f-lv",s.level,[17.1,224,110,9]);
   STF_L.bal.forEach((b,i)=>h+=D("bal",i,b,balv[i]));
   STF_L.fn.forEach((b,i)=>h+=D("fn",i,b,fn[i]));
+  const DK={"c:birth":"birth","c:photos":"photos","c:nid":"nid","c:pid":"pid"};
+  Object.keys(DK).forEach(k=>{const on=!!(s.docs&&s.docs[DK[k]]);const c=STF_L[k];h+=`<button type="button" class="pfi pfck ${on?"on":""}" data-doc="${DK[k]}" ${dis} style="left:${c[0]}mm;top:${c[1]}mm;width:${c[2]}mm;height:${c[3]}mm">✓</button>`});
+  const hz=(typeof hzInfo==="function")?hzInfo(s):null;
+  const hzv=(hz&&!hz.khatm&&hz.cur)?String(hz.cur).padStart(2,"0"):"";
+  STF_L.hz.forEach((b,i)=>h+=`<input class="pfi pfd pfro" data-g="hz" data-i="${i}" value="${esc(hzv[i]||"")}" readonly tabindex="-1" aria-label="الحزب الحالي ${i+1}" style="left:${b[0]+.6}mm;top:${b[1]}mm;width:${b[2]-1.2}mm;height:${b[3]}mm;line-height:${b[3]}mm">`);
   return h;
 }
 function openInfo(id){
@@ -1306,10 +1314,11 @@ function openInfo(id){
 }
 // paper form: digit boxes move forward, sex is one choice, and each change saves itself
 document.getElementById("modal").addEventListener("input",e=>{const t=e.target;
-  if(!t.classList||!t.classList.contains("pfd")||!t.value)return;
+  if(!t.classList||!t.classList.contains("pfd")||t.readOnly||!t.value)return;
   const all=[...t.closest("#infoForm").querySelectorAll('.pfd[data-g="'+t.dataset.g+'"]')];
   const n=all[all.indexOf(t)+1]; if(n)n.focus()});
-document.getElementById("modal").addEventListener("click",e=>{const b=e.target.closest(".pfsx");if(!b||!S.canWrite)return;
+document.getElementById("modal").addEventListener("click",e=>{const k=e.target.closest(".pfck");if(k&&S.canWrite){k.classList.toggle("on");markInfo();saveInfo();return}
+const b=e.target.closest(".pfsx");if(!b||!S.canWrite)return;
   b.closest("#infoForm").querySelectorAll(".pfsx").forEach(x=>x.classList.toggle("on",x===b));
   markInfo(); saveInfo()});
 
@@ -1442,6 +1451,7 @@ function infoSnapshot(){const f=document.getElementById("infoForm");if(!f)return
   const ph2=grp("ph2"); data.phone2=ph2?"0"+ph2:"";
   data.address=v("f-ad"); data.level=v("f-lv"); data.hzBal=grp("bal");
   const sx=f.querySelector(".pfsx.on"); if(sx)data.sex=sx.dataset.sx;
+  const docs={}; f.querySelectorAll(".pfck").forEach(b=>docs[b.dataset.doc]=b.classList.contains("on")); data.docs=docs;
   return {id:f.dataset.id,data}}
 function setInfoState(t){const el=document.getElementById("infoState");if(el)el.textContent=t}
 async function saveInfo(){
