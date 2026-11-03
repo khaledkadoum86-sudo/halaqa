@@ -1283,7 +1283,7 @@ function openInfo(id){
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet paperSheet" role="dialog" aria-modal="true" aria-label="استمارة ${esc(s.name)}">
     <div class="pfwrap" id="pfWrap"><div class="pfpage" id="infoForm" data-id="${id}">${body}${pfFields(s,dis)}</div></div>
     <div class="pfbar">
-      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="pfClean">🖊️ إخفاء البيانات (ورقة فارغة)</button><button class="btn primary" type="button" id="pfPrint">🖨️ طباعة</button></span>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="pfClean">🖊️ إخفاء البيانات (ورقة فارغة)</button><button class="btn" type="button" id="pfPaste" ${S.canWrite?"":"disabled"}>📋 لصق رقم الهاتف</button><button class="btn primary" type="button" id="pfPrint">🖨️ طباعة</button></span>
       <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="record" data-id="${id}">السجل</button><button class="btn" type="button" data-act="close">إغلاق</button></span>
     </div>
     <div class="note" style="margin-top:8px"><span id="infoState">${S.canWrite?"يُحفظ تلقائيًا":"للعرض فقط"}</span></div>
@@ -1313,6 +1313,31 @@ function openInfo(id){
   md.hidden=false;
 }
 // paper form: digit boxes move forward, sex is one choice, and each change saves itself
+function pfNormPhone(v){let d=paperDigits(v);if(d.startsWith("213"))d="0"+d.slice(3);if(d.length===10&&d[0]==="0")d=d.slice(1);return d}
+function pfFillGroup(g,digits,from){
+  const f=document.getElementById("infoForm"); if(!f)return;
+  const all=[...f.querySelectorAll('.pfd[data-g="'+g+'"]:not(.pfro)')];
+  const start=from?Math.max(0,all.indexOf(from)):0;
+  all.forEach((el,i)=>{if(i>=start)el.value=digits[i-start]||""});
+  markInfo();
+}
+document.getElementById("modal").addEventListener("paste",e=>{const t=e.target;
+  if(!t.classList||!t.classList.contains("pfd")||t.readOnly||!S.canWrite)return;
+  e.preventDefault();
+  const txt=(e.clipboardData||window.clipboardData).getData("text");
+  const g=t.dataset.g, idx=+t.dataset.i;
+  const d=(g==="ph"||g==="ph2")&&idx===0?pfNormPhone(txt):paperDigits(txt);
+  pfFillGroup(g,d,t);
+});
+document.getElementById("modal").addEventListener("click",e=>{const b=e.target.closest("#pfPaste");if(!b||!S.canWrite)return;
+  navigator.clipboard.readText().then(txt=>{
+    const d=pfNormPhone(txt);
+    if(!d){setInfoState("لا يوجد رقم في الحافظة");return}
+    const f=document.getElementById("infoForm");
+    const hasPh=f&&[...f.querySelectorAll('.pfd[data-g="ph"]')].some(x=>x.value);
+    pfFillGroup(hasPh?"ph2":"ph",d,null);
+  }).catch(()=>setInfoState("اضغط مطولًا على الخانة واختر «لصق»"));
+});
 document.getElementById("modal").addEventListener("input",e=>{const t=e.target;
   if(!t.classList||!t.classList.contains("pfd")||t.readOnly||!t.value)return;
   const all=[...t.closest("#infoForm").querySelectorAll('.pfd[data-g="'+t.dataset.g+'"]')];
