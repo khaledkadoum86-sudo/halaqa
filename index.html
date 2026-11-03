@@ -4953,6 +4953,7 @@ async function stfProcess(pages,prog){
   const groups=[],loose={id:"g0",form:null,docs:[]};let cur=null,gi=0;
   items.forEach(it=>{
     if(it.type==="form"){cur={id:"g"+(++gi),form:it,docs:[]};groups.push(cur);return}
+    if(it.kind==="birth"||it.kind==="nid")return; // birth certificates and ID cards are not kept in the app
     (cur||loose).docs.push(it)});
   // students already in the app, and the new ones from these forms, for documents whose owner is printed on them
   const nm=g=>{const t=g.form.txt;return((t.lqb||"")+" "+(t.ism||"")).trim()};
@@ -5518,7 +5519,7 @@ async function ibxStart(){
   <div class="stfbody">
     <div class="stfhow"><b>كيف يعمل؟</b>
       <ol><li>صوّر الأوراق أو اختر صورًا أو ملف PDF، كلها مرة واحدة أو على دفعات متفرقة. كل ما تصوّره يبقى هنا محفوظًا حتى تقرّر.</li>
-      <li>اضغط «رتّب ووزّع»: يتعرّف التطبيق على كل ورقة (استمارة، شهادة ميلاد، بطاقة تعريف، صورة شمسية) وعلى صاحبها.</li>
+      <li>اضغط «رتّب ووزّع»: يتعرّف التطبيق على كل ورقة (استمارة، صورة شمسية) وعلى صاحبها. شهادات الميلاد وبطاقات التعريف لا تُحفظ في التطبيق.</li>
       <li>يعرض عليك ما سيفعله، فإن وافقت حفظ كل شيء في مكانه.</li></ol>
       <span class="note">الاستمارة تبدأ ملف طالب جديد، وما يأتي بعدها من وثائق يُوضع في ملفه.</span></div>
     <div class="stfgo">
