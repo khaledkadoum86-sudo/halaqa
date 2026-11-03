@@ -1970,6 +1970,10 @@ const DOCDB={db:null,
   del(k){return this.tx("readwrite",s=>s.delete(k))},
   keys(){return this.tx("readonly",s=>s.getAllKeys()).then(k=>k||[])},
   all(){return this.keys().then(async ks=>{const o=[];for(const k of ks)o.push([k,await this.get(k)]);return o})}};
+// one-time cleanup: birth certificates and ID cards are no longer kept in the app, so remove any copies stored on this device
+(async()=>{try{if(localStorage.getItem("halaqa-docs-clean-v1"))return;
+  const ks=await DOCDB.keys();for(const k of ks)if(/\|(birth|nid)$/.test(String(k)))await DOCDB.del(k);
+  localStorage.setItem("halaqa-docs-clean-v1","1")}catch(_){}})();
 async function shrinkImage(file,max){
   const url=URL.createObjectURL(file);
   try{
