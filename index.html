@@ -3974,12 +3974,27 @@ async function libAll(){
 async function libPutMeta(m){const r=Object.assign({},m);delete r.id;await DOCDB.put("libm|"+m.id,r);LIB.list=null}
 // libSaveMeta: تعديل من المستخدم على هذا الجهاز، فيُرسَل إلى الأجهزة الأخرى
 async function libSaveMeta(m,quiet){if(!quiet)m.upd=Date.now();await libPutMeta(m);if(!quiet&&window.LIBSYNC)LIBSYNC.queueMeta(m.id)}
-async function libAdd(blob,name,id){
+async function libAdd(blob,name,id,cat){
   id=id||libId();
   await DOCDB.put("lib|"+id,{buf:await blob.arrayBuffer(),type:"application/pdf"});
-  await libPutMeta({id,title:libTitle(name),author:"",cat:"",size:blob.size,at:Date.now(),opened:0,upd:Date.now()});
+  await libPutMeta({id,title:libTitle(name),author:"",cat:cat||"",size:blob.size,at:Date.now(),opened:0,upd:Date.now()});
   if(window.LIBSYNC)LIBSYNC.queueUp(id);
   return id}
+// a folder of books sent as a zip: every PDF inside becomes a book, shelved under the name of its folder
+const LIB_ZIP_JS="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+async function libZipLib(){
+  if(window.JSZip)return window.JSZip;
+  await new Promise((ok,no)=>{const s=document.createElement("script");s.src=LIB_ZIP_JS;s.onload=ok;s.onerror=()=>no(new Error("jszip"));document.head.appendChild(s)});
+  return window.JSZip}
+async function libImportZip(blob,zipName){
+  const Z=await libZipLib(),zip=await Z.loadAsync(blob),base=libTitle(zipName),ids=[];
+  const entries=Object.values(zip.files).filter(f=>!f.dir&&/\.pdf$/i.test(f.name)&&!f.name.split("/").some(p=>p===""||p.startsWith(".")||p==="__MACOSX"));
+  entries.sort((a,b)=>a.name.localeCompare(b.name,"ar",{numeric:true}));
+  for(const f of entries){
+    const parts=f.name.split("/"),fileName=parts[parts.length-1],shelf=parts.length>1?parts[parts.length-2]:base;
+    const bytes=await f.async("blob");
+    ids.push(await libAdd(new Blob([bytes],{type:"application/pdf"}),fileName,undefined,libTitle(shelf)))}
+  return ids}
 async function libDelete(id,quiet){await DOCDB.del("lib|"+id);await DOCDB.del("libm|"+id);LIB.list=null;if(libNative())libPost({action:"forget",id}).catch(()=>{});
   if(!quiet&&window.LIBSYNC)LIBSYNC.queueDel(id)}
 
@@ -3990,7 +4005,7 @@ function libShell(sec){
     <div class="bar"><span class="sbox"><input type="search" id="libQ" placeholder="ابحث بالعنوان أو المؤلف…" value="${esc(LIB.q)}"><button type="button" class="sclear" data-for="libQ" aria-label="مسح البحث" ${LIB.q?"":"hidden"}>✕</button></span>
       <select id="libSort" aria-label="ترتيب الكتب"><option value="recent">الأحدث إضافة</option><option value="read">آخر ما قرأت</option><option value="name">أبجديًا</option></select></div>
     <div class="libchips" id="libChips"></div>
-    <input type="file" id="libIn" accept="application/pdf,.pdf" multiple hidden>
+    <input type="file" id="libIn" accept="application/pdf,.pdf,application/zip,.zip" multiple hidden>
     <div class="addrow"><label class="btn primary addbtn" for="libIn" style="cursor:pointer"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>إضافة كتاب PDF</label></div>
     <div class="list" id="libList"></div>
     ${libNative()?`<button type="button" class="btn" id="libPoll" style="width:100%;margin-top:10px">📥 استقبال الكتب المرسلة</button>`:""}
@@ -4017,7 +4032,7 @@ async function renderLib(){
       <span class="libacts"><button type="button" class="btn sm" data-libread="${b.id}">قراءة</button><button type="button" class="btn sm" data-libedit="${b.id}" aria-label="تعديل ${esc(b.title)}">⋯</button></span></div>`).join("")
     :`<div class="empty">${all.length?"لا توجد كتب تطابق البحث.":"الخزانة فارغة. أضف أول كتاب."}</div>`;
   document.getElementById("libHow").innerHTML=libNative()
-    ?"لإضافة كتاب من تطبيق آخر (واتساب، الملفات، تيليغرام…): افتح ملف PDF، واضغط «مشاركة»، ثم اختر «سجل الطلبة». إن لم يظهر، فاضغط «المزيد» في صف التطبيقات. "+libSyncNote()
+    ?"لإضافة كتاب من تطبيق آخر (واتساب، الملفات، تيليغرام…): افتح ملف PDF، واضغط «مشاركة»، ثم اختر «سجل الطلبة». لإضافة مجلد كامل: اضغطه مطولًا في تطبيق الملفات واختر «ضغط»، ثم شاركه مع «سجل الطلبة»، وسيُرتَّب كل كتاب فيه على رف يحمل اسم المجلد. إن لم يظهر التطبيق، فاضغط «المزيد» في صف التطبيقات. "+libSyncNote()
     :"اضغط «إضافة كتاب PDF» واختر الملف من «الملفات» أو iCloud. "+libSyncNote();
   LIBSYNC.paint();
 }
@@ -4028,10 +4043,15 @@ document.addEventListener("change",async e=>{
   if(e.target.id!=="libIn")return;
   const files=[...(e.target.files||[])];e.target.value="";if(!files.length)return;
   let n=0,last="";
-  for(const f of files){if(!(f.type==="application/pdf"||/\.pdf$/i.test(f.name)))continue;
+  for(const f of files){
+    if(/\.zip$/i.test(f.name)||f.type==="application/zip"){
+      try{toast("جارٍ فتح «"+libTitle(f.name)+"»…");const ids=await libImportZip(f,f.name);n+=ids.length;if(ids.length)last=ids[ids.length-1];if(!ids.length)toast("لا توجد ملفات PDF في «"+libTitle(f.name)+"»")}
+      catch(_){toast("تعذّر فتح «"+libTitle(f.name)+"»")}
+      continue}
+    if(!(f.type==="application/pdf"||/\.pdf$/i.test(f.name)))continue;
     try{toast("جارٍ حفظ "+libTitle(f.name)+"…");last=await libAdd(f,f.name);n++}catch(_){toast("تعذّر حفظ "+f.name+"، ربما امتلأت مساحة الجهاز")}}
   await renderLib();
-  if(n===1)libEdit(last,true);else if(n>1)toast("أُضيف "+n+" كتب إلى الخزانة");else toast("اختر ملفات PDF فقط");
+  if(n===1)libEdit(last,true);else if(n>1)toast("أُضيف "+n+" كتب إلى الخزانة");else if(!files.some(f=>/\.zip$/i.test(f.name)))toast("اختر ملفات PDF أو مجلدًا مضغوطًا");
 });
 document.addEventListener("input",e=>{if(e.target.id!=="libQ")return;LIB.q=e.target.value;const c=document.querySelector('.sclear[data-for="libQ"]');if(c)c.hidden=!LIB.q;clearTimeout(renderLib.t);renderLib.t=setTimeout(renderLib,150)});
 
@@ -4132,6 +4152,12 @@ async function halaqaBookPoll(manual){
     for(const b of books){
       try{toast("جارٍ استقبال «"+libTitle(b.name)+"»…");
         const parts=await libPull("read",b.id);if(!parts.length)throw 0;
+        if(b.type==="zip"){
+          const ids=await libImportZip(new Blob(parts,{type:"application/zip"}),b.name);
+          await libPost({action:"drop",id:b.id});
+          n+=ids.length;if(ids.length)last=ids[ids.length-1];
+          if(!ids.length)toast("لا توجد ملفات PDF في «"+libTitle(b.name)+"»");
+          continue}
         await libAdd(new Blob(parts,{type:"application/pdf"}),b.name,b.id);
         await libPost({action:"done",id:b.id});n++;last=b.id}
       catch(_){toast("تعذّر استقبال «"+libTitle(b.name)+"»، اضغط «استقبال الكتب المرسلة» لإعادة المحاولة")}}

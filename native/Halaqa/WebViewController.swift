@@ -399,6 +399,13 @@ final class BookInbox {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let id = "b" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36)
+        if url.pathExtension.lowercased() == "zip" {
+            // a folder of books, compressed by iOS: the page opens the archive and takes out the PDFs
+            do { try fm.copyItem(at: url, to: folder.appendingPathComponent(id + ".zip")) } catch { return false }
+            try? url.lastPathComponent.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
+            if url.path.contains("/Inbox/") { try? fm.removeItem(at: url) }
+            return true
+        }
         if url.pathExtension.lowercased() != "pdf" {
             // a photo from a scanner app (JPEG, PNG, HEIC…): kept as JPEG, which the page can always open
             guard let data = try? Data(contentsOf: url), let image = UIImage(data: data),
@@ -418,22 +425,26 @@ final class BookInbox {
     /// `all`: photos too (pages from 10.1 on); without it only PDFs, as older pages expect.
     func pending(all: Bool = false) -> [[String: Any]] {
         let systemInbox = fm.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Inbox", isDirectory: true)
-        for f in (try? fm.contentsOfDirectory(at: systemInbox, includingPropertiesForKeys: nil)) ?? [] where ["pdf", "jpg", "jpeg", "png", "heic", "heif", "tif", "tiff"].contains(f.pathExtension.lowercased()) {
+        for f in (try? fm.contentsOfDirectory(at: systemInbox, includingPropertiesForKeys: nil)) ?? [] where ["pdf", "zip", "jpg", "jpeg", "png", "heic", "heif", "tif", "tiff"].contains(f.pathExtension.lowercased()) {
             take(f)
         }
         let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-        return files.filter { $0.pathExtension == "pdf" || (all && $0.pathExtension == "jpg") }.map { f in
+        // a zip is a folder of books sent by the user; photos only reach pages that ask for them (all: true)
+        return files.filter { $0.pathExtension == "pdf" || $0.pathExtension == "zip" || (all && $0.pathExtension == "jpg") }.map { f in
             let id = f.deletingPathExtension().lastPathComponent
-            let image = f.pathExtension == "jpg"
-            let name = (try? String(contentsOf: folder.appendingPathComponent(id + ".name"), encoding: .utf8)) ?? (image ? "صورة.jpg" : "كتاب.pdf")
+            let kind = f.pathExtension
+            let image = kind == "jpg"
+            let name = (try? String(contentsOf: folder.appendingPathComponent(id + ".name"), encoding: .utf8)) ?? (image ? "صورة.jpg" : kind == "zip" ? "مجلد.zip" : "كتاب.pdf")
             let size = (try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            return ["id": id, "name": name, "size": size, "type": image ? "image" : "pdf"]
+            return ["id": id, "name": name, "size": size, "type": image ? "image" : kind == "zip" ? "zip" : "pdf"]
         }
     }
 
     private func file(_ id: String) -> URL {
-        let safe = BookCache.safe(id), jpg = folder.appendingPathComponent(safe + ".jpg")
-        return fm.fileExists(atPath: jpg.path) ? jpg : folder.appendingPathComponent(safe + ".pdf")
+        let safe = BookCache.safe(id), jpg = folder.appendingPathComponent(safe + ".jpg"), zip = folder.appendingPathComponent(safe + ".zip")
+        if fm.fileExists(atPath: jpg.path) { return jpg }
+        if fm.fileExists(atPath: zip.path) { return zip }
+        return folder.appendingPathComponent(safe + ".pdf")
     }
 
     func piece(_ id: String, index: Int) -> String {
@@ -442,7 +453,7 @@ final class BookInbox {
 
     func drop(_ id: String) {
         let safe = BookCache.safe(id)
-        for ext in ["jpg", "pdf", "name"] { try? fm.removeItem(at: folder.appendingPathComponent(safe + "." + ext)) }
+        for ext in ["jpg", "pdf", "zip", "name"] { try? fm.removeItem(at: folder.appendingPathComponent(safe + "." + ext)) }
     }
 
     /// Piece number `index` of a file as base64, or "" after the last piece.
