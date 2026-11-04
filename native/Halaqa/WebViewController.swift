@@ -4,18 +4,20 @@ import LocalAuthentication
 import QuickLook
 import Vision
 import VisionKit
+import ContactsUI
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/")!
 let appHost = "khaledkadoum86-sudo.github.io"
 private let pageBackground = UIColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1)
 
-final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandlerWithReply, QLPreviewControllerDataSource, VNDocumentCameraViewControllerDelegate {
+final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandlerWithReply, QLPreviewControllerDataSource, VNDocumentCameraViewControllerDelegate, CNContactPickerDelegate {
     private var webView: WKWebView!
     private var offlineView: UIView?
     private var downloads: [ObjectIdentifier: URL] = [:]
     private var openBook: BookItem?
     private var scanReply: ((Any?, String?) -> Void)?
     private var scanMulti = true
+    private var contactReply: ((Any?, String?) -> Void)?
 
     override func loadView() {
         let config = WKWebViewConfiguration()
@@ -31,6 +33,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBio")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBook")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaOCR")
+        content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaContacts")
         // Apple's document scanner (as in Notes and Files) for every camera button of the page
         if VNDocumentCameraViewController.isSupported {
             content.addUserScript(WKUserScript(source: "window.HALAQA_SCAN=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -60,6 +63,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         if message.name == "halaqaBook" { handleBook(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         if message.name == "halaqaOCR" { handleOCR(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
+        if message.name == "halaqaContacts" { pickContact(reply: replyHandler); return }
         if message.name == "halaqaScan" { startScan(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         let action = (message.body as? [String: Any])?["action"] as? String ?? ""
         let context = LAContext()
@@ -106,6 +110,31 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             let arabic = langs.contains { $0.hasPrefix("ar") }
             DispatchQueue.main.async { reply(["text": text, "lines": lines, "ar": digits || arabic], nil) }
         }
+    }
+
+    // MARK: - Phone number from Contacts (window.webkit.messageHandlers.halaqaContacts)
+    // Apple's own contacts picker: no permission needed, the app only gets the number the user taps.
+
+    private func pickContact(reply: @escaping (Any?, String?) -> Void) {
+        guard contactReply == nil else { reply("", nil); return }
+        contactReply = reply
+        let picker = CNContactPickerViewController()
+        picker.displayedPropertyKeys = [CNContactPhoneNumbersKey]
+        picker.delegate = self
+        top().present(picker, animated: true)
+    }
+
+    func contactPicker(_ picker: CNContactPickerViewController, didSelect contactProperty: CNContactProperty) {
+        let number = (contactProperty.value as? CNPhoneNumber)?.stringValue ?? ""
+        let reply = contactReply
+        contactReply = nil
+        reply?(number, nil)
+    }
+
+    func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
+        let reply = contactReply
+        contactReply = nil
+        reply?("", nil)
     }
 
     // MARK: - Apple's document scanner (window.webkit.messageHandlers.halaqaScan)

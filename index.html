@@ -1283,7 +1283,7 @@ function openInfo(id){
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet paperSheet" role="dialog" aria-modal="true" aria-label="استمارة ${esc(s.name)}">
     <div class="pfwrap" id="pfWrap"><div class="pfpage" id="infoForm" data-id="${id}">${body}${pfFields(s,dis)}</div></div>
     <div class="pfbar">
-      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="pfClean">🖊️ إخفاء البيانات (ورقة فارغة)</button><button class="btn" type="button" id="pfPaste" ${S.canWrite?"":"disabled"}>📋 لصق رقم الهاتف</button><button class="btn primary" type="button" id="pfPrint">🖨️ طباعة</button></span>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="pfClean">🖊️ إخفاء البيانات (ورقة فارغة)</button><button class="btn" type="button" id="pfPaste" ${S.canWrite?"":"disabled"}>📋 لصق رقم الهاتف</button><button class="btn" type="button" id="pfContact" hidden ${S.canWrite?"":"disabled"}>👤 من جهات الاتصال</button><button class="btn primary" type="button" id="pfPrint">🖨️ طباعة</button></span>
       <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="record" data-id="${id}">السجل</button><button class="btn" type="button" data-act="close">إغلاق</button></span>
     </div>
     <div class="note" style="margin-top:8px"><span id="infoState">${S.canWrite?"يُحفظ تلقائيًا":"للعرض فقط"}</span></div>
@@ -1310,6 +1310,7 @@ function openInfo(id){
   const cb=md.querySelector("#pfClean");
   cb.onclick=()=>{const on=page.classList.toggle("pfclean"); cb.textContent=on?"👁️ إظهار البيانات":"🖊️ إخفاء البيانات (ورقة فارغة)"};
   md.querySelector("#pfPrint").onclick=()=>window.print();
+  md.querySelector("#pfContact").hidden=!pfContactsAvailable();
   md.hidden=false;
 }
 // paper form: digit boxes move forward, sex is one choice, and each change saves itself
@@ -1328,6 +1329,31 @@ document.getElementById("modal").addEventListener("paste",e=>{const t=e.target;
   const g=t.dataset.g, idx=+t.dataset.i;
   const d=(g==="ph"||g==="ph2")&&idx===0?pfNormPhone(txt):paperDigits(txt);
   pfFillGroup(g,d,t);
+});
+// contacts: inside the native app (native picker) or in browsers that support the Contact Picker API
+function pfContactsAvailable(){return !!(window.webkit?.messageHandlers?.halaqaContacts||navigator.contacts?.select)}
+async function pfPickContact(){
+  let num="";
+  if(window.webkit?.messageHandlers?.halaqaContacts){num=await window.webkit.messageHandlers.halaqaContacts.postMessage({})}
+  else{const r=await navigator.contacts.select(["tel"],{multiple:false});num=r?.[0]?.tel?.[0]||""}
+  return num||""
+}
+document.getElementById("modal").addEventListener("click",e=>{const b=e.target.closest("#pfContact");if(!b||!S.canWrite)return;
+  pfPickContact().then(num=>{
+    const d=pfNormPhone(num);
+    if(!d){setInfoState("لم يُختر رقم");return}
+    const f=document.getElementById("infoForm");
+    const hasPh=f&&[...f.querySelectorAll('.pfd[data-g="ph"]')].some(x=>x.value);
+    pfFillGroup(hasPh?"ph2":"ph",d,null);
+  }).catch(()=>setInfoState("تعذّر فتح جهات الاتصال"));
+});
+// backspace in an empty box goes back to the previous box and clears it (the leading 0 stays)
+document.getElementById("modal").addEventListener("keydown",e=>{const t=e.target;
+  if(e.key!=="Backspace"||!t.classList||!t.classList.contains("pfd")||t.readOnly||t.value)return;
+  const all=[...t.closest("#infoForm").querySelectorAll('.pfd[data-g="'+t.dataset.g+'"]:not(.pfro)')];
+  const prev=all[all.indexOf(t)-1]; if(!prev||prev.readOnly)return;
+  e.preventDefault();
+  prev.value="";prev.focus();prev.dispatchEvent(new Event("input",{bubbles:true}));
 });
 document.getElementById("modal").addEventListener("click",e=>{const b=e.target.closest("#pfPaste");if(!b||!S.canWrite)return;
   navigator.clipboard.readText().then(txt=>{
