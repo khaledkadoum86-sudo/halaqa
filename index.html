@@ -1315,8 +1315,73 @@ function pfMount(md){
   fit(); window.addEventListener("resize",fit);
   const cb=md.querySelector("#pfClean");
   cb.onclick=()=>{const on=page.classList.toggle("pfclean"); cb.textContent=on?"👁️ إظهار البيانات":"🖊️ إخفاء البيانات (ورقة فارغة)"};
-  md.querySelector("#pfPrint").onclick=()=>window.print();
+  md.querySelector("#pfPrint").onclick=e=>pfPrint(e.currentTarget);
   md.querySelector("#pfContact").hidden=!pfContactsAvailable();
+}
+/* 10.8: printing. window.print() does nothing inside the native app (WKWebView) and in the home-screen app on iPhone/iPad,
+   so there the form is painted onto a canvas element by element (same positions, the page's own fonts) and handed over as
+   an A4 PDF to the share sheet, whose «طباعة» prints it. In a desktop browser (Mac) window.print() still works. */
+const pfCanPrint=()=>!(window.webkit&&window.webkit.messageHandlers)&&!document.documentElement.classList.contains("ios")&&!document.documentElement.classList.contains("ipad")&&!/iPhone|iPad|iPod/.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent));
+function pfAlpha(c){const m=/rgba?\(([^)]+)\)/.exec(c||"");if(!m)return c&&c!=="transparent"?1:0;const p=m[1].split(/[ ,/]+/).filter(Boolean);return p.length>3?parseFloat(p[3]):1}
+function pfRR(x,X,Y,W,H,r){x.beginPath();r=Math.max(0,Math.min(r,W/2,H/2));if(x.roundRect)x.roundRect(X,Y,W,H,r);else{x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath()}}
+async function pfPaint(page,K){
+  try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(_){}
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  const oldT=page.style.transform;page.style.transform="none";
+  try{
+    const P=page.getBoundingClientRect(),W=Math.round(page.offsetWidth*K),H=Math.round(page.offsetHeight*K);
+    const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
+    x.fillStyle="#fff";x.fillRect(0,0,W,H);x.scale(K,K);
+    const box=el=>{const r=el.getBoundingClientRect();return[r.left-P.left,r.top-P.top,r.width,r.height]};
+    const els=[...page.querySelectorAll("*")];
+    const textOf=(cs,str,X,Y,w,h,align,dir,fit)=>{
+      if(pfAlpha(cs.color)===0||pfAlpha(cs.webkitTextFillColor||cs.color)===0||!str.trim())return;
+      x.save();x.font=`${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;x.fillStyle=cs.color;x.direction=dir||cs.direction||"rtl";x.textBaseline="middle";
+      x.textAlign=align;const tx=align==="center"?X+w/2:(align==="left"?X:X+w);const mw=x.measureText(str).width;if(fit&&mw>w+.5)x.fillText(str,tx,Y+h/2,w);else x.fillText(str,tx,Y+h/2);x.restore()};
+    for(const el of els){
+      const cs=getComputedStyle(el);if(cs.display==="none"||cs.visibility==="hidden")continue;
+      const [X,Y,w,h]=box(el);if(!w&&!h)continue;
+      const rad=parseFloat(cs.borderTopLeftRadius)||0;
+      if(el.tagName==="IMG"){try{x.save();pfRR(x,X,Y,w,h,rad);x.clip();x.drawImage(el,X,Y,w,h);x.restore()}catch(_){}}
+      if(pfAlpha(cs.backgroundColor)>0&&!el.classList.contains("pfi")){x.fillStyle=cs.backgroundColor;pfRR(x,X,Y,w,h,rad);x.fill()}
+      const af=getComputedStyle(el,"::after");
+      if(af&&af.content&&af.content!=="none"&&pfAlpha(af.backgroundColor)>0){const i=parseFloat(af.top)||0;x.fillStyle=af.backgroundColor;x.fillRect(X+i,Y+i,w-2*i,h-2*i)}
+      const sides=["Top","Right","Bottom","Left"].map(d=>[parseFloat(cs["border"+d+"Width"])||0,cs["border"+d+"Color"],cs["border"+d+"Style"]]);
+      const dash=st=>x.setLineDash(st==="dashed"?[3,2.2]:st==="dotted"?[1,1.5]:[]);
+      if(sides.every(sd=>sd[0]>0&&sd[2]!=="none"&&sd[0]===sides[0][0])){const b=sides[0][0];x.strokeStyle=sides[0][1];x.lineWidth=b;dash(sides[0][2]);pfRR(x,X+b/2,Y+b/2,w-b,h-b,Math.max(0,rad-b/2));x.stroke();x.setLineDash([])}
+      else sides.forEach((sd,i)=>{const[b,col,st]=sd;if(!b||st==="none")return;x.strokeStyle=col;x.lineWidth=b;dash(st);x.beginPath();
+        if(i===0){x.moveTo(X,Y+b/2);x.lineTo(X+w,Y+b/2)}else if(i===2){x.moveTo(X,Y+h-b/2);x.lineTo(X+w,Y+h-b/2)}else if(i===1){x.moveTo(X+w-b/2,Y);x.lineTo(X+w-b/2,Y+h)}else{x.moveTo(X+b/2,Y);x.lineTo(X+b/2,Y+h)}
+        x.stroke();x.setLineDash([])});
+      if(el.tagName==="INPUT"){const pl=parseFloat(cs.paddingLeft)||0,pr=parseFloat(cs.paddingRight)||0,ta=cs.textAlign;
+        const al=ta==="center"?"center":(ta==="left"||(ta==="start"&&cs.direction==="ltr")||(ta==="end"&&cs.direction==="rtl")?"left":"right");
+        textOf(cs,el.value,X+pl,Y,w-pl-pr,h,al)}
+      else if(el.tagName==="BUTTON"){textOf(cs,el.textContent,X,Y,w,h,"center","ltr")}
+    }
+    // text: every text node where the browser laid it out (one line each in this form)
+    const tw=document.createTreeWalker(page,NodeFilter.SHOW_TEXT);let n;
+    while((n=tw.nextNode())){const pe=n.parentElement;if(!pe||pe.closest("button,input,style,script")||!n.nodeValue.trim())continue;
+      const cs=getComputedStyle(pe);if(cs.visibility==="hidden"||cs.display==="none")continue;
+      const rg=document.createRange();rg.selectNodeContents(n);
+      const r=rg.getBoundingClientRect();   // one line, but mixed Arabic and numbers give several rects: take them together
+      if(!r.width)continue;if(r)textOf(cs,n.nodeValue.trim(),r.left-P.left,r.top-P.top,r.width,r.height,"center",null,true);
+    }
+    return c;
+  }finally{page.style.transform=oldT}
+}
+async function pfPrint(btn){
+  if(pfCanPrint()){window.print();return}
+  const page=document.getElementById("infoForm");if(!page)return;
+  const t=btn.textContent;btn.disabled=true;btn.textContent="جارٍ التحضير…";
+  try{
+    const c=await pfPaint(page,3);
+    const b=await new Promise(ok=>c.toBlob(ok,"image/jpeg",.92));
+    const nm=(document.getElementById("f-nm")||{}).value||"";
+    const clean=page.classList.contains("pfclean")||!nm.trim();
+    const pdf=makePDF([{bytes:new Uint8Array(await b.arrayBuffer()),w:c.width,h:c.height}],{margin:0});
+    toast("اختر «طباعة» من القائمة");
+    await shareOrDownload(clean?"استمارة التسجيل.pdf":`استمارة ${nm.trim()}.pdf`,pdf);
+  }catch(err){if(!(err&&err.code==="declined"))toast("تعذّر تحضير الاستمارة للطباعة")}
+  finally{btn.disabled=false;btn.textContent=t}
 }
 // paper form: digit boxes move forward, sex is one choice, and each change saves itself
 function pfNormPhone(v){let d=paperDigits(v);if(d.startsWith("213"))d="0"+d.slice(3);if(d.length===10&&d[0]==="0")d=d.slice(1);return d}
@@ -1819,7 +1884,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.7</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.8</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -2129,7 +2194,7 @@ async function shrinkImage(file,max){
     return{blob,w,h};
   }finally{URL.revokeObjectURL(url)}
 }
-function makePDF(imgs){
+function makePDF(imgs,opt){
   const enc=new TextEncoder(),parts=[],offs=[];let len=0;
   const push=b=>{const u=typeof b==="string"?enc.encode(b):b;parts.push(u);len+=u.length};
   const obj=(i,fn)=>{offs[i]=len;push(i+" 0 obj\n");fn();push("\nendobj\n")};
@@ -2138,7 +2203,7 @@ function makePDF(imgs){
   obj(1,()=>push("<</Type/Catalog/Pages 2 0 R>>"));
   obj(2,()=>push(`<</Type/Pages/Count ${n}/Kids [${imgs.map((_,i)=>(3+3*i)+" 0 R").join(" ")}]>>`));
   imgs.forEach((im,i)=>{
-    const PW=595,PH=842,M=36,s=Math.min((PW-2*M)/im.w,(PH-2*M)/im.h),w=im.w*s,h=im.h*s,x=(PW-w)/2,y=(PH-h)/2;
+    const PW=595,PH=842,M=opt&&opt.margin!=null?opt.margin:36,s=Math.min((PW-2*M)/im.w,(PH-2*M)/im.h),w=im.w*s,h=im.h*s,x=(PW-w)/2,y=(PH-h)/2;
     const cs=`q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im0 Do Q`;
     obj(3+3*i,()=>push(`<</Type/Page/Parent 2 0 R/MediaBox [0 0 ${PW} ${PH}]/Resources<</XObject<</Im0 ${5+3*i} 0 R>>>>/Contents ${4+3*i} 0 R>>`));
     obj(4+3*i,()=>push(`<</Length ${cs.length}>>\nstream\n${cs}\nendstream`));
@@ -3686,7 +3751,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.7"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.8"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
