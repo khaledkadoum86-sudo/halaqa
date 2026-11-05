@@ -695,7 +695,7 @@ html.ipad .basmala .b1{font-size:1.9rem}
 .certseg button[aria-checked="true"]{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 /* the photo in depth: rounded frame, soft shadow, slow drift and parallax; the republic's name engraved on top */
 .ph3d{position:relative;overflow:hidden;border-radius:0 0 26px 26px;box-shadow:0 18px 30px -14px rgba(0,0,0,.55),0 2px 0 var(--gold);isolation:isolate;transform:translateZ(0)}
-.ph3d>img{transform:translate3d(0,var(--py,0px),0) scale(1.12);transform-origin:50% 60%;will-change:transform;animation:phdrift 22s ease-in-out infinite alternate}
+.ph3d>img{transform:translate3d(0,var(--py,0px),0) scale(1.12);transform-origin:50% 60%;will-change:transform;object-position:center 68%}
 @keyframes phdrift{from{object-position:center 74%}to{object-position:center 62%}}
 .ph3d::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(180deg,rgba(8,20,30,.72) 0%,rgba(8,20,30,.25) 26%,transparent 46%,transparent 72%,rgba(8,20,30,.45) 100%),
@@ -957,6 +957,18 @@ const sexSel=(v,dis)=>`<label for="f-sx">الجنس<select id="f-sx" ${dis||""} 
 const norm=s=>String(s).replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").trim();
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
 
+// ---------- 11.0: change only what changed ----------
+/* el.html = "…" works like innerHTML, but keeps every child that did not change, so a tap redraws one row, not the page */
+function setHTML(el,html){if(!el)return;
+  const t=document.createElement("template");t.innerHTML=html==null?"":String(html);
+  const nw=[...t.content.childNodes],old=[...el.childNodes];
+  if(!old.length||!nw.length||old.length!==nw.length&&Math.abs(old.length-nw.length)>4){el.replaceChildren(...nw);return}
+  const n=Math.min(old.length,nw.length);
+  for(let i=0;i<n;i++)if(!old[i].isEqualNode(nw[i]))el.replaceChild(nw[i],old[i]);
+  for(let i=n;i<old.length;i++)old[i].remove();
+  for(let i=n;i<nw.length;i++)el.appendChild(nw[i]);
+}
+Object.defineProperty(Element.prototype,"html",{configurable:true,set(v){setHTML(this,v)},get(){return this.innerHTML}});
 // ---------- data access ----------
 function dayData(date){
   const base=S.days[date]||{};const p=S.pending[date]||{};
@@ -1050,25 +1062,25 @@ function renderTodayInner(){
   document.getElementById("dateLbl").textContent=fmtDate(S.date);
   document.getElementById("dateIn").value=S.date;document.getElementById("dateIn").max=iso(new Date());
   {const ds=studyDays(monthKey(S.date),true),td=iso(new Date()),x0=parse(S.date);
-   document.getElementById("dayStrip").innerHTML=`<span class="smon">${MON[x0.getMonth()]}</span>`+ds.map(d=>{const x=parse(d),a=dayData(d).att;
+   document.getElementById("dayStrip").html=`<span class="smon">${MON[x0.getMonth()]}</span>`+ds.map(d=>{const x=parse(d),a=dayData(d).att;
      const rec=Object.values(a).some(isRec);
      const off=isOff(d),oc=!off&&occOf(d);
      return `<button class="dchip${oc?" occ":""}${d===S.date?" on":""}${rec&&!off?" rec":""}${off?" off":""}${d>td?" fut":""}${d===td?" td":""}" data-d="${d}" aria-pressed="${d===S.date}"${oc?` title="${esc(oc.name)}"`:""}><span>${off?"عطلة":DAYN[x.getDay()]}</span><b class="num">${x.getDate()}</b></button>`}).join("");}
   renderOffNote();
   const dd=dayData(S.date), list=active();
-  if(isOff(S.date)){document.getElementById("todayStats").innerHTML="";
-    const r0=dayRec(S.date)||{};document.getElementById("todayList").innerHTML=`<div class="empty">📅 لا حصة يوم ${fmtDate(S.date)}${r0.offName?" بمناسبة "+esc(r0.offName):" (عطلة)"}. لا يُسجَّل فيه حضور، ولا يُحسب في الإحصاءات.</div>`;return}
+  if(isOff(S.date)){document.getElementById("todayStats").html="";
+    const r0=dayRec(S.date)||{};document.getElementById("todayList").html=`<div class="empty">📅 لا حصة يوم ${fmtDate(S.date)}${r0.offName?" بمناسبة "+esc(r0.offName):" (عطلة)"}. لا يُسجَّل فيه حضور، ولا يُحسب في الإحصاءات.</div>`;return}
   let p=0,a=0,j=0,t=0;
   list.forEach(s=>{const v=dd.att[s.id];if(v===P)p++;else if(v===A)a++;else if(v===J)j++;t+=Number(dd.th[s.id])||0});
-  document.getElementById("todayStats").innerHTML=
+  document.getElementById("todayStats").html=
     `<div class="stat p tap" data-sl="p" role="button" tabindex="0"><b class="num">${p}</b><span>حاضر</span></div>
      <div class="stat j tap" data-sl="j" role="button" tabindex="0"><b class="num">${j}</b><span>حضور جزئي</span></div>
      <div class="stat a tap" data-sl="a" role="button" tabindex="0"><b class="num">${a}</b><span>غائب</span></div>
      <div class="stat tap" data-sl="none" role="button" tabindex="0"><b class="num">${list.length-p-a-j}</b><span>لم يُسجَّل بعد</span></div>
      <div class="stat t tap" data-sl="t" role="button" tabindex="0"><b class="num">${t}</b><span>ثمن محفوظ اليوم</span></div>`;
   const box=document.getElementById("todayList");
-  if(!S.studentsLoaded){box.innerHTML=`<div class="empty">${S.db?"جارٍ تحميل قائمة الطلبة…":"سجّل الدخول إلى Claude لفتح السجل وحفظ البيانات."}</div>`;return}
-  if(!list.length){box.innerHTML=`<div class="empty">لا يوجد طلبة بعد. أضف أول طالب من تبويب «الطلبة»، أو استعد نسخة احتياطية من زر «الإعدادات» في الأعلى.</div>`;return}
+  if(!S.studentsLoaded){box.html=`<div class="empty">${S.db?"جارٍ تحميل قائمة الطلبة…":"سجّل الدخول إلى Claude لفتح السجل وحفظ البيانات."}</div>`;return}
+  if(!list.length){box.html=`<div class="empty">لا يوجد طلبة بعد. أضف أول طالب من تبويب «الطلبة»، أو استعد نسخة احتياطية من زر «الإعدادات» في الأعلى.</div>`;return}
   const q=norm(S.q);
   const rows=list.filter(s=>{
     if(q&&!norm(s.name).includes(q)&&String(s.n)!==q)return false;
@@ -1076,7 +1088,7 @@ function renderTodayInner(){
     if(S.filter==="p")return v===P; if(S.filter==="j")return v===J; if(S.filter==="a")return v===A; if(S.filter==="none")return !isRec(v); return true;
   });
   const dis=S.canWrite?"":"disabled";
-  box.innerHTML=`<div class="hd"><span class="n">رقم</span><span>اسم ولقب الطالب</span><span class="c1">ح / ج / غ</span><span class="c2">الثمن</span></div>`+
+  box.html=`<div class="hd"><span class="n">رقم</span><span>اسم ولقب الطالب</span><span class="c1">ح / ج / غ</span><span class="c2">الثمن</span></div>`+
    (rows.length?rows.map((s,i)=>{const v=dd.att[s.id],th=dd.th[s.id];
     const gh=mixed(rows)&&(i===0||isF(rows[i-1])!==isF(s))?sexHead(s,rows):"";
     return gh+`<div class="row ${v===P?"is-p":v===A?"is-a":v===J?"is-j":""}" data-id="${s.id}">
@@ -1102,13 +1114,13 @@ function renderMonth(){
   const {days,list,per,dds}=monthStats(S.month);
   const recorded=days.filter((d,i)=>Object.values(dds[i].att).some(isRec));
   let P_=0,A_=0,J_=0,T_=0;list.forEach(s=>{P_+=per[s.id].p;A_+=per[s.id].a;J_+=per[s.id].j;T_+=per[s.id].t});
-  document.getElementById("monthStats").innerHTML=
+  document.getElementById("monthStats").html=
    `<div class="stat"><b class="num">${recorded.length}<small style="font-size:.9rem;color:var(--muted)"> / ${days.length}</small></b><span>حصص مسجَّلة</span></div>
     <div class="stat p"><b class="num">${rateOf(P_,J_,A_)??0}%</b><span>نسبة الحضور</span></div>
     <div class="stat a tap" data-sl="mabs" role="button" tabindex="0"><b class="num">${A_}</b><span>مجموع الغيابات</span></div>
     <div class="stat t tap" data-sl="mt" role="button" tabindex="0"><b class="num">${T_}</b><span>ثمن محفوظ (${hizb(T_)})</span></div>`;
   const top=list.filter(s=>per[s.id].t>0).sort((a,b)=>per[b.id].t-per[a.id].t).slice(0,5);
-  document.getElementById("topBox").innerHTML=top.length?`<div class="top5"><span class="note" style="align-self:center">الأكثر حفظًا:</span>${top.map(s=>`<span class="chip">${esc(s.name)} <b class="num">${per[s.id].t}</b></span>`).join("")}</div>`:"";
+  document.getElementById("topBox").html=top.length?`<div class="top5"><span class="note" style="align-self:center">الأكثر حفظًا:</span>${top.map(s=>`<span class="chip">${esc(s.name)} <b class="num">${per[s.id].t}</b></span>`).join("")}</div>`:"";
   const q=norm(S.mq);
   let rows=list.filter(s=>!q||norm(s.name).includes(q)||String(s.n)===q);
   const r=x=>x==null?-1:x;
@@ -1118,24 +1130,27 @@ function renderMonth(){
   else if(S.sortBy==="low")rows.sort(sexFirst((a,b)=>(per[a.id].rate??101)-(per[b.id].rate??101)));
   const mx=mixed(rows),gStart=(s,i)=>mx&&(i===0||isF(rows[i-1])!==isF(s)),gN=s=>rows.filter(x=>isF(x)===isF(s)).length;
   const today=iso(new Date());
-  document.getElementById("grid").innerHTML=
+  MG.g=
    `<thead><tr>${days.map(d=>{const x=parse(d);return `<th class="${d===today?"today":""}${d>today?" fut":""}" data-d="${d}" style="${d>today?"":"cursor:pointer"}" title="${d>today?"":"افتح هذا اليوم"}"><span class="dname">${DAYN[x.getDay()]}</span>${x.getDate()}</th>`}).join("")}<th>الحفظ الشهري</th><th>الحضور</th><th>جزئي</th><th>الغياب</th><th>النسبة</th></tr></thead>
     <tbody>${rows.map((s,i)=>{const st=per[s.id];return (gStart(s,i)?`<tr class="sexrow${isF(s)?" fem":""}"><td colspan="${days.length+5}">&nbsp;</td></tr>`:"")+`<tr>${
       dds.map((dd,i)=>{const v=dd.att[s.id],t=Number(dd.th[s.id])||0;return `<td data-s="${s.id}" data-d="${days[i]}" class="cell${days[i]>today?" fut":""} ${v===P?"p":v===A?"a":v===J?"j":""}">${isRec(v)?v:""}${t?`<span class="t num">${t}</span>`:""}</td>`}).join("")
     }<td class="tot num">${st.t||""}</td><td class="num">${st.p}</td><td class="num">${st.j}</td><td class="num">${st.a}</td><td class="rate num">${st.rate==null?"—":st.rate+"%"}</td></tr>`}).join("")}</tbody>`;
   // Names live in their own table beside the scrolling days, so they never move or vanish.
-  document.getElementById("gridNames").innerHTML=
+  MG.n=
    `<thead><tr><th class="stickn">رقم</th><th class="sticky">اسم ولقب الطالب</th></tr></thead>
     <tbody>${rows.map((s,i)=>(gStart(s,i)?`<tr class="sexrow${isF(s)?" fem":""}"><td colspan="2" class="sticky"><span class="sxt">${isF(s)?"قسم الإناث":"قسم الذكور"}</span><span class="sxn num">${gN(s)}</span></td></tr>`:"")+`<tr><td class="num stickn">${s.n}</td><td class="sticky"><button class="namebtn" data-id="${s.id}">${esc(s.name)}</button></td></tr>`).join("")}</tbody>`;
-  syncRows();
+  // 11.0: the table is rebuilt (and its rows measured) only when something in it changed
+  const g=document.getElementById("grid"),gn=document.getElementById("gridNames");
+  if(g.__h!==MG.g||gn.__h!==MG.n||!g.firstChild){g.innerHTML=g.__h=MG.g;gn.innerHTML=gn.__h=MG.n;syncRows()}
 }
+const MG={g:"",n:""};
 function syncRows(){
   requestAnimationFrame(()=>{
     const a=[...document.querySelectorAll("#gridNames tr")],b=[...document.querySelectorAll("#grid tr")];
     a.concat(b).forEach(r=>r.style.height="");
     // measure every row first, then set heights, so the page is laid out once instead of once per row
     const hs=a.map((r,i)=>b[i]?Math.ceil(Math.max(r.getBoundingClientRect().height,b[i].getBoundingClientRect().height)):0);
-    a.forEach((r,i)=>{if(b[i])r.style.height=b[i].style.height=hs[i]+"px"});
+    a.forEach((r,i)=>{if(b[i]&&hs[i])r.style.height=b[i].style.height=hs[i]+"px"});   // 0 = measured while hidden: leave natural
   });
 }
 window.addEventListener("resize",()=>{if(S.view==="month")syncRows()});
@@ -1503,13 +1518,13 @@ const dayRec=d=>S.days[d]||(typeof LDB!=="undefined"&&LDB.peek?LDB.peek("days/"+
 function renderOffNote(){const el=document.getElementById("offNote");if(!el)return;
   const d=S.date,off=isOff(d),r=dayRec(d),oc=occOf(d),dis=S.canWrite?"":"disabled";
   if(off){const nm=(r&&r.offName)||"";
-    el.innerHTML=`<div class="offcard"><div class="offic">${r&&r.offRel?"🌙":nm?"🇩🇿":"📅"}</div><div class="offtx"><span class="offk">عطلة · لا حصة</span><b>${esc(nm||"لا حصة في هذا اليوم")}</b><span class="note">${fmtDate(d)} ${parse(d).getFullYear()}، لا يُسجَّل فيه حضور ولا يُحسب في الإحصاءات</span></div>
+    el.html=`<div class="offcard"><div class="offic">${r&&r.offRel?"🌙":nm?"🇩🇿":"📅"}</div><div class="offtx"><span class="offk">عطلة · لا حصة</span><b>${esc(nm||"لا حصة في هذا اليوم")}</b><span class="note">${fmtDate(d)} ${parse(d).getFullYear()}، لا يُسجَّل فيه حضور ولا يُحسب في الإحصاءات</span></div>
       <div class="offbtns"><button type="button" class="btn sm wa" data-offwa ${dis}>📤 إعلان للأولياء</button><button type="button" class="btn sm" data-offset="0" ${dis}>إلغاء العطلة</button></div></div>`}
   else if(oc&&!(r&&r.off===false)){
-    el.innerHTML=`<div class="occask"><div class="offic">${oc.rel?"🌙":"🇩🇿"}</div><div class="offtx"><b>${esc(oc.name)}</b><span class="note">${oc.off?"عطلة رسمية":"مناسبة، ليست عطلة رسمية"}${oc.rel?" · قد يختلف التاريخ بيوم حسب رؤية الهلال":""}</span><span>هل هذا اليوم عطلة لا حصة فيه؟</span></div>
+    el.html=`<div class="occask"><div class="offic">${oc.rel?"🌙":"🇩🇿"}</div><div class="offtx"><b>${esc(oc.name)}</b><span class="note">${oc.off?"عطلة رسمية":"مناسبة، ليست عطلة رسمية"}${oc.rel?" · قد يختلف التاريخ بيوم حسب رؤية الهلال":""}</span><span>هل هذا اليوم عطلة لا حصة فيه؟</span></div>
       <div class="offbtns"><button type="button" class="btn sm primary" data-offset="1" ${dis}>نعم، عطلة</button><button type="button" class="btn sm" data-offno ${dis}>لا، توجد حصة</button></div></div>`}
-  else if(oc)el.innerHTML=`<div class="occmini">${oc.rel?"🌙":"🇩🇿"} ${esc(oc.name)}</div>`;
-  else el.innerHTML="";
+  else if(oc)el.html=`<div class="occmini">${oc.rel?"🌙":"🇩🇿"} ${esc(oc.name)}</div>`;
+  else el.html="";
   const b=document.getElementById("offBtn");if(b)b.hidden=off;
   const ap=document.getElementById("allPresent");if(ap)ap.hidden=off}
 /* a moon-dependent holiday may fall a day before or after the calculated date */
@@ -1884,7 +1899,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.9</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.0</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3413,11 +3428,20 @@ function hzDays(){
   for(const d of pk){const r=m.get(d)||{},p=S.pending[d];m.set(d,{att:Object.assign({},r.att,p.att),th:Object.assign({},r.th,p.th)})}
   return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
 }
-/* athman recorded per student on days up to (and including) upTo */
-function thSums(upTo){const key=upTo||"~",clean=!Object.keys(S.pending).length;
-  if(clean&&HZ.cache&&HZ.cache.sums[key])return HZ.cache.sums[key];
-  const out={};for(const [d,r] of hzDays()){if(upTo&&d>upTo)break;const th=r.th||{};for(const id in th){const n=Number(th[id])||0;if(n)out[id]=(out[id]||0)+n}}
-  if(clean&&HZ.cache)HZ.cache.sums[key]=out;return out}
+/* athman recorded per student on days up to (and including) upTo.
+   11.0: the saved days are summed once and kept; edits not yet saved are laid on top as a difference, once per change
+   (not once per student), so tapping attendance stays instant however many months are recorded. */
+function hzBase(){if(!HZ.cache)hzDays();return HZ.cache}
+function thSums(upTo){const key=upTo||"~",C=hzBase();
+  let base=C.sums[key];
+  if(!base){base={};for(const [d,r] of C.days){if(upTo&&d>upTo)break;const th=r.th||{};for(const id in th){const n=Number(th[id])||0;if(n)base[id]=(base[id]||0)+n}}C.sums[key]=base}
+  const pk=Object.keys(S.pending);if(!pk.length)return base;
+  const sig=JSON.stringify(S.pending);if(!C.pm||C.pm.sig!==sig)C.pm={sig,sums:{}};
+  if(C.pm.sums[key])return C.pm.sums[key];
+  const out=Object.assign({},base),saved=new Map(C.days);
+  for(const d of pk){if(upTo&&d>upTo)continue;const pth=(S.pending[d]||{}).th||{},sth=((saved.get(d)||{}).th)||{};
+    for(const id in pth){const v=(Number(pth[id])||0)-(Number(sth[id])||0);if(v)out[id]=(out[id]||0)+v}}
+  C.pm.sums[key]=out;return out}
 const hzClamp=t=>Math.max(0,Math.min(480,t));
 function hzFrom(s,t){const c=Math.floor(t/8),r=t%8,back=s.hzDir!=="fwd";
   return{t,c,r,back,khatm:c>=60,cur:c>=60?null:(back?60-c:c+1),last:c?(back?61-c:c):null}}
@@ -3500,12 +3524,12 @@ function msHead(ms){const f=ms.every(m=>isF(m.s));return ms.length>1?(f?"أتم�
 function renderAlerts(){
   let el=document.getElementById("hzAlerts");
   if(!el){const strip=document.getElementById("dayStrip");if(!strip)return;el=document.createElement("div");el.id="hzAlerts";strip.parentNode.insertBefore(el,strip)}
-  if(!S.studentsLoaded||!active().length){el.innerHTML="";return}
+  if(!S.studentsLoaded||!active().length){el.html="";return}
   const ab=absStreaks(S.date),ms=hzMilestones(S.date);let h="";
   if(ms.length)h+=`<div class="hznote win"><b>🎉 ${msHead(ms)}</b>${ms.map(m=>`<div class="hzrow"><button type="button" class="linkname" data-hzopen="${m.s.id}">${esc(m.s.name)}</button><span class="note">${m.i.khatm?gw(m.s,"ختم","ختمت")+" القرءان كاملًا":gw(m.s,"أتمّ","أتمّت")+" الحزب "+m.i.last}</span><button type="button" class="btn sm gold" data-cert="${m.s.id}">🏅 شهادة</button></div>`).join("")}</div>`;
   if(ab.length)h+=`<div class="hznote abs"><b>⚠️ غياب متتالٍ</b>${ab.map(x=>{const wa=waNum(x.s.phone);
     return `<div class="hzrow"><button type="button" class="linkname" data-hzopen="${x.s.id}">${esc(x.s.name)}</button><span class="note">${gw(x.s,"غاب","غابت")} ${hisas(x.n)} متتالية، منذ ${fmtDate(x.since)}</span><span class="hzacts">${wa?`<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(absMsg(x))}" target="_blank" rel="noopener">راسل الولي</a>`:""}<button type="button" class="btn sm" data-abshide="${x.s.id}" data-since="${x.since}" aria-label="إخفاء التنبيه">إخفاء</button></span></div>`}).join("")}</div>`;
-  el.innerHTML=h}
+  el.html=h}
 const _rtHz=renderToday;renderToday=function(){_rtHz();renderAlerts()};
 document.addEventListener("click",e=>{
   const o=e.target.closest("[data-hzopen]");if(o){openStudent(o.dataset.hzopen);return}
@@ -3751,7 +3775,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.9"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.0"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
@@ -4528,12 +4552,12 @@ const hzqst=document.createElement("style");hzqst.textContent=`
 .hzstep.mini{margin:0;border-radius:8px;flex:none}.hzstep.mini .hzpm{width:26px;height:26px;font-size:1rem}.hzstep.mini .hzin{width:32px;height:26px;font-size:.95rem}
 `;document.head.appendChild(hzqst);
 const _renderSchoolP=renderSchool;
-renderSchool=function(){_renderSchoolP();const b=document.getElementById("schStu");if(b)b.innerHTML=schStuHTML();schNavMark();schFit()};
+renderSchool=function(){_renderSchoolP();const b=document.getElementById("schStu");if(b)b.html=schStuHTML();schNavMark();if(!window.ResizeObserver)schFit()};
 const schPager=()=>document.getElementById("schPager");
 const schSign=el=>getComputedStyle(el).direction==="rtl"?-1:1;
 function schNavMark(){document.querySelectorAll("#v-school [data-schpg]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.schpg===SPG.i)));
   const d=document.querySelectorAll("#v-school .schdots i");d.forEach((x,k)=>x.classList.toggle("on",k===SPG.i))}
-function schFit(){const p=schPager();if(!p)return;const pg=p.children[SPG.i];if(pg)p.style.height=pg.offsetHeight+"px"}
+function schFit(){const p=schPager();if(!p)return;const pg=p.children[SPG.i],h=pg&&pg.offsetHeight;if(h&&p.style.height!==h+"px")p.style.height=h+"px"}
 function schGo(i,smooth){const p=schPager();if(!p)return;SPG.i=i;try{localStorage.setItem("halaqa.schpg",String(i))}catch(_){}
   p.scrollTo({left:schSign(p)*i*p.clientWidth,behavior:smooth?"smooth":"auto"});schNavMark();schFit();
   const sec=document.getElementById("v-school"),top=sec.getBoundingClientRect().top+window.scrollY-70;if(window.scrollY>top)window.scrollTo({top:Math.max(0,top),behavior:smooth?"smooth":"auto"})}
@@ -4573,20 +4597,20 @@ button.stuhz-row{cursor:pointer}
 /* ===== «حصة اليوم» in two swipeable pages: 1) absences and sending cards, 2) attendance (males / females) ===== */
 const TPG={i:1};try{TPG.i=localStorage.getItem("halaqa.tdpg")==="0"?0:1}catch(_){}
 function renderTodayAbs(){const el=document.getElementById("todayAbs");if(!el)return;
-  if(!S.studentsLoaded){el.innerHTML="";return}
+  if(!S.studentsLoaded){el.html="";return}
   const dd=dayData(S.date),L=active().filter(s=>dd.att[s.id]===A);
   const ab=absStreaks(S.date).length;
-  if(!L.length){el.innerHTML=ab?"":`<div class="empty">لا يوجد غائبون في هذا اليوم. سجّل الحضور من الصفحة التالية ← مرّر إلى اليسار.</div>`;return}
+  if(!L.length){el.html=ab?"":`<div class="empty">لا يوجد غائبون في هذا اليوم. سجّل الحضور من الصفحة التالية ← مرّر إلى اليسار.</div>`;return}
   const row=s=>`<div class="tdabs-row"><button type="button" class="linkname" data-hzopen="${s.id}">${esc(s.name)}</button><button type="button" class="btn sm" data-wacabs="${s.id}">🔒 بطاقة غياب</button></div>`;
   const m=L.filter(s=>!isF(s)),f=L.filter(isF);
-  el.innerHTML=`<div class="hznote abs tdabs"><b>غائبون في هذا اليوم <span class="num">(${L.length})</span></b>
+  el.html=`<div class="hznote abs tdabs"><b>غائبون في هذا اليوم <span class="num">(${L.length})</span></b>
     ${m.length?`${f.length?`<div class="tdabs-h">الذكور</div>`:""}${m.map(row).join("")}`:""}
     ${f.length?`${m.length?`<div class="tdabs-h fem">الإناث</div>`:""}${f.map(row).join("")}`:""}</div>`}
-const _rtTd=renderToday;renderToday=function(){_rtTd();renderTodayAbs();tdNav();tdFit()};
+const _rtTd=renderToday;renderToday=function(){_rtTd();renderTodayAbs();tdNav();if(!window.ResizeObserver)tdFit()};
 const tdPager=()=>document.getElementById("tdPager");
 function tdNav(){document.querySelectorAll("[data-tdpg]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.tdpg===TPG.i)));
   document.querySelectorAll(".tddots i").forEach((x,k)=>x.classList.toggle("on",k===TPG.i))}
-function tdFit(){const p=tdPager();if(!p)return;const pg=p.children[TPG.i];if(pg&&pg.offsetHeight)p.style.height=pg.offsetHeight+"px"}
+function tdFit(){const p=tdPager();if(!p)return;const pg=p.children[TPG.i],h=pg&&pg.offsetHeight;if(h&&p.style.height!==h+"px")p.style.height=h+"px"}
 function tdGo(i,smooth){const p=tdPager();if(!p)return;TPG.i=i;try{localStorage.setItem("halaqa.tdpg",String(i))}catch(_){}
   p.scrollTo({left:(getComputedStyle(p).direction==="rtl"?-1:1)*i*p.clientWidth,behavior:smooth?"smooth":"auto"});tdNav();tdFit()}
 (function(){const p=tdPager();if(!p)return;let t;
@@ -4705,13 +4729,13 @@ document.addEventListener("submit",async e=>{if(e.target.id!=="ntForm")return;e.
 // ---- today: reminders due and the session note ----
 function ntRenderToday(){let el=document.getElementById("ntToday");
   if(!el){const a=document.getElementById("hzAlerts");if(!a)return;el=document.createElement("div");el.id="ntToday";a.before(el)}
-  if(!NT.ready||(typeof isOff==="function"&&isOff(S.date))){el.innerHTML="";return}
+  if(!NT.ready||(typeof isOff==="function"&&isOff(S.date))){el.html="";return}
   const due=ntDue(),ses=NT.list.find(n=>n.kind==="ses"&&n.date===S.date),dis=S.canWrite?"":"disabled";let h="";
   if(due.length)h+=`<div class="hznote ntrem"><b>⏰ تذكيرات اليوم</b>${due.map(n=>{const s=n.sid&&ntStu(n.sid);
     return `<div class="hzrow" data-nid="${n.id}">${s?`<button type="button" class="linkname" data-hzopen="${s.id}">${esc(s.name)}</button>`:""}<span class="note">${esc(n.text)}${(n.due||n.date)<ntToday()?` · منذ ${ntFmt(n.due||n.date)}`:""}</span><span class="hzacts"><button type="button" class="btn sm primary" data-ntdone ${dis}>تمّ ✓</button></span></div>`}).join("")}</div>`;
   h+=ses?`<div class="hznote ntses"><b>📖 ملاحظة الحصة${ses.toReport?" · تُضاف إلى التقرير":""}</b><div class="nttx">${esc(ses.text)}</div><div><button type="button" class="btn sm" data-ntadd="ses">تعديل</button></div></div>`
     :`<button type="button" class="linkbtn ntaddses" data-ntadd="ses" ${dis}>📖 ＋ ملاحظة الحصة (ما قُرئ، وما يُراجَع غدًا)</button>`;
-  el.innerHTML=h}
+  el.html=h}
 {const _rtNt=renderToday;renderToday=function(){_rtNt();ntRenderToday()}}
 
 // ---- student sheet: his notes and contacts ----
@@ -4830,7 +4854,7 @@ function renderAbsDue(){let el=document.getElementById("absDue");
   if(!el){const t=document.getElementById("todayAbs");if(!t)return;el=document.createElement("div");el.id="absDue";t.before(el)}
   const d=S.date,r=dayRec(d)||{},dd=dayData(d);
   const show=S.studentsLoaded&&d===iso(new Date())&&!r.off&&!r.absSent&&Object.values(dd.att).some(isRec);
-  el.innerHTML=show?`<div class="absdue"><span>📤 لم يُرسَل <b>تقرير الغيابات</b> اليوم بعد</span><button type="button" class="btn sm wa" data-absrep>إرساله الآن</button></div>`:""}
+  el.html=show?`<div class="absdue"><span>📤 لم يُرسَل <b>تقرير الغيابات</b> اليوم بعد</span><button type="button" class="btn sm wa" data-absrep>إرساله الآن</button></div>`:""}
 {const _rtAb=renderToday;renderToday=function(){_rtAb();renderAbsDue()}}
 
 /* ================= إضافة مجموعة طلبة بأرقام هواتفهم =================
@@ -5649,7 +5673,7 @@ function hmShown(v){
   document.body.dataset.view=v;
   const h=document.querySelector(".brand h1");if(h)h.textContent=v==="home"?"سجل متابعة الطلبة":HM_PAGES[v]||"";
   const sec=document.getElementById("v-"+v);
-  if(sec&&HM.cur!==v){sec.classList.remove("vin");void sec.offsetWidth;sec.classList.add("vin")}
+  if(sec&&HM.cur!==v&&sec.animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches){try{sec.animate([{opacity:0,transform:"translateY(8px)"},{opacity:1,transform:"none"}],{duration:200,easing:"cubic-bezier(.2,.8,.2,1)"})}catch(_){}}
   if(HM.cur!==v){const y=HM.scroll[v]||0;requestAnimationFrame(()=>window.scrollTo(0,y))}
   HM.cur=v;
 }
@@ -5715,6 +5739,7 @@ body:not([data-view="home"]) .brand h1{display:block!important;font-size:1.2rem}
 #cloudBtn,#notesBtn,#teacherFilesBtn,#lockBtn{display:none!important}
 .hmh{margin:18px 4px 8px;font-size:.85rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
 /* gentle page entrance */
+#todayList>.row,#stuList .scard,#stuList .srow{content-visibility:auto;contain-intrinsic-size:auto 64px}
 @keyframes vin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 main>section.vin{animation:vin .22s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion:reduce){main>section.vin{animation:none}}
