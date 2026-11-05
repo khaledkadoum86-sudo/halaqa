@@ -1250,7 +1250,7 @@ const PF_CSS=`.paperSheet{max-width:720px;padding:14px 14px 16px;max-height:94vh
   #infoForm{transform:none!important;left:0;top:0}
   .pfpage .pfi{background:transparent!important}
 }`;
-function pfFields(s,dis){
+function pfFields(s,dis,isNew){
   const D=(g,i,b,v)=>`<input class="pfi pfd" data-g="${g}" data-i="${i}" value="${esc(v||"")}" ${dis} inputmode="numeric" autocomplete="off" aria-label="${g} ${i+1}" style="left:${b[0]}mm;top:${b[1]}mm;width:${b[2]}mm;height:${b[3]}mm">`;
   const T=(id,v,b,cls)=>`<input type="text" id="${id}" class="pfi pft ${cls||""}" value="${esc(v||"")}" ${dis} autocomplete="off" style="left:${b[0]}mm;top:${b[1]}mm;width:${b[2]}mm;height:${b[3]}mm">`;
   const SX=(v,key)=>{const c=STF_L[key];return `<button type="button" class="pfi pfsx ${v?"on":""}" data-sx="${key==="c:m"?"m":"f"}" ${dis} style="left:${c[0]}mm;top:${c[1]}mm;width:${c[2]}mm;height:${c[3]}mm">✓</button>`};
@@ -1272,7 +1272,8 @@ function pfFields(s,dis){
   Object.keys(DK).forEach(k=>{const on=!!(s.docs&&s.docs[DK[k]]);const c=STF_L[k];h+=`<button type="button" class="pfi pfck ${on?"on":""}" data-doc="${DK[k]}" ${dis} style="left:${c[0]}mm;top:${c[1]}mm;width:${c[2]}mm;height:${c[3]}mm">✓</button>`});
   const hz=(typeof hzInfo==="function")?hzInfo(s):null;
   const hzv=(hz&&!hz.khatm&&hz.cur)?String(hz.cur).padStart(2,"0"):"";
-  STF_L.hz.forEach((b,i)=>h+=`<input class="pfi pfd pfro" data-g="hz" data-i="${i}" value="${esc(hzv[i]||"")}" readonly tabindex="-1" aria-label="الحزب الحالي ${i+1}" style="left:${b[0]+.6}mm;top:${b[1]}mm;width:${b[2]-1.2}mm;height:${b[3]}mm;line-height:${b[3]}mm">`);
+  if(isNew)STF_L.hz.forEach((b,i)=>h+=D("hzn",i,b,""));   // new student: the teacher may write the hizb he is memorising now
+  else STF_L.hz.forEach((b,i)=>h+=`<input class="pfi pfd pfro" data-g="hz" data-i="${i}" value="${esc(hzv[i]||"")}" readonly tabindex="-1" aria-label="الحزب الحالي ${i+1}" style="left:${b[0]+.6}mm;top:${b[1]}mm;width:${b[2]-1.2}mm;height:${b[3]}mm;line-height:${b[3]}mm">`);
   return h;
 }
 function openInfo(id){
@@ -1289,7 +1290,12 @@ function openInfo(id){
     <div class="note" style="margin-top:8px"><span id="infoState">${S.canWrite?"يُحفظ تلقائيًا":"للعرض فقط"}</span></div>
     <div class="dangerzone"><button class="btn ${s.active===false?"ok":"danger"}" type="button" data-act="stoptoggle" data-id="${id}" ${S.canWrite?"":"disabled"}>${s.active===false?"إرجاع الطالب إلى الحلقة":"إيقاف الطالب"}</button><span class="note">${s.active===false?"":"الطالب الموقوف لا يظهر في حصة اليوم، ويبقى سجله محفوظًا."}</span></div>
   </div></div>`;
+  pfMount(md);
+}
+// 10.7: lays the electronic form on the sheet (fit to width, double-tap to zoom, clean sheet, print). Shared by the student card and «إضافة طالب».
+function pfMount(md){
   md.hidden=false;
+  const {css}=pfBody();
   let st=document.getElementById("pfCss");
   if(!st){st=document.createElement("style");st.id="pfCss";document.head.appendChild(st)}
   st.textContent=pfScope(css)+PF_CSS;
@@ -1311,7 +1317,6 @@ function openInfo(id){
   cb.onclick=()=>{const on=page.classList.toggle("pfclean"); cb.textContent=on?"👁️ إظهار البيانات":"🖊️ إخفاء البيانات (ورقة فارغة)"};
   md.querySelector("#pfPrint").onclick=()=>window.print();
   md.querySelector("#pfContact").hidden=!pfContactsAvailable();
-  md.hidden=false;
 }
 // paper form: digit boxes move forward, sex is one choice, and each change saves itself
 function pfNormPhone(v){let d=paperDigits(v);if(d.startsWith("213"))d="0"+d.slice(3);if(d.length===10&&d[0]==="0")d=d.slice(1);return d}
@@ -1499,7 +1504,7 @@ document.getElementById("modal").addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementById("modal").hidden=true});
 // Student info saves itself while typing (one write at a time, coalesced).
 let infoTimer=null,infoBusy=false,infoDirty=null;
-function infoSnapshot(){const f=document.getElementById("infoForm");if(!f)return null;
+function infoSnapshot(force){const f=document.getElementById("infoForm");if(!f||(f.dataset.new&&!force))return null;
   const v=k=>{const e=document.getElementById(k);return e?e.value.trim():""};
   const grp=g=>[...f.querySelectorAll('.pfd[data-g="'+g+'"]')].map(e=>e.value.replace(/\D/g,"").slice(0,1)).join("");
   const data={fileNo:grp("fn")};
@@ -1814,7 +1819,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.6</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 10.7</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3282,50 +3287,44 @@ document.getElementById("stuOrder").value=ORDER;
 document.getElementById("stuOrder").addEventListener("change",e=>setOrder(e.target.value));
 (function(){const sb=document.getElementById("sortBy");sb.value=ORDER==="name"?"n":ORDER;S.sortBy=sb.value})();
 
-// ---- add a student with all details in one form ----
+// ---- add a student: the same electronic form as the student card (10.7), empty, saved with «حفظ الطالب» ----
 function openNewStudent(){
   if(!S.canWrite){toast("ليست لديك صلاحية التعديل");return}
   const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1;
   const md=document.getElementById("modal");
-  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="إضافة طالب">
-    <h3>إضافة طالب جديد</h3><div class="note">الرقم التسلسلي ${n}</div>
-    <form class="info" id="newForm" style="margin-top:14px" autocomplete="off">
-      <label for="f-nm" class="wide">اسم ولقب الطالب *<input type="text" id="f-nm" class="nameinput" placeholder="مثال: بن علي محمد"></label>
-      <label for="f-fn">رقم الملف<input type="text" id="f-fn" dir="ltr"></label>
-      ${sexSel("m")}
-      <div class="bd wide"><b>الميلاد</b>
-        <label for="f-bd-d">تاريخ الميلاد${bdPicker("")}</label>
-        <label for="f-bp">مكان الميلاد<input type="text" id="f-bp" placeholder="مثال: الجلفة"></label>
-      </div>
-      <label for="f-ph">رقم الهاتف<input type="tel" id="f-ph" dir="ltr" inputmode="tel" ${S.contacts.length?'list="contactsList"':""} placeholder="0X XX XX XX XX"></label>
-      <label for="f-ph2">الهاتف الثاني<input type="tel" id="f-ph2" dir="ltr" inputmode="tel" ${S.contacts.length?'list="contactsList"':""} placeholder="0X XX XX XX XX"></label>
-      ${S.contacts.length?`<datalist id="contactsList">${S.contacts.flatMap(c=>c.tels.map(t=>`<option value="${esc(t)}" label="${esc(c.name)}"></option>`)).join("")}</datalist>`:""}
-      <label for="f-ad" class="wide">العنوان الشخصي<input type="text" id="f-ad"></label>
-      <label for="f-lv">المستوى الدراسي / المهنة<input type="text" id="f-lv"></label>
-      <label for="f-bal">الرصيد من الحفظ (عدد الأحزاب)<input type="text" id="f-bal" dir="ltr" inputmode="numeric"></label>
-      <label for="f-hz" class="wide">الحزب الذي يحفظه الآن (اختياري)<select id="f-hz" style="min-height:44px"><option value="">لم يُحدَّد بعد</option>${(()=>{const fwd=(()=>{try{return localStorage.getItem("halaqa.hzdir")==="fwd"}catch(_){return false}})(),L=[];for(let h=1;h<=60;h++)L.push(fwd?h:61-h);return L.map(h=>`<option value="${h}">الحزب ${h}</option>`).join("")})()}</select></label>
-      <div class="wide lockset" style="margin-top:6px">
-        <button class="btn primary" type="submit" id="newSave">حفظ الطالب</button>
-        <button class="btn" type="button" data-act="close">إلغاء</button>
-      </div>
-      <span class="note wide" id="newMsg"></span>
-    </form>
+  const {body}=pfBody();
+  md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet paperSheet" role="dialog" aria-modal="true" aria-label="إضافة طالب جديد">
+    <div class="nsHead"><b>إضافة طالب جديد</b><span class="note">الرقم التسلسلي ${n} · املأ الاستمارة كما تملأ الورقة</span></div>
+    <div class="pfwrap" id="pfWrap"><div class="pfpage" id="infoForm" data-new="1">${body}${pfFields({sex:""},"",true)}</div></div>
+    <div class="pfbar">
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="pfPaste">📋 لصق رقم الهاتف</button><button class="btn" type="button" id="pfContact" hidden>👤 من جهات الاتصال</button><button class="btn" type="button" id="pfClean">🖊️ إخفاء البيانات (ورقة فارغة)</button><button class="btn" type="button" id="pfPrint">🖨️ طباعة</button></span>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" id="newSave">حفظ الطالب</button><button class="btn" type="button" data-act="close">إلغاء</button></span>
+    </div>
+    <div class="note" style="margin-top:8px"><span id="infoState">اضغط على أي خانة للكتابة فيها، ومرّتين على الورقة للتكبير.</span></div>
   </div></div>`;
-  md.hidden=false;
-  setTimeout(()=>{const i=document.getElementById("f-nm");if(i)try{i.focus()}catch(_){}},250);
+  pfMount(md);
+  setTimeout(()=>{const i=document.getElementById("f-nm");if(i)try{i.focus({preventScroll:true})}catch(_){}},300);
 }
-document.getElementById("addStuBtn").addEventListener("click",openNewStudent);
-document.getElementById("modal").addEventListener("submit",async e=>{
-  if(e.target.id!=="newForm")return;e.preventDefault();
-  const g=k=>(document.getElementById(k)||{value:""}).value.trim();
-  const name=g("f-nm");if(!name){document.getElementById("newMsg").textContent="اكتب اسم الطالب أولًا.";document.getElementById("f-nm").focus();return}
-  if(S.students.some(s=>norm(s.name)===norm(name))&&!e.target.dataset.dup){e.target.dataset.dup="1";document.getElementById("newMsg").textContent="يوجد طالب بنفس الاسم. اضغط «حفظ الطالب» مرة أخرى إذا كان طالبًا آخر.";return}
+document.getElementById("addStuBtn").addEventListener("click",()=>openNewStudent());
+document.getElementById("modal").addEventListener("click",async e=>{
+  const btn=e.target.closest("#newSave");if(!btn)return;
+  const f=document.getElementById("infoForm");if(!f||!f.dataset.new)return;
+  const say=t=>{const el=document.getElementById("infoState");if(el)el.textContent=t};
+  const snap=infoSnapshot(true),d=snap.data,name=(d.name||"").trim();
+  if(!name){say("اكتب اسم ولقب الطالب أولًا.");const i=document.getElementById("f-nm");if(i)i.focus();return}
+  if(!d.sex){say("اختر الجنس: ذكر أو أنثى.");return}
+  const bd=[...f.querySelectorAll('.pfd[data-g="bd"]')].map(x=>x.value.replace(/\D/g,"")).join("");
+  if(bd&&bd.length!==8){say("أكمل تاريخ الميلاد (اليوم والشهر والسنة) أو اتركه فارغًا.");return}
+  if(S.students.some(s=>norm(s.name)===norm(name))&&!btn.dataset.dup){btn.dataset.dup="1";say("يوجد طالب بنفس الاسم. اضغط «حفظ الطالب» مرة أخرى إذا كان طالبًا آخر.");return}
   const n=S.students.reduce((m,s)=>Math.max(m,s.n||0),0)+1,id="s"+Date.now().toString(36);
-  const data={n,name,active:true,sex:g("f-sx")==="f"?"f":"m",fileNo:g("f-fn"),birthDate:bdValue(),birthPlace:g("f-bp"),phone:g("f-ph"),phone2:g("f-ph2"),address:g("f-ad"),level:g("f-lv"),hzBal:g("f-bal")};
-  {const h=+g("f-hz");if(h){const fwd=(()=>{try{return localStorage.getItem("halaqa.hzdir")==="fwd"}catch(_){return false}})();Object.assign(data,{hzSet:true,hzDir:fwd?"fwd":"back",hzOff:(fwd?h-1:60-h)*8})}}
-  try{await S.db.doc("students/"+id).set(data);document.getElementById("modal").hidden=true;toast("أُضيف "+name)}
-  catch(_){document.getElementById("newMsg").textContent="تعذّر الحفظ، حاول مرة أخرى."}
+  const data=Object.assign({n,active:true},d,{name});
+  const hz=+[...f.querySelectorAll('.pfd[data-g="hzn"]')].map(x=>x.value.replace(/\D/g,"")).join("");
+  if(hz>=1&&hz<=60){const fwd=(()=>{try{return localStorage.getItem("halaqa.hzdir")==="fwd"}catch(_){return false}})();Object.assign(data,{hzSet:true,hzDir:fwd?"fwd":"back",hzOff:(fwd?hz-1:60-hz)*8})}
+  const md0=document.getElementById("modal");btn.disabled=true;say("جارٍ الحفظ…");
+  try{await S.db.doc("students/"+id).set(data);toast("أُضيف"+(data.sex==="f"?"ت ":" ")+name);let k=0;const go=()=>{if(S.students.some(x=>x.id===id))openInfo(id);else if(++k<20)setTimeout(go,100);else md0.hidden=true};go()}
+  catch(_){btn.disabled=false;say("تعذّر الحفظ، حاول مرة أخرى.")}
 });
+(()=>{const st=document.createElement("style");st.textContent=`.nsHead{display:flex;flex-direction:column;gap:2px;margin:0 2px 10px}.nsHead b{font-size:1.1rem}`;document.head.appendChild(st)})();
 </script>
 <script>
 /* ================= موضع الحفظ، تنبيه الغياب، الشهادات =================
@@ -3687,7 +3686,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.6"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 10.7"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
