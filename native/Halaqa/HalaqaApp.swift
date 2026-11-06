@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// «سجل متابعة الطلبة» as a native iPhone / iPad app.
+/// «المدرسة القرءانية النموذجية» as a native iPhone / iPad app.
 /// The app shows the same web app that lives on GitHub Pages, so every update reaches it by itself.
 /// After the first launch it also opens without internet (the page is kept on the device).
 @main

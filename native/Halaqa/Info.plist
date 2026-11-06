@@ -15,7 +15,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>لحفظ الشهادات والبطاقات في الصور.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>لفتح سجل الطلبة ببصمة الوجه.</string>
+	<string>لفتح المدرسة القرءانية ببصمة الوجه.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

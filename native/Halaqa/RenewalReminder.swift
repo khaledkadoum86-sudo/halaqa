@@ -28,8 +28,8 @@ enum RenewalReminder {
             let expiryDay = cal.startOfDay(for: expiry)
 
             let plan: [(id: String, dayOffset: Int, hour: Int, title: String)] = [
-                (ids[0], -1, 10, "صلاحية «سجل الطلبة» تنتهي غدًا!"),
-                (ids[1],  0,  8, "صلاحية «سجل الطلبة» تنتهي اليوم")
+                (ids[0], -1, 10, "صلاحية «المدرسة القرءانية» تنتهي غدًا!"),
+                (ids[1],  0,  8, "صلاحية «المدرسة القرءانية» تنتهي اليوم")
             ]
 
             for item in plan {

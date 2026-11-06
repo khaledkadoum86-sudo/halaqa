@@ -72,7 +72,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         if action == "can" { replyHandler(available, nil); return }
         guard available else { replyHandler(false, nil); return }
         context.localizedCancelTitle = "استخدام الرمز السري"
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "فتح سجل متابعة الطلبة") { ok, _ in
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "فتح تطبيق المدرسة القرءانية النموذجية") { ok, _ in
             DispatchQueue.main.async { replyHandler(ok, nil) }
         }
     }
