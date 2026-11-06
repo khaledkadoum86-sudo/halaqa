@@ -715,11 +715,11 @@ body:not([data-view="home"]) .rdz{display:none}
 </head>
 <body>
 <div class="banner"><div class="ph3d" id="ph3d"><img src="banner.jpg" alt="صحن المسجد والقبة والمئذنتان"><div class="rdz" role="banner"><svg class="dzflag" viewBox="0 0 30 20" aria-hidden="true"><rect width="15" height="20" fill="#006233"/><rect x="15" width="15" height="20" fill="#fff"/><path d="M19.225 7.326A5 5 0 1 0 19.225 12.674A4 4 0 1 1 19.225 7.326Z" fill="#d21034"/><path d="M19.75 10.00L18.26 10.52L18.23 12.09L17.28 10.84L15.77 11.29L16.67 10.00L15.77 8.71L17.28 9.16L18.23 7.91L18.26 9.48Z" fill="#d21034"/></svg><span>الجمهورية الجزائرية الديمقراطية الشعبية</span><svg class="dzflag" viewBox="0 0 30 20" aria-hidden="true"><rect width="15" height="20" fill="#006233"/><rect x="15" width="15" height="20" fill="#fff"/><path d="M19.225 7.326A5 5 0 1 0 19.225 12.674A4 4 0 1 1 19.225 7.326Z" fill="#d21034"/><path d="M19.75 10.00L18.26 10.52L18.23 12.09L17.28 10.84L15.77 11.29L16.67 10.00L15.77 8.71L17.28 9.16L18.23 7.91L18.26 9.48Z" fill="#d21034"/></svg></div></div><div class="basmala wrap" aria-label="بسم الله الرحمن الرحيم، وصلى الله على سيدنا محمد وءاله"><p class="b1">بسم الله الرحمن الرحيم</p><p class="b2">وصلى الله على سيدنا محمد وءاله</p></div>
-<div class="banner-txt wrap"><img class="school-logo" src="logo.webp" alt="شعار المدرسة القرءانية النموذجية" width="86" height="86"><b>المدرسة القرءانية النموذجية</b><span>الحضور والحفظ اليومي</span><span class="teacher" id="teacherLine" hidden></span></div></div>
+<div class="banner-txt wrap"><img class="school-logo" src="logo.webp" alt="شعار المدرسة القرءانية النموذجية" width="86" height="86"><b class="appName">المدرسة القرءانية النموذجية</b><span>الحضور والحفظ اليومي</span><span class="teacher" id="teacherLine" hidden></span></div></div>
 <header>
   <div class="wrap">
     <div class="top">
-      <div class="brand"><h1>المدرسة القرءانية النموذجية</h1><small id="countLbl"></small></div>
+      <div class="brand"><h1 class="appName">المدرسة القرءانية النموذجية</h1><small id="countLbl"></small></div>
       <span style="display:flex;align-items:center;gap:10px"><span class="sync" id="sync">جارٍ الاتصال…</span><button type="button" class="lockbtn cloudbtn" id="cloudBtn" aria-label="نسخ احتياطي إلى iCloud"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 18h10.5a4 4 0 00.6-7.95A6 6 0 006.3 9.2 4.5 4.5 0 007 18zM12 10v6M9.5 13.5L12 16l2.5-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>نسخ إلى iCloud</span></button><button type="button" class="lockbtn" id="lockBtn" aria-label="الرمز السري"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 017 0V11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>الإعدادات</span></button></span>
     </div>
     <nav class="tabs" role="tablist">
@@ -803,7 +803,7 @@ body:not([data-view="home"]) .rdz{display:none}
     <div class="schnav" role="tablist" aria-label="صفحات المدرسة"><button type="button" role="tab" data-schpg="0" aria-selected="true">🏫 المدرسة</button><span class="schdots" aria-hidden="true"><i></i><i></i></span><button type="button" role="tab" data-schpg="1" aria-selected="false">📖 الطلبة والأحزاب</button></div>
     <div class="schpager" id="schPager">
     <div class="schpg" id="schPg1">
-    <div class="schhead"><img src="logo.webp" alt="" width="52" height="52"><div><b>المدرسة القرءانية النموذجية</b><span>مسجد القطب الأمير عبد القادر · قسنطينة</span></div></div>
+    <div class="schhead"><img src="logo.webp" alt="" width="52" height="52"><div><b class="appName">المدرسة القرءانية النموذجية</b><span>مسجد القطب الأمير عبد القادر · قسنطينة</span></div></div>
     <div class="seg" role="tablist"><button type="button" role="tab" data-pane="photos">📷 الصور</button><button type="button" role="tab" data-pane="inv">🪑 جرد الأثاث</button><button type="button" role="tab" data-pane="events">📅 الأحداث</button></div>
     <div id="schBody"></div>
     </div>
@@ -1900,10 +1900,14 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.3</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.4</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
+    <div class="setsec"><b>اسم التطبيق</b>
+      <input type="text" id="appNameIn" value="${esc(appName())}" placeholder="${esc(APP_NAME_DEF)}" autocomplete="off" style="min-height:44px;width:100%">
+      <span class="note" id="appNameState">يظهر في أعلى التطبيق وفي صفحة المدرسة، ويتغيّر على كل أجهزتك.</span>
+      <div class="lockset"><button class="btn" type="button" id="appNameReset">إعادة الاسم الأصلي</button></div></div>
     <div class="setsec"><b>النسخة الاحتياطية</b><span class="note">${at?"آخر نسخة: "+new Date(at).toLocaleDateString("ar-DZ"):"لم تحفظ نسخة بعد"}</span>
       <div class="lockset"><button class="btn primary" type="button" id="setBackup">حفظ نسخة احتياطية</button>
       <label class="btn" for="restoreIn" style="text-align:center;cursor:pointer">استعادة من نسخة احتياطية</label>
@@ -2073,6 +2077,22 @@ document.addEventListener("input",e=>{if(e.target.id!=="teacherIn")return;clearT
   const v=e.target.value.trim();teacherTimer=setTimeout(async()=>{await LDB.doc("meta/profile").set({teacher:v});renderTeacher();
     const s=document.getElementById("teacherState");if(s)s.textContent="محفوظ ✓"},500)});
 renderTeacher();
+// ---- app name (editable from settings, synced to all devices) ----
+const APP_NAME_DEF="المدرسة القرءانية النموذجية";
+const appName=()=>{try{const d=LDB.peek("meta/appname");return (d&&d.name)||APP_NAME_DEF}catch(_){return APP_NAME_DEF}};
+function renderAppName(){const n=appName();document.querySelectorAll(".appName").forEach(el=>{if(el.textContent!==n)el.textContent=n});try{document.title=n}catch(_){}}
+let appNameTimer=null;
+document.addEventListener("input",e=>{if(e.target.id!=="appNameIn")return;clearTimeout(appNameTimer);
+  const v=e.target.value.trim();appNameTimer=setTimeout(async()=>{
+    if(v&&v!==APP_NAME_DEF)await LDB.doc("meta/appname").set({name:v});else await LDB.doc("meta/appname").delete();
+    renderAppName();const s=document.getElementById("appNameState");if(s)s.textContent="محفوظ ✓"},500)});
+document.addEventListener("click",async e=>{if(!e.target.closest("#appNameReset"))return;
+  await LDB.doc("meta/appname").delete();renderAppName();const i=document.getElementById("appNameIn");if(i)i.value=APP_NAME_DEF;
+  const s=document.getElementById("appNameState");if(s)s.textContent="أُعيد الاسم الأصلي ✓"});
+LDB._watch(ch=>ch.has("meta/appname"),renderAppName);
+LDB._watch(ch=>ch.has("meta/profile"),renderTeacher);
+new MutationObserver(()=>{if(appName()!==APP_NAME_DEF)renderAppName()}).observe(document.body,{childList:true,subtree:true});
+renderAppName();
 // put the teacher's name at the top of the Excel export
 if(typeof XLSX!=="undefined"||true){const _bas=()=>window.XLSX&&XLSX.utils&&XLSX.utils.book_append_sheet;
   const wrap=()=>{if(!_bas()||XLSX.utils.__tWrapped)return;const orig=XLSX.utils.book_append_sheet;
@@ -3776,7 +3796,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.3"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.4"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
