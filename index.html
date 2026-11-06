@@ -1900,7 +1900,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.4</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.5</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -1908,6 +1908,7 @@ function openLockSettings(){
       <input type="text" id="appNameIn" value="${esc(appName())}" placeholder="${esc(APP_NAME_DEF)}" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="appNameState">يظهر في أعلى التطبيق وفي صفحة المدرسة، ويتغيّر على كل أجهزتك.</span>
       <div class="lockset"><button class="btn" type="button" id="appNameReset">إعادة الاسم الأصلي</button></div></div>
+    <div class="setsec"><b>أيقونة التطبيق</b>${iconSecHTML()}</div>
     <div class="setsec"><b>النسخة الاحتياطية</b><span class="note">${at?"آخر نسخة: "+new Date(at).toLocaleDateString("ar-DZ"):"لم تحفظ نسخة بعد"}</span>
       <div class="lockset"><button class="btn primary" type="button" id="setBackup">حفظ نسخة احتياطية</button>
       <label class="btn" for="restoreIn" style="text-align:center;cursor:pointer">استعادة من نسخة احتياطية</label>
@@ -2093,6 +2094,22 @@ LDB._watch(ch=>ch.has("meta/appname"),renderAppName);
 LDB._watch(ch=>ch.has("meta/profile"),renderTeacher);
 new MutationObserver(()=>{if(appName()!==APP_NAME_DEF)renderAppName()}).observe(document.body,{childList:true,subtree:true});
 renderAppName();
+// ---- home-screen icon picture (native app only; Apple does not allow changing the name under it) ----
+const APP_ICONS=[["AppIcon","المسجد"],["AppIcon-Minarets","المئذنتان"],["AppIcon-Courtyard","الصحن والقبة"],["AppIcon-Gold","الإطار الذهبي"]];
+const iconBridge=()=>window.webkit?.messageHandlers?.halaqaIcon;
+function iconSecHTML(){
+  if(!iconBridge())return `<span class="note">تغيير الأيقونة متاح في التطبيق المثبّت على الآيفون والآيباد بعد تثبيت آخر إصدار من الماك.</span>`;
+  setTimeout(markIcon,0);
+  return `<span class="note">اختر صورة أيقونة التطبيق على الشاشة الرئيسية لهذا الجهاز.</span>
+    <div id="iconGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">${APP_ICONS.map(([n,l])=>`<button type="button" class="iconPick" data-icon="${n}" aria-pressed="false" style="display:grid;gap:4px;justify-items:center;background:none;border:0;padding:4px;font:inherit;color:inherit;cursor:pointer">
+      <img src="icons/${n}.png" alt="" width="60" height="60" style="width:60px;height:60px;border-radius:14px;outline:3px solid transparent;outline-offset:2px">
+      <span style="font-size:12px">${l}</span></button>`).join("")}</div>
+    <span class="note" id="iconState"></span>`}
+async function markIcon(){const b=iconBridge();if(!b)return;let cur="AppIcon";try{cur=await b.postMessage({action:"get"})||"AppIcon"}catch(_){}
+  document.querySelectorAll(".iconPick").forEach(x=>{const on=x.dataset.icon===cur;x.setAttribute("aria-pressed",on);const i=x.querySelector("img");if(i)i.style.outlineColor=on?"var(--gold,#B9852A)":"transparent"})}
+document.addEventListener("click",async e=>{const t=e.target.closest(".iconPick");if(!t||!iconBridge())return;
+  const st=document.getElementById("iconState");let ok=false;try{ok=await iconBridge().postMessage({action:"set",name:t.dataset.icon})}catch(_){}
+  if(st)st.textContent=ok?"تم تغيير الأيقونة ✓":"تعذّر تغيير الأيقونة الآن، أعد المحاولة.";markIcon()});
 // put the teacher's name at the top of the Excel export
 if(typeof XLSX!=="undefined"||true){const _bas=()=>window.XLSX&&XLSX.utils&&XLSX.utils.book_append_sheet;
   const wrap=()=>{if(!_bas()||XLSX.utils.__tWrapped)return;const orig=XLSX.utils.book_append_sheet;
@@ -3796,7 +3813,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.4"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.5"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};

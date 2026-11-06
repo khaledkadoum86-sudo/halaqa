@@ -34,6 +34,9 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaBook")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaOCR")
         content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaContacts")
+        if UIApplication.shared.supportsAlternateIcons {
+            content.addScriptMessageHandler(self, contentWorld: .page, name: "halaqaIcon")
+        }
         // Apple's document scanner (as in Notes and Files) for every camera button of the page
         if VNDocumentCameraViewController.isSupported {
             content.addUserScript(WKUserScript(source: "window.HALAQA_SCAN=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -64,6 +67,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         if message.name == "halaqaBook" { handleBook(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         if message.name == "halaqaOCR" { handleOCR(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         if message.name == "halaqaContacts" { pickContact(reply: replyHandler); return }
+        if message.name == "halaqaIcon" { handleIcon(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         if message.name == "halaqaScan" { startScan(message.body as? [String: Any] ?? [:], reply: replyHandler); return }
         let action = (message.body as? [String: Any])?["action"] as? String ?? ""
         let context = LAContext()
@@ -74,6 +78,20 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         context.localizedCancelTitle = "استخدام الرمز السري"
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "فتح تطبيق المدرسة القرءانية النموذجية") { ok, _ in
             DispatchQueue.main.async { replyHandler(ok, nil) }
+        }
+    }
+
+    // MARK: - Home-screen icon (window.webkit.messageHandlers.halaqaIcon) — Apple allows changing the picture, not the name
+    private let iconNames: Set<String> = ["AppIcon-Minarets", "AppIcon-Courtyard", "AppIcon-Gold"]
+
+    private func handleIcon(_ body: [String: Any], reply: @escaping (Any?, String?) -> Void) {
+        let app = UIApplication.shared
+        if (body["action"] as? String) != "set" { reply(app.alternateIconName ?? "AppIcon", nil); return }
+        let wanted = body["name"] as? String ?? "AppIcon"
+        let target: String? = iconNames.contains(wanted) ? wanted : nil
+        if app.alternateIconName == target { reply(true, nil); return }
+        app.setAlternateIconName(target) { error in
+            DispatchQueue.main.async { reply(error == nil, nil) }
         }
     }
 
