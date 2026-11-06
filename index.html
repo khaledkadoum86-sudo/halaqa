@@ -927,7 +927,8 @@ try{if(/iPhone|iPod/.test(navigator.userAgent))document.documentElement.classLis
 try{if(/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1))document.documentElement.classList.add("ipad")}catch(_){}
 const DAYN=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const MON=["جانفي","فيفري","مارس","أفريل","ماي","جوان","جويلية","أوت","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
-const STUDY=[0,1,2,3,4]; // الأحد → الخميس
+const STUDY=[0,1,2,3,4,6]; // السبت → الخميس (الجمعة عطلة)
+const SAT_FROM="2026-11-07"; // السبت يوم دراسة ابتداءً من هذا التاريخ؛ أيام السبت قبله تبقى عطلة
 const P="ح", A="غ", J="ج";
 const isRec=v=>v===P||v===A||v===J;
 const rateOf=(p,j,a)=>(p+j+a)?Math.round(100*(p+j/2)/(p+j+a)):null;
@@ -940,7 +941,7 @@ const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const parse=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
 const monthKey=s=>s.slice(0,7);
 const fmtDate=s=>{const d=parse(s);return DAYN[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]};
-const isStudy=d=>STUDY.includes(d.getDay());
+const isStudy=d=>STUDY.includes(d.getDay())&&(d.getDay()!==6||iso(d)>=SAT_FROM);
 function shiftStudy(s,dir){const d=parse(s);do{d.setDate(d.getDate()+dir)}while(!isStudy(d));return iso(d)}
 /* a day marked «لا حصة (عطلة)» (days/<date>.off) is left out of the month, the statistics and «غير المسجَّل ← …» */
 const isOff=d=>{const r=S.days[d]||(typeof LDB!=="undefined"&&LDB.peek?LDB.peek("days/"+d):null);return !!(r&&r.off)};
@@ -1899,7 +1900,7 @@ const _rt=renderToday;renderToday=function(){_rt();renderBkNote()};
 function openLockSettings(){
   const md=document.getElementById("modal");const on=!!LOCK.hash;const at=bkAt();
   md.innerHTML=`<div class="overlay" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="الإعدادات">
-    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.1</div>
+    <h3>الإعدادات</h3><div class="note">بياناتك محفوظة على هذا الجهاز فقط. · الإصدار 11.2</div>
     <div class="setsec"><b>اسم المعلم</b>
       <input type="text" id="teacherIn" value="${esc(teacherName())}" placeholder="مثال: الشيخ خالد" autocomplete="off" style="min-height:44px;width:100%">
       <span class="note" id="teacherState">يظهر تحت عنوان التطبيق وفي ملف Excel.</span></div>
@@ -3775,7 +3776,7 @@ function addSyncSection(){
   const sec=document.createElement("div");sec.className="setsec";sec.id="syncSec";
   sec.innerHTML=`<b>المزامنة بين أجهزتي</b><div id="syncBody" style="display:grid;gap:8px"></div>`;
   const first=sheet.querySelector(".setsec");if(first)first.before(sec);else sheet.appendChild(sec);
-  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.1"}
+  if(SYNC.user){const n=sheet.querySelector(":scope > .note");if(n)n.textContent="بياناتك محفوظة على هذا الجهاز ومتزامنة مع حسابك. · الإصدار 11.2"}
   renderSyncSec();if(!SYNC.started)SYNC.start();
 }
 const _olsSync=openLockSettings;openLockSettings=function(){_olsSync();addSyncSection()};
