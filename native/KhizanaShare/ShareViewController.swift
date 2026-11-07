@@ -4,11 +4,10 @@ import UserNotifications
 
 /// امتداد المشاركة: يُظهر «خزانتي» في قائمة المشاركة لأي ملف (واحد أو عدة ملفات معًا)
 /// ولبطاقات جهات الاتصال. يضع الملفات في «صندوق مشترك» بين الامتداد والتطبيق
-/// (لوحة نسخ مسمّاة خاصة بحساب المطوّر، تعمل مع الحساب المجاني دون App Groups)،
+/// (لوحة النسخ العامة بنوع خاص بخزانتي، تعمل مع الحساب المجاني دون App Groups)،
 /// ثم يُظهر تأكيدًا واضحًا ويرسل تنبيهًا، ويفتح «خزانتي» إن أمكن.
 final class ShareViewController: UIViewController {
-    static let boxName = UIPasteboard.Name("com.khaledkadoum.khizana.box")
-    static let fileType = "com.khaledkadoum.khizana.file"
+        static let fileType = "com.khaledkadoum.khizana.file"
     static let nameType = "com.khaledkadoum.khizana.name"
 
     private let icon = UILabel()
@@ -78,9 +77,11 @@ final class ShareViewController: UIViewController {
 
     private func deliver(_ files: [Got]) {
         guard !files.isEmpty else { finish("لم أستطع قراءة ما أُرسل.", ok: false); return }
-        guard let box = UIPasteboard(name: Self.boxName, create: true) else { finish("تعذّر الإرسال، حاول مرة أخرى.", ok: false); return }
-        // نضيف إلى ما في الصندوق (إن بقي فيه شيء لم يأخذه التطبيق بعد) ولا نمسحه
-        let items: [[String: Any]] = box.items + files.map { [Self.fileType: $0.data, Self.nameType: Data($0.name.utf8)] }
+        // لوحة النسخ العامة: تبقى بعد إغلاق نافذة المشاركة (اللوحة المسمّاة تُمحى عند إغلاقها).
+        // نضيف إلى ما لم يأخذه التطبيق بعد، ولا نمسحه.
+        let box = UIPasteboard.general
+        let old = box.contains(pasteboardTypes: [Self.fileType]) ? box.items.filter { $0[Self.fileType] != nil } : []
+        let items: [[String: Any]] = old + files.map { [Self.fileType: $0.data, Self.nameType: Data($0.name.utf8)] }
         box.setItems(items, options: [:])
         guard box.numberOfItems >= files.count else { finish("الملفات كبيرة جدًّا للإرسال دفعة واحدة. أرسلها على دفعات.", ok: false); return }
 

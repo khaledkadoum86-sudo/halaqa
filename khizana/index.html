@@ -1005,11 +1005,12 @@ let polling=false;
 let pollAgain=false;
 window.khizanaPoll=async function(){
   if(!NATIVE)return;if(polling){pollAgain=true;return}polling=true;pollAgain=false;
-  try{const list=await nat({action:'pending'})||[];const got=[],ans=[];
+  try{const list=await nat({action:'pending'})||[];const got=[],ans=[],ids=[];
     for(const f of list){const parts=[];for(let i=0;;i++){const s=await nat({action:'read',id:f.id,i});if(!s)break;parts.push(Uint8Array.from(atob(s),c=>c.charCodeAt(0)))}
       const ext=(f.name.split('.').pop()||'').toLowerCase();got.push(new File(parts,f.name,{type:MIME[ext]||''}));
-      let an=null;if(NEEDS_READ.includes(ext))try{an=await nat({action:'analyze',id:f.id,src:'inbox',name:f.name})}catch(_){}ans.push(an);await nat({action:'done',id:f.id})}
+      let an=null;if(NEEDS_READ.includes(ext))try{an=await nat({action:'analyze',id:f.id,src:'inbox',name:f.name})}catch(_){}ans.push(an);ids.push(f.id)}
     if(got.length){tab='file';filter='';q='';$('#q').value='';closeSheet();await addFiles(got,ans)}
+    for(const id of ids)await nat({action:'done',id}); /* لا تُحذف نسخة التطبيق إلا بعد الحفظ، فلا يضيع ملف */
   }catch(_){}
   polling=false;
   if(pollAgain)setTimeout(khizanaPoll,300);

@@ -311,18 +311,22 @@ final class Inbox {
 
     /// الملفات التي وضعها امتداد المشاركة في الصندوق المشترك (لوحة نسخ مسمّاة لحساب المطوّر نفسه).
     @discardableResult func takeBox() -> Int {
-        guard let box = UIPasteboard(name: UIPasteboard.Name("com.khaledkadoum.khizana.box"), create: false), box.numberOfItems > 0 else { return 0 }
+        let box = UIPasteboard.general
+        let fileType = "com.khaledkadoum.khizana.file", nameType = "com.khaledkadoum.khizana.name"
+        // فحص الأنواع لا يُظهر سؤال «السماح باللصق»، فلا نقرأ اللوحة إلا إن كان فيها ما أرسلته «خزانتي»
+        guard box.contains(pasteboardTypes: [fileType]) else { return 0 }
         var n = 0
         for item in box.items {
-            guard let data = item["com.khaledkadoum.khizana.file"] as? Data else { continue }
-            let rawName = (item["com.khaledkadoum.khizana.name"] as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? "ملف"
+            guard let data = item[fileType] as? Data else { continue }
+            let rawName = (item[nameType] as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? "ملف"
             let name = String(rawName.filter { !"/\\:".contains($0) }.prefix(120))
             let id = "b" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36) + String(n)
             guard fm.createFile(atPath: folder.appendingPathComponent(id + ".bin").path, contents: data) else { continue }
             try? name.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
             n += 1
         }
-        box.items = []
+        NSLog("KHZBOX took %d", n)
+        if n > 0 { box.items = [] }
         return n
     }
 
