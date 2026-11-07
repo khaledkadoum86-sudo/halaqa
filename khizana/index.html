@@ -76,6 +76,11 @@ h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-
 .notes{font-size:.92rem;white-space:pre-wrap;overflow-wrap:anywhere}
 .pill{flex:none;font-size:.76rem;padding:1px 10px;border-radius:999px;background:var(--plan-soft);color:var(--plan);white-space:nowrap}
 .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.rev{background:#e3eefb;color:#1f5f9e} .pill.stop{background:#f8e3e1;color:#9b2c22}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.rev{background:#16263a;color:#8cbcf0} :root:not([data-theme="light"]) .pill.stop{background:#33191a;color:#f0a39b}}
+:root[data-theme="dark"] .pill.rev{background:#16263a;color:#8cbcf0} :root[data-theme="dark"] .pill.stop{background:#33191a;color:#f0a39b}
+/* في التطبيق الأصلي: هامش يسار ثابت لزر «تطبيقاتي» العائم فلا يغطي شيئًا */
+html.native .wrap{padding-left:max(64px,env(safe-area-inset-left,0px))}
 .actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .btn{border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 12px;font-size:.9rem;cursor:pointer;text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;gap:4px}
 .btn:focus-visible,.chip:focus-visible,.tab:focus-visible,.fab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -168,6 +173,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 </style>
 </head>
 <body>
+<script>if(window.KHIZANA_NATIVE)document.documentElement.classList.add('native')</script>
 <div class="wrap">
   <header class="top">
     <svg class="seal" id="seal" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
@@ -222,7 +228,7 @@ const KINDS={
    fields:[['title','عنوان الكتاب','text',1],['author','المؤلف','text'],['cat','التصنيف','select',0,['مرجع في الرسم والضبط','القراءات','التفسير','الحديث والسيرة','اللغة','مخطوط','أخرى']],['status','الحالة','select',0,['أملكه','أقرؤه','قرأته','أريد اقتناءه','مُعار']],['place','مكانه (رف، ملف، رابط)','text'],['link','رابط (إن وجد)','url'],['notes','ملاحظات','textarea']],
    filter:'status',pill:'status',sub:it=>[it.author,it.cat,it.place].filter(Boolean).join(' · ')},
  work:{tab:'أعمالي',title:'الأعمال والأبحاث',one:'عملًا',
-   fields:[['title','عنوان العمل','text',1],['type','النوع','select',0,['بحث','كتاب','مذكرة','تطبيق','مجموع','مشروع','درس']],['status','الحالة','select',0,['مخطط','قيد الإنجاز','منجز']],['date','التاريخ','text'],['link','رابط أو مكان الملف','text'],['notes','ملاحظات','textarea']],
+   fields:[['title','عنوان العمل','text',1],['type','النوع','select',0,['بحث','كتاب','مذكرة','تطبيق','مجموع','مشروع','درس']],['status','الحالة','select',0,['مخطط','قيد الإنجاز','في المراجعة','متوقف','منجز']],['date','التاريخ','text'],['link','رابط أو مكان الملف','text'],['notes','ملاحظات','textarea']],
    filter:'type',pill:'status',sub:it=>[it.type,it.date,it.link].filter(Boolean).join(' · ')},
  file:{tab:'ملفاتي',title:'الملفات',one:'ملفًا',
    fields:[['title','اسم الملف','text',1],['cat','التصنيف','select',0,['وثائق رسمية','أبحاث','كتب PDF','مستندات','صور','صوتيات','فيديو','جداول','أخرى']],['notes','ملاحظات','textarea']],
@@ -431,7 +437,7 @@ function status(){
 
 /* ---------- العرض ---------- */
 function profile(){return Object.assign({},DEFAULT_PROFILE,items.get('profile')&&!items.get('profile').del?items.get('profile'):{})}
-function pillClass(v){return /منجز|قرأته/.test(v)?'ok':/قيد|أقرؤه|مُعار/.test(v)?'warn':''}
+function pillClass(v){return /منجز|قرأته/.test(v)?'ok':/قيد|أقرؤه|مُعار/.test(v)?'warn':/المراجعة/.test(v)?'rev':/متوقف/.test(v)?'stop':''}
 function renderTabs(){$('#gear').setAttribute('aria-pressed',tab==='settings');$('#tabs').innerHTML=TABS.filter(([k])=>!S.hidden.includes(k)).map(([k,l])=>`<button class="tab" role="tab" aria-selected="${k===tab}" data-tab="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${l}</button>`).join('')}
 let thumbURLs=[];
 function render(){

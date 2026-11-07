@@ -179,9 +179,11 @@ struct RenewalIndicator: View {
     }
 
     private func dot(in size: CGSize) -> some View {
-        let w: CGFloat = 58, h: CGFloat = 36
-        let x = onLeft ? 8 + w / 2 : size.width - 8 - w / 2
-        let y = max(70, min(size.height - 110, size.height * CGFloat(yFraction)))
+        // مثبّت دائمًا على الحافة اليسرى، في الهامش الذي تتركه الصفحة له، فلا يغطي أي نص أو زر.
+        let w: CGFloat = 54, h: CGFloat = 34
+        let x: CGFloat = 6 + w / 2
+        // لا ينزل إلى زر «إضافة» ولا إلى شريط الأقسام في الأسفل.
+        let y = max(70, min(size.height - 165, size.height * CGFloat(yFraction)))
         return ZStack {
             Capsule().stroke(tint, lineWidth: 3)
                 .scaleEffect(pulse ? 1.35 : 1).opacity(pulse ? 0 : (level == 0 ? 0.35 : 0.85))
@@ -197,11 +199,10 @@ struct RenewalIndicator: View {
         }
         .frame(width: w, height: h)
         .contentShape(Capsule())
-        .position(x: x + drag.width, y: y + drag.height)
+        .position(x: x, y: y + drag.height)
         .gesture(DragGesture(minimumDistance: 6)
             .onChanged { drag = $0.translation }
             .onEnded { v in
-                onLeft = x + v.translation.width < size.width / 2
                 yFraction = Double(max(0.1, min(0.88, (y + v.translation.height) / size.height)))
                 withAnimation(.spring()) { drag = .zero }
             })
@@ -272,7 +273,7 @@ struct RenewalIndicator: View {
                     Text("إغلاق").bold().frame(maxWidth: .infinity).padding(.vertical, 10)
                         .background(navy).foregroundColor(.white).cornerRadius(10)
                 }
-                Text("اسحب الزر إلى أي مكان يناسبك.").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity)
+                Text("اسحب الزر إلى الأعلى أو الأسفل ليناسبك.").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity)
             }
             .padding(18)
             .frame(maxWidth: 340)

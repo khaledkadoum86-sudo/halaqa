@@ -461,6 +461,8 @@ body.locked{overflow:hidden}
 /* ---- iPad: use the whole screen ---- */
 html.ipad,html.ipad body{min-height:100%}
 html.ipad .wrap{max-width:none;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+/* في التطبيق الأصلي: هامش يسار ثابت لزر «تطبيقاتي» العائم فلا يغطي شيئًا */
+html.native .wrap{padding-left:max(64px,env(safe-area-inset-left,0px))}
 html.ipad .banner img{height:260px}
 @media (orientation:landscape){html.ipad .banner img{height:220px}}
 html.ipad main{padding-block:20px 40px}
@@ -714,6 +716,7 @@ body:not([data-view="home"]) .rdz{display:none}
 </style>
 </head>
 <body>
+<script>if(window.HALAQA_NATIVE)document.documentElement.classList.add('native')</script>
 <div class="banner"><div class="ph3d" id="ph3d"><img src="banner.jpg" alt="صحن المسجد والقبة والمئذنتان"><div class="rdz" role="banner"><svg class="dzflag" viewBox="0 0 30 20" aria-hidden="true"><rect width="15" height="20" fill="#006233"/><rect x="15" width="15" height="20" fill="#fff"/><path d="M19.225 7.326A5 5 0 1 0 19.225 12.674A4 4 0 1 1 19.225 7.326Z" fill="#d21034"/><path d="M19.75 10.00L18.26 10.52L18.23 12.09L17.28 10.84L15.77 11.29L16.67 10.00L15.77 8.71L17.28 9.16L18.23 7.91L18.26 9.48Z" fill="#d21034"/></svg><span>الجمهورية الجزائرية الديمقراطية الشعبية</span><svg class="dzflag" viewBox="0 0 30 20" aria-hidden="true"><rect width="15" height="20" fill="#006233"/><rect x="15" width="15" height="20" fill="#fff"/><path d="M19.225 7.326A5 5 0 1 0 19.225 12.674A4 4 0 1 1 19.225 7.326Z" fill="#d21034"/><path d="M19.75 10.00L18.26 10.52L18.23 12.09L17.28 10.84L15.77 11.29L16.67 10.00L15.77 8.71L17.28 9.16L18.23 7.91L18.26 9.48Z" fill="#d21034"/></svg></div></div><div class="basmala wrap" aria-label="بسم الله الرحمن الرحيم، وصلى الله على سيدنا محمد وءاله"><p class="b1">بسم الله الرحمن الرحيم</p><p class="b2">وصلى الله على سيدنا محمد وءاله</p></div>
 <div class="banner-txt wrap"><img class="school-logo" src="logo.webp" alt="شعار المدرسة القرءانية النموذجية" width="86" height="86"><b class="appName">المدرسة القرءانية النموذجية</b><span>الحضور والحفظ اليومي</span><span class="teacher" id="teacherLine" hidden></span></div></div>
 <header>
