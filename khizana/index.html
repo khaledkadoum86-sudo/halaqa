@@ -192,7 +192,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.7";
+const APP_VER="1.8";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -306,6 +306,7 @@ async function classify(f,a){
   if(['xls','xlsx','csv','numbers','ods'].includes(e))return{cat:'جداول'};
   const isImg=/^image\//.test(t)||['jpg','jpeg','png','heic','heif','gif','webp','tif','tiff'].includes(e);
   const isPdf=e==='pdf'||/pdf/.test(t);
+  if(EBOOK.includes(e))return{cat:'كتب PDF',book:true,pages:a.pages||0,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(n+'\n'+(a.text||''))};
   const pages=a.pages||(isPdf?await pdfPages(f):0);
   const txt=n+'\n'+(a.title||'')+'\n'+(a.author||'')+'\n'+(a.text||'');
   const sc={official:score('official',txt),research:score('research',txt),book:score('book',txt)};
@@ -314,6 +315,10 @@ async function classify(f,a){
     if(words<12&&sc.official<6)return{cat:/^(IMG|DSC|PXL|photo|صورة)/i.test(n)||!a.ocr?'صور':'صور'};
     sc.official+=words>25?2:0;}
   const best=Object.keys(sc).sort((x,y)=>sc[y]-sc[x])[0],top=sc[best];
+  /* ملف PDF كبير (40 صفحة فأكثر، أو حجم كبير لم تُعرف صفحاته) كتابٌ ما لم يكن وثيقة رسمية أو مذكرة جامعية صريحة */
+  const thesis=/مذكر[ةه] (تخرج|لنيل|مقدم)|رسال[ةه] (ماجستير|دكتوراه)|أطروح|اطروح|th[èe]se|m[ée]moire/i.test(txt);
+  if(isPdf&&(pages>=40||(!pages&&f.size>3*1048576))&&best!=='official'&&!(best==='research'&&thesis))
+    return{cat:'كتب PDF',book:true,pages,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(txt)};
   if(top<4){if(isImg)return{cat:'صور',pages};return{cat:'مستندات',pages}}
   if(best==='official')return{cat:'وثائق رسمية',pages,title:guessTitle(a,n)};
   if(best==='research')return{cat:'أبحاث',pages,title:guessTitle(a,n),work:pages>=15,author:guessAuthor(a)};
@@ -321,6 +326,25 @@ async function classify(f,a){
   return{cat:'كتب PDF',book:true,pages,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(txt)};
 }
 function guessCat(t,n){return 'أخرى'}
+const EBOOK=['epub','mobi','azw','azw3','djvu','fb2'];
+/* ملف في «ملفاتي» يصلح أن يكون كتابًا ولم يُسجَّل في «كتبي» */
+function bookOf(fid){return live().find(b=>b.kind==='book'&&b.fileId===fid)}
+function canBeBook(it){const e=extOf(it.fname||it.title);return it.kind==='file'&&!it.del&&(e==='pdf'||/pdf/.test(it.type||'')||EBOOK.includes(e))&&!bookOf(it._id)}
+async function fileToBook(it,quiet){
+  const t=baseName(it.title&&it.title!==it.fname?it.title:(it.fname||it.title));
+  const au=((it.notes||'').match(/المؤلف: ([^\n]+)/)||[])[1]||'';
+  await save({_id:uid(),kind:'book',title:t,author:au,cat:subjectOf(t+' '+au),status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(it.pages?' · '+it.pages+' صفحة':''),fileId:it._id});
+  if(it.cat!=='كتب PDF')await save(Object.assign({},it,{cat:'كتب PDF'}));
+  if(!quiet){render();toast('أُضيف «'+t+'» إلى «كتبي»')}
+}
+/* مرة واحدة: الكتب التي وصلت قبل تحسين التصنيف فبقيت في «ملفاتي» تُنقل إلى «كتبي» */
+async function rescueBooks(){
+  if(items.get('_books2'))return;
+  let n=0;
+  for(const it of live())if(canBeBook(it)&&(EBOOK.includes(extOf(it.fname||''))||(['مستندات','كتب PDF'].includes(it.cat)&&(it.pages>=40||(!it.pages&&it.size>3*1048576)))||(it.cat==='أبحاث'&&it.pages>=80))){await fileToBook(it,true);n++}
+  await save({_id:'_books2',kind:'meta'});
+  if(n){render();toast('نُقل '+n+(n===1?' كتاب':' كتب')+' من «ملفاتي» إلى «كتبي»')}
+}
 
 /* ---------- الإعدادات (خاصة بكل جهاز، لا تُزامَن) ---------- */
 const SET_KEY='khizana.settings';
@@ -505,7 +529,7 @@ function card(it){
     extra=`<div class="actions">${ph?`<span class="ltr">${esc(ph)}</span><a class="btn" href="tel:${esc(ph.replace(/\s/g,''))}">اتصال</a><button class="btn" data-copy="${esc(ph)}">نسخ</button>`:''}${wa?`<a class="btn" href="https://wa.me/${wa}">واتساب</a>`:''}${it.email?`<a class="btn" href="mailto:${esc(it.email)}">بريد</a>`:''}</div>`;
   }
   if(it.kind==='file'){
-    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button></div>`;
+    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button>${canBeBook(it)?`<button class="btn" data-tobook="${it._id}">إضافة إلى «كتبي»</button>`:''}</div>`;
   }
   if(it.kind==='book'&&it.fileId&&items.get(it.fileId)&&!items.get(it.fileId).del)extra+=`<div class="actions"><button class="btn primary" data-open="${it.fileId}">فتح الكتاب</button></div>`;
   extra+=siblingLinks(it);
@@ -795,12 +819,13 @@ async function doImport(file){
 
 /* ---------- الأحداث ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
   if(t.dataset.tab){tab=(t.dataset.tab==='settings'&&tab==='settings')?'profile':t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
   else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
   else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
   else if(t.dataset.open)openFile(t.dataset.open);
   else if(t.dataset.share)shareFile(t.dataset.share);
+  else if(t.dataset.tobook){const it=items.get(t.dataset.tobook);if(it&&canBeBook(it))fileToBook(it)}
   else if(t.dataset.copy){try{await navigator.clipboard.writeText(t.dataset.copy);toast('نُسخ')}catch(_){toast('تعذّر النسخ')}}
   else{const a=t.dataset.act;
     if(a==='seed'){for(const [title,type,status,notes] of MY_WORKS)await save({_id:uid(),kind:'work',title,type,status,notes});await save({_id:'_seeded',kind:'meta'});render();toast('أُضيفت أعمالك')}
@@ -994,6 +1019,7 @@ async function nativeShow(it,b){
   SYNC.start();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   if(NATIVE)khizanaPoll();
+  setTimeout(()=>rescueBooks().catch(()=>{}),3000);
 })();
 </script>
 </body>
