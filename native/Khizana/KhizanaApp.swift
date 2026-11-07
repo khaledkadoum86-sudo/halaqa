@@ -12,8 +12,8 @@ struct KhizanaApp: App {
             WebContainer()
                 .onOpenURL { Inbox.shared.receive($0) }   // ملف وصل من قائمة المشاركة
                 .ignoresSafeArea()
-                .overlay(RenewalIndicator(appName: "خزانتي"))   // نقطة الأيام الباقية للتجديد
-                .background(Color(red: 0.95, green: 0.96, blue: 0.96).ignoresSafeArea())
+                .overlay(RenewalIndicator(appName: "خزانتي", current: "khizana"))   // زر «تطبيقاتي» العائم وعدّاد أيام التجديد
+                .background(Color(red: 0.961, green: 0.969, blue: 0.980).ignoresSafeArea())
         }
     }
 }

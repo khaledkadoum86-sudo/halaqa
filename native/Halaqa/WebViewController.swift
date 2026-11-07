@@ -215,6 +215,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
         let scheme = (url.scheme ?? "").lowercased()
         if ["blob", "data", "about"].contains(scheme) { decisionHandler(.allow); return }
+        if Siblings.handle(url) { decisionHandler(.cancel); return }   // halaqa:// khizana:// mawrid://
         // the students' follow-up page opens in Safari, not in place of the app
         if scheme == "https" && url.host == appHost && url.path.hasSuffix("talib.html") { UIApplication.shared.open(url); decisionHandler(.cancel); return }
         if scheme == "https" && url.host == appHost { decisionHandler(.allow); return }

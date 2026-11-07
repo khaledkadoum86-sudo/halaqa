@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="خزانتي">
-<meta name="theme-color" content="#16202c">
+<meta name="theme-color" content="#1E3A5F">
 <meta name="robots" content="noindex">
 <title>خزانة قدوم خالد</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -17,24 +17,26 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;700&display=swap">
 <style>
 /* خزانة: ختم في الرأس، بحث، بطاقات لكل درج، وأدراج في الأسفل */
 :root{
-  --bg:#f3f4f6; --paper:#ffffff; --ink:#1c2836; --muted:#5d6877; --line:#dde1e7;
-  --gold:#9c7726; --gold-soft:#f3ead6; --ink-btn:#1f3348; --on-btn:#ffffff; --danger:#a3392f;
+  /* ألوان التطبيقات الثلاثة الموحّدة (المدرسة وخزانتي والمورد) */
+  --bg:#F5F7FA; --paper:#FFFFFF; --ink:#0F1E33; --muted:#64748B; --line:#DCE3EA;
+  --gold:#2F6FD6; --gold-soft:#E8F0FD; --ink-btn:#1E3A5F; --on-btn:#FFFFFF; --danger:#B42318;
   --ok:#2f6b4a; --ok-soft:#e2efe7; --warn:#8a5a12; --warn-soft:#f6ead4; --plan:#455a75; --plan-soft:#e4e9f1;
-  --f-display:"Amiri","Noto Naskh Arabic",serif;
-  --f-body:"Noto Naskh Arabic","Amiri",-apple-system,"Segoe UI",Tahoma,sans-serif;
+  --f-display:"Reem Kufi","IBM Plex Sans Arabic",sans-serif;
+  --f-title:"Amiri","Noto Naskh Arabic",serif;
+  --f-body:"IBM Plex Sans Arabic",-apple-system,"Segoe UI",Tahoma,sans-serif;
   padding-top:env(safe-area-inset-top,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0f1620; --paper:#17212d; --ink:#e7e9ec; --muted:#9aa5b3; --line:#2a3644;
-  --gold:#d2ab5a; --gold-soft:#2c2617; --ink-btn:#d2ab5a; --on-btn:#16202c; --danger:#e07b70;
+  --bg:#0B1220; --paper:#111A2B; --ink:#E6ECF5; --muted:#93A3B8; --line:#24324A;
+  --gold:#8AB6FF; --gold-soft:#1A2A45; --ink-btn:#9DBEF0; --on-btn:#0B1220; --danger:#F08A80;
   --ok:#7cc59b; --ok-soft:#1b2d24; --warn:#e2b36a; --warn-soft:#2f2617; --plan:#9fb4d1; --plan-soft:#1e2938; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0f1620; --paper:#17212d; --ink:#e7e9ec; --muted:#9aa5b3; --line:#2a3644;
-  --gold:#d2ab5a; --gold-soft:#2c2617; --ink-btn:#d2ab5a; --on-btn:#16202c; --danger:#e07b70;
+  --bg:#0B1220; --paper:#111A2B; --ink:#E6ECF5; --muted:#93A3B8; --line:#24324A;
+  --gold:#8AB6FF; --gold-soft:#1A2A45; --ink-btn:#9DBEF0; --on-btn:#0B1220; --danger:#F08A80;
   --ok:#7cc59b; --ok-soft:#1b2d24; --warn:#e2b36a; --warn-soft:#2f2617; --plan:#9fb4d1; --plan-soft:#1e2938; color-scheme:dark}
 :root[data-font="amiri"]{--f-body:"Amiri","Noto Naskh Arabic",serif}
 *{box-sizing:border-box}
@@ -50,7 +52,7 @@ header.top{display:flex;align-items:center;gap:14px;padding-block:6px 14px;borde
 .gear{flex:none;align-self:flex-start;width:42px;height:42px;border:1px solid var(--line);background:var(--paper);border-radius:12px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
 .gear svg{width:22px;height:22px}
 .gear[aria-pressed="true"]{color:var(--gold);border-color:var(--gold)}
-.who h1{font-family:var(--f-display);font-size:1.7rem;line-height:1.2;margin:0;font-weight:700}
+.who h1{font-family:var(--f-title);font-size:1.7rem;line-height:1.2;margin:0;font-weight:700}
 .who p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .status{font-size:.78rem;color:var(--muted);margin-top:2px}
 .status.warn{color:var(--warn)} .status.ok{color:var(--ok)}
@@ -58,13 +60,18 @@ header.top{display:flex;align-items:center;gap:14px;padding-block:6px 14px;borde
 .search:focus,.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
 h2.sec{font-family:var(--f-display);font-size:1.5rem;margin:22px 0 4px;display:flex;align-items:baseline;gap:10px}
 h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-weight:400}
+.apps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px}
+.appb{border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:10px 6px;display:grid;gap:2px;text-align:center;cursor:pointer;color:var(--ink);font:inherit}
+.appb b{font-size:.95rem;color:var(--ink-btn)}
+.appb span{font-size:.8rem;color:var(--muted)}
+.appb.here{background:var(--gold-soft);cursor:default}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
 .chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:3px 12px;font-size:.85rem;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink-btn);color:var(--on-btn);border-color:var(--ink-btn)}
 .list{display:grid;gap:10px}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:4px}
 .card .head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
-.card h3{margin:0;font-family:var(--f-display);font-size:1.2rem;line-height:1.45;min-width:0;overflow-wrap:anywhere}
+.card h3{margin:0;font-family:var(--f-title);font-size:1.2rem;line-height:1.45;min-width:0;overflow-wrap:anywhere}
 .meta{color:var(--muted);font-size:.88rem;overflow-wrap:anywhere}
 .notes{font-size:.92rem;white-space:pre-wrap;overflow-wrap:anywhere}
 .pill{flex:none;font-size:.76rem;padding:1px 10px;border-radius:999px;background:var(--plan-soft);color:var(--plan);white-space:nowrap}
@@ -143,7 +150,7 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 .bar i{display:block;height:100%;background:var(--gold)}
 .lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(20px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px))}
 .lock .seal{width:96px;height:96px}
-.lock h2{font-family:var(--f-display);font-size:1.6rem;margin:0}
+.lock h2{font-family:var(--f-title);font-size:1.6rem;margin:0}
 .lock .msg{color:var(--muted);font-size:.92rem;min-height:1.6em;text-align:center}
 .lock .msg.bad{color:var(--danger)}
 .dots{display:flex;gap:14px;direction:ltr}
@@ -179,7 +186,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.6.1";
+const APP_VER="1.7";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -452,6 +459,31 @@ function render(){
   main.innerHTML=h;loadThumbs();
 }
 const SORTS={new:(a,b)=>(b.at||0)-(a.at||0),old:(a,b)=>(a.at||0)-(b.at||0),az:(a,b)=>String(a.title||'').localeCompare(String(b.title||''),'ar')};
+/* ---------- التطبيقات الثلاثة: المدرسة وخزانتي ومورد الظمآن ---------- */
+const SIBLINGS=[
+  {id:'halaqa',name:'المدرسة',sub:'متابعة الطلبة',web:'https://khaledkadoum86-sudo.github.io/halaqa/'},
+  {id:'khizana',name:'خزانتي',sub:'',web:'https://khaledkadoum86-sudo.github.io/halaqa/khizana/'},
+  {id:'mawrid',name:'مورد الظمآن',sub:'الرسم والضبط',web:'https://khaledkadoum86-sudo.github.io/mawrid/'}];
+/* في التطبيق المثبّت يُفتح التطبيق الآخر برابطه (mawrid://…)، وفي المتصفح يُفتح موقعه */
+function openSibling(id,path){
+  const x=SIBLINGS.find(a=>a.id===id);if(!x)return;path=path||'open';
+  if(NATIVE){location.href=id+'://'+path;return}
+  const v=/^verse\?id=([a-z]:\d{1,4})$/.exec(path);
+  location.href=x.web+(v?'#v='+v[1]:'');
+}
+const RASM_RE=/مورد الظمآن|الطراز|رسم المصحف|الرسم والضبط|رسم الهمز|حذف الألف|الخراز|فتح المنان|دليل الحيران|التبيان في شرح/;
+/* أزرار تفتح المحتوى في التطبيق المناسب */
+function siblingLinks(it){
+  if(it.kind==='note'){
+    const m=/— (مورد الظمآن|الذيل في الضبط|الإعلان)، البيت (\d{1,4})/.exec(it.body||'');
+    if(m)return `<div class="actions"><button class="btn primary" data-act="app" data-app="mawrid" data-path="verse?id=${m[1]==='الإعلان'?'i':'m'}:${m[2]}">افتح البيت في مورد الظمآن</button></div>`;
+  }
+  if(it.kind==='work'&&/المدرسة القرءانية|متابعة الطلبة/.test(it.title+' '+(it.notes||'')))
+    return `<div class="actions"><button class="btn" data-act="app" data-app="halaqa">افتح المدرسة</button></div>`;
+  if((it.kind==='work'||it.kind==='book')&&RASM_RE.test(it.title+' '+(it.notes||'')))
+    return `<div class="actions"><button class="btn" data-act="app" data-app="mawrid">افتح مورد الظمآن</button></div>`;
+  return '';
+}
 function card(it){
   const K=KINDS[it.kind];const sub=K.sub(it);const pv=it[K.pill];
   let extra='';
@@ -463,6 +495,7 @@ function card(it){
     extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button></div>`;
   }
   if(it.kind==='book'&&it.fileId&&items.get(it.fileId)&&!items.get(it.fileId).del)extra+=`<div class="actions"><button class="btn primary" data-open="${it.fileId}">فتح الكتاب</button></div>`;
+  extra+=siblingLinks(it);
   const link=it.link&&/^https?:\/\//.test(it.link)?`<a class="btn" href="${esc(it.link)}" target="_blank" rel="noopener">فتح الرابط</a>`:'';
   const notes=it.notes||it.body;
   return `<article class="card"><div class="head"><h3>${esc(it.title)}</h3>${pv?`<span class="pill ${pillClass(pv)}">${esc(pv)}</span>`:''}</div>
@@ -479,6 +512,7 @@ function renderProfile(){
   const p=profile();
   const counts=['book','work','file','contact','note'].filter(k=>!S.hidden.includes(k)).map(k=>[k,ofKind(k).length]);
   let h=`<div class="stats">${counts.map(([k,n])=>`<button class="stat" data-tab="${k}"><b>${n}</b><span>${KINDS[k].tab}</span></button>`).join('')}</div>`;
+  h+=`<h2 class="sec">تطبيقاتي</h2><div class="apps">${SIBLINGS.map(x=>`<button class="appb${x.id==='khizana'?' here':''}" data-act="app" data-app="${x.id}" ${x.id==='khizana'?'disabled':''}><b>${x.name}</b><span>${x.id==='khizana'?'أنت هنا':x.sub}</span></button>`).join('')}</div>`;
   h+=`<h2 class="sec">ملفي الشخصي</h2><div class="prof"><dl>${PROFILE_FIELDS.filter(([k])=>p[k]).map(([k,l])=>`<div class="row"><dt>${l}</dt><dd>${esc(p[k])}</dd></div>`).join('')}</dl></div>
   <div class="actions" style="margin-top:10px"><button class="btn primary" data-act="editProfile">تعديل الملف</button></div>`;
   if(S.backupRemind&&live().length>3&&Date.now()-(S.lastBackup||0)>7*864e5)
@@ -508,7 +542,7 @@ function renderSettings(){
   h+=`<h2 class="sec" style="font-size:1.25rem">المظهر</h2><div class="sgroup">`;
   h+=row('السِّمة','',sel('theme',S.theme,[['auto','حسب الجهاز'],['light','فاتح'],['dark','داكن']]));
   h+=row('حجم الخط','',sel('fs',S.fs,[['14','صغير'],['16','عادي'],['18','كبير'],['20','أكبر']]));
-  h+=row('خط النصوص','العناوين بخط Amiri دائمًا.',sel('font',S.font,[['naskh','النسخ (Noto Naskh)'],['amiri','الأميري (Amiri)']]));
+  h+=row('خط النصوص','عناوين الكتب والأعمال بخط Amiri دائمًا.',sel('font',S.font,[['naskh','خط التطبيقات الموحّد'],['amiri','الأميري (Amiri)']]));
   h+=`</div>`;
   /* الأقسام */
   h+=`<h2 class="sec" style="font-size:1.25rem">الأقسام</h2><div class="sgroup">`;
@@ -765,6 +799,7 @@ document.addEventListener('click',async e=>{
       if(typeof txt==='string'&&txt)await importVcf([new File([txt],'contacts.vcf',{type:'text/vcard'})]);
     }
     else if(a==='dedupe')ddOpen();
+    else if(a==='app')openSibling(t.dataset.app,t.dataset.path);
     else if(a==='lockNow')lock();
     else if(a==='pasteVcf'){let t='';try{t=await navigator.clipboard.readText()}catch(_){}
       if(/BEGIN:VCARD/i.test(t))await importVcf([new File([t],'contacts.vcf',{type:'text/vcard'})]);else toast('لا توجد جهة اتصال منسوخة')}

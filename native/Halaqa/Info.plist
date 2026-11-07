@@ -61,6 +61,17 @@
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.khaledkadoum.halaqa</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>halaqa</string>
+			</array>
+		</dict>
+	</array>
 	<key>WKAppBoundDomains</key>
 	<array>
 		<string>khaledkadoum86-sudo.github.io</string>

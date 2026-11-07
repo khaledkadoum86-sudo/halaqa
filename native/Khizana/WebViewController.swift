@@ -9,7 +9,7 @@ import Contacts
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/khizana/")!
 let appHost = "khaledkadoum86-sudo.github.io"
-private let pageBackground = UIColor(red: 0.95, green: 0.96, blue: 0.96, alpha: 1)
+private let pageBackground = UIColor(red: 0.961, green: 0.969, blue: 0.980, alpha: 1)
 
 /// صفحة «خزانتي» داخل التطبيق، مع ثلاث خدمات أصلية:
 /// استقبال الملفات من قائمة المشاركة، وعرض الملفات بـ Quick Look، وحفظ النسخ الاحتياطية عبر قائمة المشاركة.
@@ -153,6 +153,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
         let scheme = (url.scheme ?? "").lowercased()
         if ["blob", "data", "about"].contains(scheme) { decisionHandler(.allow); return }
+        if Siblings.handle(url) { decisionHandler(.cancel); return }   // halaqa:// khizana:// mawrid://
         if scheme == "https" && url.host == appHost && url.path.contains("/khizana") { decisionHandler(.allow); return }
         let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
         if isMainFrame {
@@ -293,7 +294,7 @@ final class Inbox {
     }
 
     func receive(_ url: URL) {
-        if url.scheme == "khizana" { if takeContact(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }; return }
+        if url.scheme == "khizana" { if takeContact(url) || takeNote(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }; return }
         if take(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }
     }
 
@@ -318,6 +319,20 @@ final class Inbox {
         let id = "c" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36)
         guard fm.createFile(atPath: folder.appendingPathComponent(id + ".bin").path, contents: data) else { return false }
         try? "جهة اتصال.vcf".write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
+        return true
+    }
+
+    /// مذكرة وصلت من «مورد الظمآن»: khizana://note?name=<العنوان>&d=<النص بترميز base64url>
+    private func takeNote(_ url: URL) -> Bool {
+        guard url.host == "note", let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              var d = items.first(where: { $0.name == "d" })?.value else { return false }
+        d = d.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while d.count % 4 != 0 { d += "=" }
+        guard let data = Data(base64Encoded: d) else { return false }
+        let title = String((items.first(where: { $0.name == "name" })?.value ?? "مذكرة").filter { !"/\\:".contains($0) }.prefix(80))
+        let id = "n" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36)
+        guard fm.createFile(atPath: folder.appendingPathComponent(id + ".bin").path, contents: data) else { return false }
+        try? (title + ".txt").write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
         return true
     }
 

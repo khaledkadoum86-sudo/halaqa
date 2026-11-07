@@ -12,7 +12,7 @@ struct HalaqaApp: App {
             WebContainer()
                 .onOpenURL { BookInbox.shared.receive($0) }   // PDF shared from another app → «الخزانة العلمية»
                 .ignoresSafeArea()
-                .overlay(RenewalIndicator(appName: "المدرسة القرءانية"))   // نقطة الأيام الباقية للتجديد
+                .overlay(RenewalIndicator(appName: "المدرسة القرءانية", current: "halaqa"))   // زر «تطبيقاتي» العائم وعدّاد أيام التجديد
                 .background(Color(red: 0.96, green: 0.97, blue: 0.98).ignoresSafeArea())
         }
     }
