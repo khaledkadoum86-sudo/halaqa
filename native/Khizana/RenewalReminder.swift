@@ -162,6 +162,7 @@ struct RenewalIndicator: View {
             }
             .animation(.easeOut(duration: 0.2), value: open)
         }
+        .environment(\.layoutDirection, .leftToRight)   // فلا تقلب الواجهةُ العربية جهة الحافة (البطاقة تعيد العربية لنفسها)
         .onReceive(tick) { d in
             let before = days
             now = d
@@ -267,7 +268,6 @@ struct RenewalIndicator: View {
             })
         .onTapGesture { wake(); open = true }
         .onAppear { wake() }
-        .environment(\.layoutDirection, .leftToRight)   // فلا تقلب الواجهةُ العربية جهة الحافة
         .accessibilityLabel("تطبيقاتي، وباقٍ \(days) أيام على التجديد")
     }
 
