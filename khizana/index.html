@@ -278,6 +278,15 @@ const SUBJECTS=[
  ['اللغة',/النحو|الصرف|البلاغ[ةه]|الألفي[ةه]|الآجرومي|ابن مالك|لسان العرب|المعجم|القاموس|العروض|الإعراب/]
 ];
 function extOf(n){return (String(n).split('.').pop()||'').toLowerCase()}
+/* مطابقة ملف بعمل من «أعمالي» بعنوانه (تسوية الهمزات والتاء المربوطة والتشكيل) */
+const STOPW=new Set(['في','من','على','عن','الى','الي','مع','بين','وشروحه','نسخه','النسخه','البحث','بحث','مذكره','كتاب','خالد','قدوم','docx','pdf','epub','doc']);
+function normAr(t){return String(t||'').replace(/[ً-ْٰـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/[^ء-يa-z0-9]+/gi,' ').toLowerCase().trim()}
+function sigWords(t){return normAr(t).split(' ').map(w=>w.replace(/^(وال|بال|كال|فال|ال|و)(?=..)/,'')).filter(w=>w.length>=3&&!STOPW.has(w))}
+function workScore(name,title){const W=sigWords(title),N=new Set(sigWords(String(name).replace(/ashr[\s_-]*saghir/i,'العشر الصغير')));if(W.length<1||!N.has(W[0]))return 0;const hit=W.filter(w=>N.has(w)).length;return hit>=Math.min(2,W.length)&&hit/W.length>=0.4?hit/W.length:0}
+function matchesWork(name,title){return workScore(name,title)>0}
+function workOf(name){let best=null,b=0;for(const w of live())if(w.kind==='work'){const sc=workScore(name,w.title);if(sc>b){b=sc;best=w}}return best}
+const WORK_RE=/^(مذكر[ةه]|بحث|النسخ[ةه] المختصر[ةه])|مذكر[ةه] (في|شرح)/;
+function filesOfWork(w){const ids=new Set(w.files||[]);return live().filter(f=>f.kind==='file'&&(ids.has(f._id)||workOf(f.fname||f.title)===w))}
 function baseName(n){return String(n).replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').replace(/\s+/g,' ').trim()||n}
 async function pdfPages(f){
   try{const head=await f.slice(0,Math.min(f.size,4*1048576)).text();
@@ -529,9 +538,10 @@ function card(it){
     extra=`<div class="actions">${ph?`<span class="ltr">${esc(ph)}</span><a class="btn" href="tel:${esc(ph.replace(/\s/g,''))}">اتصال</a><button class="btn" data-copy="${esc(ph)}">نسخ</button>`:''}${wa?`<a class="btn" href="https://wa.me/${wa}">واتساب</a>`:''}${it.email?`<a class="btn" href="mailto:${esc(it.email)}">بريد</a>`:''}</div>`;
   }
   if(it.kind==='file'){
-    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button>${canBeBook(it)?`<button class="btn" data-tobook="${it._id}">إضافة إلى «كتبي»</button>`:''}</div>`;
+    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button>${!live().some(w=>w.kind==='work'&&(w.files||[]).includes(it._id))?`<button class="btn" data-towork="${it._id}">إضافة إلى «أعمالي»</button>`:''}${canBeBook(it)?`<button class="btn" data-tobook="${it._id}">إضافة إلى «كتبي»</button>`:''}</div>`;
   }
   if(it.kind==='book'&&it.fileId&&items.get(it.fileId)&&!items.get(it.fileId).del)extra+=`<div class="actions"><button class="btn primary" data-open="${it.fileId}">فتح الكتاب</button></div>`;
+  if(it.kind==='work'){const fs=filesOfWork(it);if(fs.length)extra+=`<div class="actions">${fs.map(f=>`<button class="btn${fs.length===1?' primary':''}" data-open="${f._id}">📄 ${esc(fs.length===1?'فتح الملف':(f.fname||f.title))}</button>`).join('')}</div>`}
   extra+=siblingLinks(it);
   const link=it.link&&/^https?:\/\//.test(it.link)?`<a class="btn" href="${esc(it.link)}" target="_blank" rel="noopener">فتح الرابط</a>`:'';
   const notes=it.notes||it.body;
@@ -737,12 +747,16 @@ async function addFiles(list,analyses){
     if(c.to==='contact'){const n=await importVcf([f],true);if(n)bump(n===1?'جهة اتصال في «جهاتي»':'جهات اتصال في «جهاتي»','contact');else toast('وصلت بطاقة لكن لم أجد فيها اسمًا ولا هاتفًا');continue}
     if(c.to==='backup'){await doImport(f);bump('نسخة احتياطية استُعيدت','profile');continue}
     if(c.to==='note'){await save({_id:uid(),kind:'note',tag:'فائدة علمية',title:baseName(f.name),body:await f.text()});bump('مذكرات','note');continue}
+    const w=workOf(f.name)||(c.title?workOf(c.title):null);
+    if(w)c.book=false;
     const id=uid();
     try{await IDB.putBlob(id,f)}catch(e){toast('لا توجد مساحة كافية لـ«'+f.name+'»');continue}
     const title=c.title&&c.title!==baseName(f.name)?c.title:f.name;
     const notes=[c.author?'المؤلف: '+c.author:'',c.pages?c.pages+' صفحة':'',title!==f.name?'اسم الملف: '+f.name:''].filter(Boolean).join('\n');
     await save({_id:id,kind:'file',title,fname:f.name,cat:c.cat,type:f.type,size:f.size,pages:c.pages||0,notes,up:false});
-    if(c.book){await save({_id:uid(),kind:'book',title:c.title||baseName(f.name),author:c.author||'',cat:c.subject||'أخرى',status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(c.pages?' · '+c.pages+' صفحة':''),fileId:id});bump('كتب في «كتبي»','book')}
+    if(w){await save({...w,files:[...new Set([...(w.files||[]),id])]});bump('ملفات في «أعمالي»','work')}
+    else if(c.cat==='أبحاث'||c.work||WORK_RE.test(baseName(f.name))){await save({_id:uid(),kind:'work',title:c.title||baseName(f.name),type:'بحث',status:'منجز',notes:c.author?'المؤلف: '+c.author:'',files:[id]});bump('أعمال جديدة في «أعمالي»','work')}
+    else if(c.book){await save({_id:uid(),kind:'book',title:c.title||baseName(f.name),author:c.author||'',cat:c.subject||'أخرى',status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(c.pages?' · '+c.pages+' صفحة':''),fileId:id});bump('كتب في «كتبي»','book')}
     else bump(c.cat,'file');
   }
   const keys=Object.keys(tally);if(!keys.length){render();return}
@@ -819,12 +833,13 @@ async function doImport(file){
 
 /* ---------- الأحداث ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook],[data-towork]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
   if(t.dataset.tab){tab=(t.dataset.tab==='settings'&&tab==='settings')?'profile':t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
   else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
   else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
   else if(t.dataset.open)openFile(t.dataset.open);
   else if(t.dataset.share)shareFile(t.dataset.share);
+  else if(t.dataset.towork){const it=items.get(t.dataset.towork);if(it){const w=workOf(it.fname||it.title);if(w)save({...w,files:[...new Set([...(w.files||[]),it._id])]});else save({_id:uid(),kind:'work',title:baseName(it.title||it.fname),type:'بحث',status:'منجز',notes:'',files:[it._id]});render();toast('أُضيف إلى «أعمالي»')}}
   else if(t.dataset.tobook){const it=items.get(t.dataset.tobook);if(it&&canBeBook(it))fileToBook(it)}
   else if(t.dataset.copy){try{await navigator.clipboard.writeText(t.dataset.copy);toast('نُسخ')}catch(_){toast('تعذّر النسخ')}}
   else{const a=t.dataset.act;
