@@ -125,7 +125,7 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.0";
+const APP_VER="1.1";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -313,7 +313,7 @@ function render(){
   let h=`<h2 class="sec">${K.title}<small>${list.length}</small></h2>`;
   if(tab==='work'&&!items.get('_seeded')&&!list.length)
     h+=`<div class="box"><p>أعمالك وأبحاثك التي اشتغلنا عليها جاهزة للإضافة (${MY_WORKS.length} أعمال). عدّل حالة كل عمل بعدها.</p><div><button class="btn primary" data-act="seed">أضف أعمالي</button></div></div>`;
-  if(tab==='file')h+=`<label class="drop" for="up"><b>اختر ملفات من الهاتف</b><span>من «الملفات» أو الصور أو iCloud أو تنزيلات واتساب: PDF وWord وصور وصوت…</span></label><input id="up" type="file" multiple hidden>`;
+  if(tab==='file')h+=`<label class="drop" for="up"><b>اختر ملفات من الهاتف</b><span>${NATIVE?'أو من أي تطبيق: افتح الملف ثم مشاركة ← «خزانتي»':'من «الملفات» أو الصور أو iCloud أو تنزيلات واتساب: PDF وWord وصور وصوت…'}</span></label><input id="up" type="file" multiple hidden>`;
   if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px"><label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
   if(used.length>1)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
   h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
@@ -412,6 +412,7 @@ async function getFile(it){
 }
 async function openFile(id){
   const it=items.get(id);const b=await getFile(it);if(!b)return;
+  if(NATIVE)return nativeShow(it,b);
   viewerURL=URL.createObjectURL(b);const t=it.type||b.type||'';let v;
   if(/^image\//.test(t))v=`<img src="${viewerURL}" alt="">`;
   else if(/pdf/.test(t))v=`<iframe src="${viewerURL}" title="${esc(it.title)}"></iframe>`;
@@ -425,6 +426,7 @@ async function openFile(id){
 }
 async function shareFile(id){
   const it=items.get(id);const b=await getFile(it);if(!b)return;
+  if(NATIVE)return nativeShow(it,b);
   const f=new File([b],it.title,{type:it.type||b.type||'application/octet-stream'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(_){}}
   else saveAs(f);
@@ -507,8 +509,25 @@ $('#q').addEventListener('input',e=>{q=e.target.value;render()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 window.addEventListener('online',()=>{if(!SYNC.started)SYNC.start()});
 
-/* الملفات التي يرسلها التطبيق الأصلي (قائمة المشاركة) إن وُجد لاحقًا */
-window.khizanaReceive=async function(name,type,base64){const bin=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));tab='file';await addFiles([new File([bin],name,{type})])};
+/* ---------- التطبيق الأصلي: الملفات الواردة من قائمة المشاركة، والعرض بـ Quick Look ---------- */
+const NATIVE=!!(window.KHIZANA_NATIVE&&window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.khizanaFile);
+const nat=m=>webkit.messageHandlers.khizanaFile.postMessage(m);
+const MIME={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',wav:'audio/wav',ogg:'audio/ogg',opus:'audio/ogg',mp4:'video/mp4',mov:'video/quicktime',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',txt:'text/plain',zip:'application/zip'};
+let polling=false;
+window.khizanaPoll=async function(){
+  if(!NATIVE||polling)return;polling=true;
+  try{const list=await nat({action:'pending'})||[];const got=[];
+    for(const f of list){const parts=[];for(let i=0;;i++){const s=await nat({action:'read',id:f.id,i});if(!s)break;parts.push(Uint8Array.from(atob(s),c=>c.charCodeAt(0)))}
+      const ext=(f.name.split('.').pop()||'').toLowerCase();got.push(new File(parts,f.name,{type:MIME[ext]||''}));await nat({action:'done',id:f.id})}
+    if(got.length){tab='file';filter='';q='';$('#q').value='';closeSheet();await addFiles(got)}
+  }catch(_){}
+  polling=false;
+};
+async function nativeShow(it,b){
+  toast('جارٍ فتح الملف…');const step=393216;
+  for(let i=0,o=0;o<b.size||i===0;i++,o+=step){const s=await b64(b.slice(o,o+step));if(!await nat({action:'chunk',id:it._id,i,s}))return toast('تعذّر فتح الملف')}
+  await nat({action:'show',id:it._id,name:it.title});
+}
 
 (async function boot(){
   render();
@@ -516,6 +535,7 @@ window.khizanaReceive=async function(name,type,base64){const bin=Uint8Array.from
   render();status();
   SYNC.start();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if(NATIVE)khizanaPoll();
 })();
 </script>
 </body>

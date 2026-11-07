@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ar</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>ar</string>
+	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>لاختيار الصور وحفظها في خزانتك.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>لتصوير الوثائق وحفظها في خزانتك.</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>أي ملف</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>khaledkadoum86-sudo.github.io</string>
+		<string>halaqa-23193.firebaseapp.com</string>
+		<string>www.gstatic.com</string>
+		<string>firestore.googleapis.com</string>
+		<string>identitytoolkit.googleapis.com</string>
+		<string>securetoken.googleapis.com</string>
+		<string>fonts.googleapis.com</string>
+		<string>fonts.gstatic.com</string>
+	</array>
+</dict>
+</plist>
