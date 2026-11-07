@@ -75,12 +75,13 @@ final class ShareViewController: UIViewController {
         extensionContext?.completeRequest(returningItems: nil)
     }
 
-    /// فتح التطبيق الأصلي من الامتداد عبر سلسلة المستجيبات.
+    /// فتح التطبيق الأصلي من الامتداد عبر سلسلة المستجيبات (دون واجهات ممنوعة على الامتدادات).
     private func openApp(_ url: URL) -> Bool {
+        let sel = NSSelectorFromString("openURL:options:completionHandler:")
         var responder: UIResponder? = self
         while let r = responder {
-            if let app = r as? UIApplication {
-                app.open(url, options: [:], completionHandler: nil)
+            if r is UIApplication, r.responds(to: sel) {
+                _ = r.perform(sel, with: url, with: NSDictionary())
                 return true
             }
             responder = r.next
