@@ -166,7 +166,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.6";
+const APP_VER="1.6.1";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -650,7 +650,7 @@ async function addFiles(list,analyses){
     const a=S.smart?((analyses&&analyses[i])||await analyzeNative(f)):null;
     const c=await classify(f,a);
     if(c.book&&!S.autoBook)c.book=false;
-    if(c.to==='contact'){await importVcf([f],true);bump('جهات اتصال','contact');continue}
+    if(c.to==='contact'){const n=await importVcf([f],true);if(n)bump(n===1?'جهة اتصال في «جهاتي»':'جهات اتصال في «جهاتي»','contact');else toast('وصلت بطاقة لكن لم أجد فيها اسمًا ولا هاتفًا');continue}
     if(c.to==='backup'){await doImport(f);bump('نسخة احتياطية استُعيدت','profile');continue}
     if(c.to==='note'){await save({_id:uid(),kind:'note',tag:'فائدة علمية',title:baseName(f.name),body:await f.text()});bump('مذكرات','note');continue}
     const id=uid();
@@ -793,8 +793,9 @@ const NATIVE=!!(window.KHIZANA_NATIVE&&window.webkit&&webkit.messageHandlers&&we
 const nat=m=>webkit.messageHandlers.khizanaFile.postMessage(m);
 const MIME={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',wav:'audio/wav',ogg:'audio/ogg',opus:'audio/ogg',mp4:'video/mp4',mov:'video/quicktime',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',txt:'text/plain',zip:'application/zip'};
 let polling=false;
+let pollAgain=false;
 window.khizanaPoll=async function(){
-  if(!NATIVE||polling)return;polling=true;
+  if(!NATIVE)return;if(polling){pollAgain=true;return}polling=true;pollAgain=false;
   try{const list=await nat({action:'pending'})||[];const got=[],ans=[];
     for(const f of list){const parts=[];for(let i=0;;i++){const s=await nat({action:'read',id:f.id,i});if(!s)break;parts.push(Uint8Array.from(atob(s),c=>c.charCodeAt(0)))}
       const ext=(f.name.split('.').pop()||'').toLowerCase();got.push(new File(parts,f.name,{type:MIME[ext]||''}));
@@ -802,7 +803,11 @@ window.khizanaPoll=async function(){
     if(got.length){tab='file';filter='';q='';$('#q').value='';closeSheet();await addFiles(got,ans)}
   }catch(_){}
   polling=false;
+  if(pollAgain)setTimeout(khizanaPoll,300);
 };
+/* كلما عاد التطبيق إلى الواجهة نسأل عن الملفات والجهات الواردة، فلا يضيع ما أُرسل والصفحة مشغولة */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>window.khizanaPoll&&khizanaPoll(),400)});
+window.addEventListener('focus',()=>setTimeout(()=>window.khizanaPoll&&khizanaPoll(),400));
 async function nativeShow(it,b){
   toast('جارٍ فتح الملف…');const step=393216;
   for(let i=0,o=0;o<b.size||i===0;i++,o+=step){const s=await b64(b.slice(o,o+step));if(!await nat({action:'chunk',id:it._id,i,s}))return toast('تعذّر فتح الملف')}
