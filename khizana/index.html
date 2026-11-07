@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="خزانتي">
+<meta name="theme-color" content="#16202c">
+<meta name="robots" content="noindex">
+<title>خزانة قدوم خالد</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap">
+<style>
+/* خزانة: ختم في الرأس، بحث، بطاقات لكل درج، وأدراج في الأسفل */
+:root{
+  --bg:#f3f4f6; --paper:#ffffff; --ink:#1c2836; --muted:#5d6877; --line:#dde1e7;
+  --gold:#9c7726; --gold-soft:#f3ead6; --ink-btn:#1f3348; --on-btn:#ffffff; --danger:#a3392f;
+  --ok:#2f6b4a; --ok-soft:#e2efe7; --warn:#8a5a12; --warn-soft:#f6ead4; --plan:#455a75; --plan-soft:#e4e9f1;
+  --f-display:"Amiri","Noto Naskh Arabic",serif;
+  --f-body:"Noto Naskh Arabic","Amiri",-apple-system,"Segoe UI",Tahoma,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1620; --paper:#17212d; --ink:#e7e9ec; --muted:#9aa5b3; --line:#2a3644;
+  --gold:#d2ab5a; --gold-soft:#2c2617; --ink-btn:#d2ab5a; --on-btn:#16202c; --danger:#e07b70;
+  --ok:#7cc59b; --ok-soft:#1b2d24; --warn:#e2b36a; --warn-soft:#2f2617; --plan:#9fb4d1; --plan-soft:#1e2938; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.7;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 130px}
+header.top{display:flex;align-items:center;gap:14px;padding-block:6px 14px;border-bottom:1px solid var(--line)}
+.seal{width:62px;height:62px;flex:none}
+.who{min-width:0}
+.who h1{font-family:var(--f-display);font-size:1.7rem;line-height:1.2;margin:0;font-weight:700}
+.who p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.status{font-size:.78rem;color:var(--muted);margin-top:2px}
+.status.warn{color:var(--warn)} .status.ok{color:var(--ok)}
+.search{width:100%;margin-top:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.search:focus,.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
+h2.sec{font-family:var(--f-display);font-size:1.5rem;margin:22px 0 4px;display:flex;align-items:baseline;gap:10px}
+h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-weight:400}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:3px 12px;font-size:.85rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink-btn);color:var(--on-btn);border-color:var(--ink-btn)}
+.list{display:grid;gap:10px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:4px}
+.card .head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.card h3{margin:0;font-family:var(--f-display);font-size:1.2rem;line-height:1.45;min-width:0;overflow-wrap:anywhere}
+.meta{color:var(--muted);font-size:.88rem;overflow-wrap:anywhere}
+.notes{font-size:.92rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.pill{flex:none;font-size:.76rem;padding:1px 10px;border-radius:999px;background:var(--plan-soft);color:var(--plan);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.btn{border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 12px;font-size:.9rem;cursor:pointer;text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;gap:4px}
+.btn:focus-visible,.chip:focus-visible,.tab:focus-visible,.fab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn.primary{background:var(--ink-btn);color:var(--on-btn);border-color:var(--ink-btn)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.ltr{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+.empty{background:var(--paper);border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted)}
+.box{background:var(--gold-soft);border:1px solid var(--gold);border-radius:12px;padding:14px;display:grid;gap:8px;margin-bottom:12px}
+.box p{margin:0}
+.drop{display:grid;gap:2px;text-align:center;border:2px dashed var(--gold);background:var(--gold-soft);border-radius:12px;padding:18px;cursor:pointer;margin-bottom:12px}
+.drop span{font-size:.85rem;color:var(--muted)}
+.thumb{max-width:100%;max-height:200px;border-radius:8px;object-fit:contain;justify-self:start}
+.prof{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px 16px}
+.prof dl{margin:0}
+.prof .row{display:grid;grid-template-columns:8.5em 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.prof .row:last-child{border-bottom:0}
+.prof dt{color:var(--muted);font-size:.9rem}
+.prof dd{margin:0;min-width:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer}
+.stat b{display:block;font-family:var(--f-display);font-size:1.6rem;line-height:1.1;color:var(--gold);font-variant-numeric:tabular-nums}
+.stat span{font-size:.8rem;color:var(--muted)}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:8px}
+.panel p{margin:0}
+nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
+.tab{flex:1;min-width:0;max-width:140px;border:0;background:none;padding:8px 1px 9px;cursor:pointer;font-size:.76rem;color:var(--muted);display:grid;justify-items:center;gap:1px;border-top:2px solid transparent}
+.tab svg{width:22px;height:22px}
+.tab[aria-selected="true"]{color:var(--gold);border-top-color:var(--gold);font-weight:600}
+.fab{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(80px + env(safe-area-inset-bottom,0px));background:var(--ink-btn);color:var(--on-btn);border:0;border-radius:999px;padding:11px 20px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgb(0 0 0 / .22);z-index:6}
+.overlay{position:fixed;inset:0;background:rgb(10 16 24 / .5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:100%;max-width:640px;max-height:92%;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:16px 16px 0 0;padding:18px max(18px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+.sheet h3{font-family:var(--f-display);font-size:1.4rem;margin:0 0 10px;overflow-wrap:anywhere}
+.field{display:grid;gap:3px;margin-bottom:10px}
+.field label{font-size:.88rem;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:16px}
+.field textarea{min-height:90px;resize:vertical}
+.foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.foot .spacer{flex:1}
+.viewer img,.viewer video{max-width:100%;max-height:60vh;display:block;margin:0 auto 10px;border-radius:8px}
+.viewer iframe{width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-bottom:10px;background:#fff}
+.viewer audio{width:100%;margin-bottom:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:7px 16px;border-radius:999px;font-size:.88rem;z-index:30;max-width:90%;text-align:center}
+@media (max-width:460px){.stats{gap:5px}.stat span{font-size:.72rem}.prof .row{grid-template-columns:1fr;gap:0}}
+@media (prefers-reduced-motion:no-preference){.overlay .sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(24px)}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <svg class="seal" id="seal" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+    <div class="who">
+      <h1 id="hName">قدوم خالد</h1>
+      <p id="hJob">أستاذ التعليم القرءاني</p>
+      <div class="status" id="status">محفوظة على هذا الجهاز</div>
+    </div>
+  </header>
+  <input class="search" id="q" type="search" placeholder="ابحث في كتبك وأعمالك وملفاتك…" aria-label="بحث">
+  <main id="main"></main>
+</div>
+<button class="fab" id="fab" type="button">＋ إضافة</button>
+<nav class="tabs" role="tablist" id="tabs"></nav>
+<div id="layer"></div>
+
+<script>
+const APP_VER="1.0";
+const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
+  storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
+const FB_VER="10.14.1";
+const SYNC_MAX=15*1048576;   /* الملفات حتى 15 م.ب تُزامَن بين الأجهزة، والأكبر تبقى في الجهاز */
+const CHUNK=700000;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- الختم ---------- */
+(function(){
+  const g='#b08a36';let s='<defs><path id="ringp" d="M-14,72.6 A74,74 0 1,1 14,72.6"/></defs>';
+  s+=`<circle r="98" fill="none" stroke="${g}" stroke-width="1.6"/>`;
+  for(let a=0;a<360;a+=6){const r=a*Math.PI/180;s+=`<circle cx="${(93.5*Math.cos(r)).toFixed(2)}" cy="${(93.5*Math.sin(r)).toFixed(2)}" r="1.5" fill="${g}"/>`}
+  s+=`<circle r="90" fill="none" stroke="${g}" stroke-width="1.6"/><circle r="87.5" fill="none" stroke="${g}" stroke-width=".6"/><circle r="58" fill="none" stroke="${g}" stroke-width=".6"/><circle r="55" fill="none" stroke="${g}" stroke-width="1.6"/>`;
+  s+=`<text font-family="Amiri,serif" font-size="21" font-weight="700" fill="${g}"><textPath href="#ringp" startOffset="50%" text-anchor="middle">اللهم صل على سيدنا محمد وءاله الأكرمين</textPath></text>`;
+  for(let a=0;a<360;a+=60){const r=a*Math.PI/180;s+=`<circle cx="${(6*Math.cos(r)).toFixed(2)}" cy="${(74+6*Math.sin(r)).toFixed(2)}" r="2.2" fill="${g}"/>`}
+  s+=`<circle cx="0" cy="74" r="2.8" fill="${g}"/>`;
+  $('#seal').innerHTML=s;
+})();
+
+/* ---------- الأقسام ---------- */
+const ICON={
+ profile:'<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c0-3.3 3.1-6 7-6s7 2.7 7 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+ book:'<path d="M4 5.5C6.5 4 9.5 4 12 5.5 14.5 4 17.5 4 20 5.5v13c-2.5-1.5-5.5-1.5-8 0-2.5-1.5-5.5-1.5-8 0v-13ZM12 5.5v13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+ work:'<path d="M7 3h7l4 4v14H7V3Zm7 0v4h4M10 12h5M10 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+ file:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+ contact:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+ note:'<path d="M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
+};
+function fmtSize(n){if(!n)return'';return n>1048576?(n/1048576).toFixed(1)+' م.ب':Math.max(1,Math.round(n/1024))+' ك.ب'}
+const KINDS={
+ book:{tab:'كتبي',title:'الكتب',one:'كتابًا',
+   fields:[['title','عنوان الكتاب','text',1],['author','المؤلف','text'],['cat','التصنيف','select',0,['مرجع في الرسم والضبط','القراءات','التفسير','الحديث والسيرة','اللغة','مخطوط','أخرى']],['status','الحالة','select',0,['أملكه','أقرؤه','قرأته','أريد اقتناءه','مُعار']],['place','مكانه (رف، ملف، رابط)','text'],['link','رابط (إن وجد)','url'],['notes','ملاحظات','textarea']],
+   filter:'status',pill:'status',sub:it=>[it.author,it.cat,it.place].filter(Boolean).join(' · ')},
+ work:{tab:'أعمالي',title:'الأعمال والأبحاث',one:'عملًا',
+   fields:[['title','عنوان العمل','text',1],['type','النوع','select',0,['بحث','كتاب','مذكرة','تطبيق','مجموع','مشروع','درس']],['status','الحالة','select',0,['مخطط','قيد الإنجاز','منجز']],['date','التاريخ','text'],['link','رابط أو مكان الملف','text'],['notes','ملاحظات','textarea']],
+   filter:'type',pill:'status',sub:it=>[it.type,it.date,it.link].filter(Boolean).join(' · ')},
+ file:{tab:'ملفاتي',title:'الملفات',one:'ملفًا',
+   fields:[['title','اسم الملف','text',1],['cat','التصنيف','select',0,['وثائق رسمية','أبحاث','كتب PDF','صور','صوتيات','أخرى']],['notes','ملاحظات','textarea']],
+   filter:'cat',pill:'cat',sub:it=>[fmtSize(it.size),it.size>SYNC_MAX?'في هذا الجهاز فقط':''].filter(Boolean).join(' · ')},
+ contact:{tab:'جهاتي',title:'جهات الاتصال',one:'جهة اتصال',
+   fields:[['title','الاسم','text',1],['role','الصفة / العلاقة','text'],['group','المجموعة','select',0,['العائلة','الزملاء','المشايخ والأساتذة','الطلبة وأولياؤهم','الإدارة','أخرى']],['phone','الهاتف','tel'],['whatsapp','واتساب (إن اختلف)','tel'],['email','البريد','email'],['address','العنوان','text'],['notes','ملاحظات','textarea']],
+   filter:'group',pill:'group',sub:it=>[it.role,it.address].filter(Boolean).join(' · ')},
+ note:{tab:'مذكراتي',title:'المذكرات',one:'مذكرة',
+   fields:[['title','العنوان','text',1],['tag','الوسم','select',0,['فائدة علمية','فكرة','موعد','مهمة','شخصي']],['body','النص','textarea']],
+   filter:'tag',pill:'tag',sub:()=>''}
+};
+const PROFILE_FIELDS=[['name','الاسم'],['job','الوظيفة'],['workplace','مكان العمل'],['city','المدينة'],['phone','الهاتف'],['email','البريد الإلكتروني'],['study','الشهادات والدراسة'],['ijazat','الإجازات والأسانيد'],['interests','مجالات الاهتمام'],['bio','نبذة']];
+const DEFAULT_PROFILE={name:'قدوم خالد',job:'أستاذ التعليم القرءاني',workplace:'المدرسة القرءانية النموذجية، مسجد القطب الأمير عبد القادر',city:'قسنطينة',interests:'رسم المصحف وضبطه، القراءات النافعية، علوم القرآن'};
+const MY_WORKS=[
+ ['رسم الهمز وضبطه في مورد الظمآن وشروحه','بحث','قيد الإنجاز','على رواية ورش: التبيان، دليل الحيران، فتح المنان، الطراز'],
+ ['عناية الجزائريين قديمًا بالقرآن الكريم وعلومه','بحث','قيد الإنجاز','القراءات، الطرق النافعية، الرسم والضبط، التفسير'],
+ ['رؤوس الأحزاب الستين وأقسامها','بحث','قيد الإنجاز','من «إعلام الإخوان بأجزاء القرآن» للضباع'],
+ ['مدى موافقة المصاحف الجزائرية لاختيارات المغاربة في ظواهر الرسم والضبط','بحث','قيد الإنجاز','بحث شخصي للتدريس'],
+ ['الأوجه المتعددة في ضبط الطراز','مجموع','قيد الإنجاز','الكلمات والهمزات متعددة الأوجه عند التنسي، مقارنة بفتح المنان لابن عاشر'],
+ ['حذف الألف في مورد الظمآن وشروحه','مذكرة','مخطط','على منوال بحث الهمز'],
+ ['العشر الصغير: الطرق العشر النافعية','كتاب','قيد الإنجاز','للتدريس في المدرسة'],
+ ['موضوع أطروحة الدكتوراه في الرسم والضبط المغربي','مشروع','قيد الإنجاز','اختيار الموضوع ومقارنته بالرسائل الموجودة'],
+ ['تطبيق المدرسة القرءانية النموذجية','تطبيق','منجز','سجل متابعة الطلبة'],
+ ['تطبيق رسم المصحف (مورد الظمآن والطراز)','تطبيق','مخطط','البحث عن الكلمة القرآنية وأبياتها وضبطها'],
+ ['تطبيق مدرسة آل البيت عليهم السلام','تطبيق','قيد الإنجاز','جمع مرويات أهل البيت عليهم السلام مع القرآن الكريم']
+];
+const TABS=[['profile','ملفي'],['book','كتبي'],['work','أعمالي'],['file','ملفاتي'],['contact','جهاتي'],['note','مذكراتي']];
+function guessCat(t,n){if(/^image\//.test(t))return'صور';if(/^audio\//.test(t))return'صوتيات';if(/pdf/.test(t)||/\.pdf$/i.test(n))return'كتب PDF';if(/word|document|text/.test(t)||/\.(docx?|txt|odt|pages)$/i.test(n))return'أبحاث';return'أخرى'}
+
+/* ---------- التخزين في الجهاز (IndexedDB) ---------- */
+const IDB={
+  db:null,
+  open(){return this.db||(this.db=new Promise((ok,no)=>{const r=indexedDB.open('khizana',1);r.onupgradeneeded=()=>{r.result.createObjectStore('recs',{keyPath:'_id'});r.result.createObjectStore('blobs')};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}))},
+  async tx(store,mode,fn){const db=await this.open();return new Promise((ok,no)=>{const t=db.transaction(store,mode);const st=t.objectStore(store);let res;const q=fn(st);if(q)q.onsuccess=()=>res=q.result;t.oncomplete=()=>ok(res);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error)})},
+  all(){return this.tx('recs','readonly',s=>s.getAll())},
+  putRec(r){return this.tx('recs','readwrite',s=>s.put(r))},
+  getBlob(id){return this.tx('blobs','readonly',s=>s.get(id))},
+  putBlob(id,b){return this.tx('blobs','readwrite',s=>s.put(b,id))},
+  delBlob(id){return this.tx('blobs','readwrite',s=>s.delete(id))}
+};
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
+
+let items=new Map(); let tab='profile'; let filter=''; let q='';
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function live(){return [...items.values()].filter(x=>!x.del)}
+function ofKind(k){return live().filter(x=>x.kind===k)}
+
+async function save(rec,fromRemote){
+  if(!fromRemote)rec.at=Date.now();
+  items.set(rec._id,rec);
+  try{await IDB.putRec(rec)}catch(e){toast('تعذّر الحفظ في الجهاز')}
+  if(!fromRemote)SYNC.push(rec);
+}
+async function put(obj){await save(obj);render()}
+async function del(id){
+  const it=items.get(id);if(!it)return;
+  if(it.kind==='file'){try{await IDB.delBlob(id)}catch(_){}SYNC.delBlob(it)}
+  await save({_id:id,kind:it.kind,del:true});render();
+}
+
+/* ---------- المزامنة بين الأجهزة (Firebase، حساب تطبيق المدرسة نفسه) ---------- */
+const SYNC={
+  auth:null,db:null,user:null,unsub:null,remoteAt:{},started:false,err:'',
+  async libs(){
+    const add=n=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-${n}-compat.js`;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+    if(!window.firebase)await add('app');if(!firebase.auth)await add('auth');if(!firebase.firestore)await add('firestore');
+  },
+  async start(){
+    if(this.started)return;this.started=true;
+    try{await this.libs()}catch(_){this.started=false;this.err='لا يوجد اتصال بالإنترنت، ستبدأ المزامنة عند عودته.';status();return}
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    this.auth=firebase.auth();this.db=firebase.firestore();
+    this.auth.onAuthStateChanged(u=>this.onUser(u));
+  },
+  col(n){return this.db.collection('users').doc(this.user.uid).collection(n)},
+  onUser(u){
+    if(this.unsub){this.unsub();this.unsub=null}
+    this.user=u;this.remoteAt={};status();render();
+    if(!u)return;
+    let first=true;
+    this.unsub=this.col('khizana').onSnapshot(snap=>{
+      snap.docChanges().forEach(ch=>{
+        if(ch.type==='removed')return;
+        const r=Object.assign({_id:ch.doc.id},ch.doc.data());this.remoteAt[r._id]=r.at||0;
+        const l=items.get(r._id);
+        if(!l||(r.at||0)>(l.at||0)){save(r,true);if(r.del&&r.kind==='file')IDB.delBlob(r._id).catch(()=>{})}
+      });
+      if(first){first=false;this.pushAll()}
+      this.err='';status();render();
+    },e=>{this.err='تعذّر الاتصال بالحساب: '+(e.code||e.message||'');status()});
+  },
+  clean(r){const o={};for(const k in r)if(k!=='_id'&&r[k]!==undefined)o[k]=r[k];return o},
+  async push(r){
+    if(!this.user)return;
+    try{await this.col('khizana').doc(r._id).set(this.clean(r));this.remoteAt[r._id]=r.at}catch(e){this.err='لم تُرفع بعض التعديلات، ستُرفع لاحقًا';status()}
+    if(r.kind==='file'&&!r.del&&!r.up&&r.size<=SYNC_MAX)this.upBlob(r);
+  },
+  async pushAll(){
+    for(const r of items.values()){
+      if((r.at||0)>(this.remoteAt[r._id]||0))await this.push(r);
+      else if(r.kind==='file'&&!r.del&&!r.up&&r.size<=SYNC_MAX)this.upBlob(r);
+    }
+  },
+  uploading:new Set(),
+  async upBlob(r){
+    if(!this.user||this.uploading.has(r._id))return;
+    const b=await IDB.getBlob(r._id).catch(()=>null);if(!b)return;
+    this.uploading.add(r._id);
+    try{
+      const u=new Uint8Array(await b.arrayBuffer());const n=Math.max(1,Math.ceil(u.length/CHUNK));
+      for(let i=0;i<n;i++)await this.col('khizana_blobs').doc(r._id+'_'+i).set({i,n,b:firebase.firestore.Blob.fromUint8Array(u.subarray(i*CHUNK,(i+1)*CHUNK))});
+      const cur=items.get(r._id);if(cur&&!cur.del){cur.up=true;cur.parts=n;await save(cur)}
+    }catch(e){toast('لم يُرفع «'+r.title+'» إلى الحساب بعد')}
+    this.uploading.delete(r._id);
+  },
+  async downBlob(r){
+    if(!this.user||!r.up)return null;
+    const parts=[];for(let i=0;i<(r.parts||1);i++){const d=await this.col('khizana_blobs').doc(r._id+'_'+i).get();if(!d.exists)return null;parts.push(d.data().b.toUint8Array())}
+    const b=new Blob(parts,{type:r.type||''});await IDB.putBlob(r._id,b);return b;
+  },
+  async delBlob(r){if(!this.user||!r.up)return;try{for(let i=0;i<(r.parts||1);i++)await this.col('khizana_blobs').doc(r._id+'_'+i).delete()}catch(_){}}
+};
+function status(){
+  const s=$('#status');let t,c='';
+  if(SYNC.user){t='متزامنة مع حسابك';c='ok'}else t='محفوظة على هذا الجهاز';
+  if(SYNC.err){t=SYNC.err;c='warn'}
+  s.textContent=t;s.className='status '+c;
+}
+
+/* ---------- العرض ---------- */
+function profile(){return Object.assign({},DEFAULT_PROFILE,items.get('profile')&&!items.get('profile').del?items.get('profile'):{})}
+function pillClass(v){return /منجز|قرأته/.test(v)?'ok':/قيد|أقرؤه|مُعار/.test(v)?'warn':''}
+function renderTabs(){$('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${k===tab}" data-tab="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${l}</button>`).join('')}
+let thumbURLs=[];
+function render(){
+  renderTabs();
+  const p=profile();$('#hName').textContent=p.name||'قدوم خالد';$('#hJob').textContent=p.job||'';
+  $('#fab').hidden=(tab==='profile'||tab==='file')&&!q;
+  if(q){$('#fab').hidden=true}
+  thumbURLs.forEach(u=>URL.revokeObjectURL(u));thumbURLs=[];
+  const main=$('#main');
+  if(q){main.innerHTML=renderSearch();loadThumbs();return}
+  if(tab==='profile'){main.innerHTML=renderProfile();return}
+  const K=KINDS[tab];const list=ofKind(tab).sort((a,b)=>(b.at||0)-(a.at||0));
+  const opts=K.fields.find(f=>f[0]===K.filter)[4];
+  const used=opts.filter(o=>list.some(x=>x[K.filter]===o));
+  if(filter&&!used.includes(filter))filter='';
+  const shown=filter?list.filter(x=>x[K.filter]===filter):list;
+  let h=`<h2 class="sec">${K.title}<small>${list.length}</small></h2>`;
+  if(tab==='work'&&!items.get('_seeded')&&!list.length)
+    h+=`<div class="box"><p>أعمالك وأبحاثك التي اشتغلنا عليها جاهزة للإضافة (${MY_WORKS.length} أعمال). عدّل حالة كل عمل بعدها.</p><div><button class="btn primary" data-act="seed">أضف أعمالي</button></div></div>`;
+  if(tab==='file')h+=`<label class="drop" for="up"><b>اختر ملفات من الهاتف</b><span>من «الملفات» أو الصور أو iCloud أو تنزيلات واتساب: PDF وWord وصور وصوت…</span></label><input id="up" type="file" multiple hidden>`;
+  if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px"><label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
+  if(used.length>1)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
+  main.innerHTML=h;loadThumbs();
+}
+function card(it){
+  const K=KINDS[it.kind];const sub=K.sub(it);const pv=it[K.pill];
+  let extra='';
+  if(it.kind==='contact'){
+    const ph=it.phone,wa=(it.whatsapp||it.phone||'').replace(/[^\d+]/g,'').replace(/^\+/,'').replace(/^0/,'213');
+    extra=`<div class="actions">${ph?`<span class="ltr">${esc(ph)}</span><a class="btn" href="tel:${esc(ph.replace(/\s/g,''))}">اتصال</a><button class="btn" data-copy="${esc(ph)}">نسخ</button>`:''}${wa?`<a class="btn" href="https://wa.me/${wa}">واتساب</a>`:''}${it.email?`<a class="btn" href="mailto:${esc(it.email)}">بريد</a>`:''}</div>`;
+  }
+  if(it.kind==='file'){
+    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button></div>`;
+  }
+  const link=it.link&&/^https?:\/\//.test(it.link)?`<a class="btn" href="${esc(it.link)}" target="_blank" rel="noopener">فتح الرابط</a>`:'';
+  const notes=it.notes||it.body;
+  return `<article class="card"><div class="head"><h3>${esc(it.title)}</h3>${pv?`<span class="pill ${pillClass(pv)}">${esc(pv)}</span>`:''}</div>
+  ${sub?`<div class="meta">${esc(sub)}</div>`:''}${notes?`<div class="notes">${esc(notes)}</div>`:''}${extra}
+  <div class="actions">${link}<button class="btn" data-edit="${it._id}">تعديل</button></div></article>`;
+}
+async function loadThumbs(){
+  for(const img of document.querySelectorAll('img[data-thumb]')){
+    const b=await IDB.getBlob(img.dataset.thumb).catch(()=>null);
+    if(b){const u=URL.createObjectURL(b);thumbURLs.push(u);img.src=u}else img.remove();
+  }
+}
+function renderProfile(){
+  const p=profile();
+  const counts=['book','work','file','contact','note'].map(k=>[k,ofKind(k).length]);
+  let h=`<div class="stats">${counts.map(([k,n])=>`<button class="stat" data-tab="${k}"><b>${n}</b><span>${KINDS[k].tab}</span></button>`).join('')}</div>`;
+  h+=`<h2 class="sec">ملفي الشخصي</h2><div class="prof"><dl>${PROFILE_FIELDS.filter(([k])=>p[k]).map(([k,l])=>`<div class="row"><dt>${l}</dt><dd>${esc(p[k])}</dd></div>`).join('')}</dl></div>
+  <div class="actions" style="margin-top:10px"><button class="btn primary" data-act="editProfile">تعديل الملف</button></div>`;
+  h+=`<h2 class="sec">المزامنة بين أجهزتي</h2><div class="panel">`;
+  if(SYNC.user)h+=`<p>متصلة بالحساب <span class="ltr">${esc(SYNC.user.email||'')}</span>. ما تضيفه هنا يظهر في الآيفون والآيباد والماك.</p><div class="actions"><button class="btn" data-act="syncNow">مزامنة الآن</button><button class="btn" data-act="signOut">الخروج من الحساب</button></div>`;
+  else h+=`<p>ادخل بحساب تطبيق المدرسة نفسه، فتتزامن خزانتك بين أجهزتك وتُحفظ في حسابك.</p>
+   <form id="login"><div class="field"><label for="em">البريد</label><input id="em" type="email" dir="ltr" autocomplete="username" value="khaledkadoum86@gmail.com"></div>
+   <div class="field"><label for="pw">كلمة السر</label><input id="pw" type="password" dir="ltr" autocomplete="current-password"></div>
+   <div class="actions"><button class="btn primary" type="submit">دخول</button><button class="btn" type="button" data-act="reset">نسيت كلمة السر</button></div><p class="meta" id="loginMsg"></p></form>`;
+  h+=`</div><h2 class="sec">نسخة احتياطية</h2><div class="panel"><p class="meta">احفظ النسخة في iCloud (الملفات ← iCloud Drive)، واختر «استبدال» لتبقى آخر نسخة فقط.</p>
+  <div class="actions"><button class="btn" data-act="export">نسخة البيانات</button><button class="btn" data-act="exportFiles">نسخة مع الملفات</button><label class="btn" for="imp">استعادة من نسخة</label><input id="imp" type="file" accept=".json,application/json" hidden></div></div>
+  <p class="meta" style="text-align:center;margin-top:18px">خزانتي، الإصدار ${APP_VER}</p>`;
+  return h;
+}
+function renderSearch(){
+  const t=q.trim();const hits=live().filter(x=>KINDS[x.kind]&&Object.values(x).some(v=>typeof v==='string'&&v.includes(t)));
+  return `<h2 class="sec">نتائج «${esc(t)}»<small>${hits.length}</small></h2>`+(hits.length?`<div class="list">${hits.map(card).join('')}</div>`:`<div class="empty">لا نتائج.</div>`);
+}
+
+/* ---------- النماذج ---------- */
+function openForm(kind,it){
+  const K=KINDS[kind];it=it||{};
+  const fields=K.fields.map(([k,l,t,req,opts])=>{
+    const ctl=t==='select'?`<select id="f_${k}" name="${k}">${opts.map(o=>`<option ${o===(it[k]??opts[0])?'selected':''}>${esc(o)}</option>`).join('')}</select>`
+      :t==='textarea'?`<textarea id="f_${k}" name="${k}">${esc(it[k]||'')}</textarea>`
+      :`<input id="f_${k}" name="${k}" type="${t}" value="${esc(it[k]||'')}" ${req?'required':''} ${['tel','url','email'].includes(t)?'dir="ltr"':''}>`;
+    return `<div class="field"><label for="f_${k}">${l}</label>${ctl}</div>`;
+  }).join('');
+  sheet(`<form id="frm"><h3>${it._id?'تعديل':'إضافة'} ${K.one}</h3>${fields}
+   <div class="foot"><button class="btn primary" type="submit">حفظ</button><button class="btn" type="button" data-act="close">إلغاء</button><span class="spacer"></span>${it._id?`<button class="btn danger" type="button" data-act="askDel">حذف</button>`:''}</div><div id="confirm"></div></form>`);
+  $('#frm').addEventListener('submit',e=>{e.preventDefault();
+    const obj=Object.assign({},it,{kind,_id:it._id||uid()});new FormData(e.target).forEach((v,k)=>obj[k]=String(v).trim());
+    if(!obj.title)return;put(obj);closeSheet();toast('حُفظ')});
+  $('#frm').addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;
+    if(a.dataset.act==='askDel')$('#confirm').innerHTML=`<div class="box" style="margin-top:10px"><p>حذف «${esc(it.title)}» نهائيًا من كل أجهزتك؟</p><div class="actions"><button class="btn danger" type="button" data-act="doDel">نعم، احذف</button><button class="btn" type="button" data-act="noDel">تراجع</button></div></div>`;
+    if(a.dataset.act==='noDel')$('#confirm').innerHTML='';
+    if(a.dataset.act==='doDel'){del(it._id);closeSheet();toast('حُذف')}
+  });
+}
+function openProfile(){
+  const p=profile();
+  sheet(`<form id="frm"><h3>تعديل الملف الشخصي</h3>${PROFILE_FIELDS.map(([k,l])=>`<div class="field"><label for="p_${k}">${l}</label>${['study','ijazat','bio','interests'].includes(k)?`<textarea id="p_${k}" name="${k}">${esc(p[k]||'')}</textarea>`:`<input id="p_${k}" name="${k}" value="${esc(p[k]||'')}" ${k==='phone'||k==='email'?'dir="ltr"':''}>`}</div>`).join('')}
+  <div class="foot"><button class="btn primary" type="submit">حفظ</button><button class="btn" type="button" data-act="close">إلغاء</button></div></form>`);
+  $('#frm').addEventListener('submit',e=>{e.preventDefault();const o={_id:'profile',kind:'profile'};new FormData(e.target).forEach((v,k)=>o[k]=String(v).trim());put(o);closeSheet();toast('حُفظ الملف')});
+}
+let viewerURL=null;
+function sheet(html){$('#layer').innerHTML=`<div class="overlay" id="ov"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  $('#ov').addEventListener('click',e=>{if(e.target.id==='ov'||(e.target.dataset&&e.target.dataset.act==='close'))closeSheet()})}
+function closeSheet(){$('#layer').innerHTML='';if(viewerURL){URL.revokeObjectURL(viewerURL);viewerURL=null}}
+let tt;function toast(m){clearTimeout(tt);let t=$('.toast');if(!t){t=document.createElement('div');t.className='toast';t.setAttribute('role','status');document.body.appendChild(t)}t.textContent=m;tt=setTimeout(()=>t.remove(),2200)}
+
+/* ---------- الملفات ---------- */
+async function addFiles(list){
+  for(const f of list){
+    const id=uid();
+    try{await IDB.putBlob(id,f)}catch(e){toast('لا توجد مساحة كافية لـ«'+f.name+'»');continue}
+    await save({_id:id,kind:'file',title:f.name,cat:guessCat(f.type,f.name),type:f.type,size:f.size,up:false});
+  }
+  render();toast(list.length>1?'أُضيفت '+list.length+' ملفات':'أُضيف الملف');
+}
+async function getFile(it){
+  let b=await IDB.getBlob(it._id).catch(()=>null);
+  if(!b&&it.up){toast('جارٍ جلب الملف من حسابك…');b=await SYNC.downBlob(it).catch(()=>null)}
+  if(!b){toast(it.size>SYNC_MAX?'هذا الملف محفوظ في الجهاز الذي أضفته منه فقط':'الملف غير متوفر هنا بعد، ادخل إلى حسابك ثم أعد المحاولة');return null}
+  return b;
+}
+async function openFile(id){
+  const it=items.get(id);const b=await getFile(it);if(!b)return;
+  viewerURL=URL.createObjectURL(b);const t=it.type||b.type||'';let v;
+  if(/^image\//.test(t))v=`<img src="${viewerURL}" alt="">`;
+  else if(/pdf/.test(t))v=`<iframe src="${viewerURL}" title="${esc(it.title)}"></iframe>`;
+  else if(/^audio\//.test(t))v=`<audio src="${viewerURL}" controls></audio>`;
+  else if(/^video\//.test(t))v=`<video src="${viewerURL}" controls playsinline></video>`;
+  else v=`<p class="meta">لا يمكن عرض هذا النوع هنا. اضغط «فتح في تطبيق آخر».</p>`;
+  const u=viewerURL;
+  sheet(`<div class="viewer"><h3>${esc(it.title)}</h3>${v}<div class="foot"><button class="btn primary" data-act="shareOpen">فتح في تطبيق آخر</button><a class="btn" href="${u}" target="_blank" rel="noopener">فتح في صفحة كاملة</a><button class="btn" data-act="close">إغلاق</button></div></div>`);
+  viewerURL=u;
+  $('#ov [data-act="shareOpen"]').addEventListener('click',()=>shareFile(id));
+}
+async function shareFile(id){
+  const it=items.get(id);const b=await getFile(it);if(!b)return;
+  const f=new File([b],it.title,{type:it.type||b.type||'application/octet-stream'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(_){}}
+  else saveAs(f);
+}
+function saveAs(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+
+/* ---------- بطاقات الاتصال vCard ---------- */
+function parseVcf(txt){
+  const out=[];txt=txt.replace(/\r\n[ \t]/g,'').replace(/\n[ \t]/g,'');
+  for(const card of txt.split(/BEGIN:VCARD/i).slice(1)){
+    const c={};for(const line of card.split(/\r?\n/)){
+      const m=line.match(/^([^:;]+)[^:]*:(.*)$/);if(!m)continue;const k=m[1].toUpperCase().replace(/^ITEM\d+\./,'');let v=m[2].replace(/\\,/g,',').replace(/\\n/gi,' ');
+      if(/QUOTED-PRINTABLE/i.test(line)){try{v=decodeURIComponent(v.replace(/=([0-9A-F]{2})/gi,'%$1'))}catch(_){}}
+      if(k==='FN'&&!c.title)c.title=v;else if(k==='N'&&!c.title)c.title=v.split(';').filter(Boolean).reverse().join(' ');
+      else if(k==='TEL'&&!c.phone)c.phone=v;else if(k==='EMAIL'&&!c.email)c.email=v;else if(k==='ORG'&&!c.role)c.role=v.replace(/;/g,' ');
+      else if(k==='TITLE')c.role=(c.role?c.role+' · ':'')+v;else if(k==='NOTE')c.notes=v;
+    }
+    if(c.title||c.phone)out.push(c);
+  }
+  return out;
+}
+async function importVcf(files){
+  let n=0;for(const f of files){for(const c of parseVcf(await f.text())){await save(Object.assign({_id:uid(),kind:'contact',group:'أخرى',title:c.title||c.phone},c));n++}}
+  render();toast(n?'أُضيفت '+n+' جهة اتصال':'لم أجد جهات اتصال في الملف');
+}
+
+/* ---------- النسخ الاحتياطية ---------- */
+function b64(blob){return new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.readAsDataURL(blob)})}
+async function doExport(withFiles){
+  const recs=[...items.values()];const out={app:'khizana',ver:APP_VER,date:new Date().toISOString(),recs};
+  if(withFiles){toast('جارٍ تجهيز النسخة…');out.files={};for(const r of recs)if(r.kind==='file'&&!r.del){const b=await IDB.getBlob(r._id).catch(()=>null);if(b)out.files[r._id]=await b64(b)}}
+  const f=new File([JSON.stringify(out)],(withFiles?'خزانتي-مع-الملفات':'خزانتي')+'.json',{type:'application/json'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(_){}}else saveAs(f);
+}
+async function doImport(file){
+  try{const o=JSON.parse(await file.text());if(o.app!=='khizana'||!Array.isArray(o.recs))throw 0;let n=0;
+    for(const r of o.recs){if(!r||!r._id)continue;const l=items.get(r._id);
+      if(o.files&&o.files[r._id]){const bin=Uint8Array.from(atob(o.files[r._id]),c=>c.charCodeAt(0));await IDB.putBlob(r._id,new Blob([bin],{type:r.type||''}))}
+      if(!l||(r.at||0)>=(l.at||0)){r.up=r.kind==='file'?false:r.up;await save(r);n++}}
+    render();toast('استُعيد '+n+' عنصرًا');
+  }catch(_){toast('هذا الملف ليس نسخة من خزانتي')}
+}
+
+/* ---------- الأحداث ---------- */
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share]');if(!t||t.closest('#frm')||t.closest('.viewer'))return;
+  if(t.dataset.tab){tab=t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
+  else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
+  else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
+  else if(t.dataset.open)openFile(t.dataset.open);
+  else if(t.dataset.share)shareFile(t.dataset.share);
+  else if(t.dataset.copy){try{await navigator.clipboard.writeText(t.dataset.copy);toast('نُسخ')}catch(_){toast('تعذّر النسخ')}}
+  else{const a=t.dataset.act;
+    if(a==='seed'){for(const [title,type,status,notes] of MY_WORKS)await save({_id:uid(),kind:'work',title,type,status,notes});await save({_id:'_seeded',kind:'meta'});render();toast('أُضيفت أعمالك')}
+    else if(a==='editProfile')openProfile();
+    else if(a==='export')doExport(false);
+    else if(a==='exportFiles')doExport(true);
+    else if(a==='syncNow'){await SYNC.pushAll();toast('تمت المزامنة')}
+    else if(a==='signOut'){await SYNC.auth.signOut();toast('خرجت من الحساب، وبقيت البيانات في هذا الجهاز')}
+    else if(a==='reset'){const em=$('#em').value.trim();if(!em)return;try{await SYNC.start();await SYNC.auth.sendPasswordResetEmail(em);$('#loginMsg').textContent='أرسلنا رابط تغيير كلمة السر إلى بريدك، وقد يصل إلى «الرسائل غير المرغوب فيها».'}catch(err){$('#loginMsg').textContent='تعذّر الإرسال: '+(err.code||'')}}
+  }
+});
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='login')return;e.preventDefault();
+  const em=$('#em').value.trim(),pw=$('#pw').value,msg=$('#loginMsg');msg.textContent='جارٍ الدخول…';
+  try{await SYNC.start();if(!SYNC.auth)throw{code:'offline'};await SYNC.auth.signInWithEmailAndPassword(em,pw);toast('دخلت إلى حسابك')}
+  catch(err){msg.textContent=/wrong-password|invalid-credential|invalid-login/.test(err.code||'')?'البريد أو كلمة السر غير صحيحة. استعمل كلمة سر حساب المزامنة في تطبيق المدرسة.':err.code==='offline'?'لا يوجد اتصال بالإنترنت.':'تعذّر الدخول: '+(err.code||err.message||'')}
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='up'&&t.files.length){addFiles([...t.files]);t.value=''}
+  if(t.id==='vcf'&&t.files.length){importVcf([...t.files]);t.value=''}
+  if(t.id==='imp'&&t.files[0]){doImport(t.files[0]);t.value=''}
+});
+document.addEventListener('dragover',e=>{if(tab==='file')e.preventDefault()});
+document.addEventListener('drop',e=>{if(tab==='file'&&e.dataTransfer.files.length){e.preventDefault();addFiles([...e.dataTransfer.files])}});
+document.addEventListener('paste',e=>{const fs=[...(e.clipboardData&&e.clipboardData.files||[])];if(fs.length&&!e.target.closest('input,textarea')){tab='file';addFiles(fs)}});
+$('#fab').addEventListener('click',()=>openForm(tab));
+$('#q').addEventListener('input',e=>{q=e.target.value;render()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+window.addEventListener('online',()=>{if(!SYNC.started)SYNC.start()});
+
+/* الملفات التي يرسلها التطبيق الأصلي (قائمة المشاركة) إن وُجد لاحقًا */
+window.khizanaReceive=async function(name,type,base64){const bin=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));tab='file';await addFiles([new File([bin],name,{type})])};
+
+(async function boot(){
+  render();
+  try{const all=await IDB.all();items=new Map(all.map(r=>[r._id,r]))}catch(e){toast('تعذّر فتح بيانات الجهاز')}
+  render();status();
+  SYNC.start();
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
