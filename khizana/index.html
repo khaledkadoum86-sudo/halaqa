@@ -28,20 +28,28 @@
   --f-body:"Noto Naskh Arabic","Amiri",-apple-system,"Segoe UI",Tahoma,sans-serif;
   padding-top:env(safe-area-inset-top,0px);
 }
-@media (prefers-color-scheme:dark){:root{
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f1620; --paper:#17212d; --ink:#e7e9ec; --muted:#9aa5b3; --line:#2a3644;
   --gold:#d2ab5a; --gold-soft:#2c2617; --ink-btn:#d2ab5a; --on-btn:#16202c; --danger:#e07b70;
   --ok:#7cc59b; --ok-soft:#1b2d24; --warn:#e2b36a; --warn-soft:#2f2617; --plan:#9fb4d1; --plan-soft:#1e2938; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1620; --paper:#17212d; --ink:#e7e9ec; --muted:#9aa5b3; --line:#2a3644;
+  --gold:#d2ab5a; --gold-soft:#2c2617; --ink-btn:#d2ab5a; --on-btn:#16202c; --danger:#e07b70;
+  --ok:#7cc59b; --ok-soft:#1b2d24; --warn:#e2b36a; --warn-soft:#2f2617; --plan:#9fb4d1; --plan-soft:#1e2938; color-scheme:dark}
+:root[data-font="amiri"]{--f-body:"Amiri","Noto Naskh Arabic",serif}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.7;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:var(--fs,16px);line-height:1.7;-webkit-text-size-adjust:100%}
 img{max-width:100%}
 [hidden]{display:none!important}
 button,input,select,textarea{font:inherit;color:inherit}
 .wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 130px}
 header.top{display:flex;align-items:center;gap:14px;padding-block:6px 14px;border-bottom:1px solid var(--line)}
 .seal{width:62px;height:62px;flex:none}
-.who{min-width:0}
+.who{min-width:0;flex:1}
+.gear{flex:none;align-self:flex-start;width:42px;height:42px;border:1px solid var(--line);background:var(--paper);border-radius:12px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.gear svg{width:22px;height:22px}
+.gear[aria-pressed="true"]{color:var(--gold);border-color:var(--gold)}
 .who h1{font-family:var(--f-display);font-size:1.7rem;line-height:1.2;margin:0;font-weight:700}
 .who p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .status{font-size:.78rem;color:var(--muted);margin-top:2px}
@@ -79,7 +87,7 @@ h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-
 .prof .row:last-child{border-bottom:0}
 .prof dt{color:var(--muted);font-size:.9rem}
 .prof dd{margin:0;min-width:0;overflow-wrap:anywhere;white-space:pre-wrap}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:8px;margin:14px 0}
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer}
 .stat b{display:block;font-family:var(--f-display);font-size:1.6rem;line-height:1.1;color:var(--gold);font-variant-numeric:tabular-nums}
 .stat span{font-size:.8rem;color:var(--muted)}
@@ -103,6 +111,38 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 .viewer iframe{width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-bottom:10px;background:#fff}
 .viewer audio{width:100%;margin-bottom:10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:7px 16px;border-radius:999px;font-size:.88rem;z-index:30;max-width:90%;text-align:center}
+.sgroup{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:2px 16px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+.srow .lbl{min-width:0}
+.srow .lbl b{display:block;font-weight:600}
+.srow .lbl span{display:block;color:var(--muted);font-size:.84rem;line-height:1.5}
+.srow select{flex:none;max-width:48%;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:16px}
+.sw{flex:none;position:relative;width:50px;height:30px}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.sw i{position:absolute;inset:0;border-radius:999px;background:var(--line);transition:background .15s}
+.sw i::after{content:"";position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .25);transition:transform .15s}
+.sw input:checked+i{background:var(--gold)}
+.sw input:checked+i::after{transform:translateX(-20px)}
+.sw input:focus-visible+i{outline:2px solid var(--gold);outline-offset:2px}
+.sw input:disabled+i{opacity:.45}
+.bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+.lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(20px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.lock .seal{width:96px;height:96px}
+.lock h2{font-family:var(--f-display);font-size:1.6rem;margin:0}
+.lock .msg{color:var(--muted);font-size:.92rem;min-height:1.6em;text-align:center}
+.lock .msg.bad{color:var(--danger)}
+.dots{display:flex;gap:14px;direction:ltr}
+.dots i{width:14px;height:14px;border-radius:50%;border:1.6px solid var(--gold)}
+.dots i.on{background:var(--gold)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px;direction:ltr;margin-top:6px}
+.pad button{width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--paper);font-size:1.6rem;font-family:var(--f-body);cursor:pointer;color:var(--ink);display:grid;place-items:center}
+.pad button:active{background:var(--gold-soft)}
+.pad button.ghost{border:0;background:none;font-size:.95rem;color:var(--muted)}
+.pad svg{width:30px;height:30px}
+.lock .link{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.9rem}
+body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 @media (max-width:460px){.stats{gap:5px}.stat span{font-size:.72rem}.prof .row{grid-template-columns:1fr;gap:0}}
 @media (prefers-reduced-motion:no-preference){.overlay .sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(24px)}}}
 </style>
@@ -116,6 +156,7 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
       <p id="hJob">أستاذ التعليم القرءاني</p>
       <div class="status" id="status">محفوظة على هذا الجهاز</div>
     </div>
+    <button class="gear" id="gear" type="button" aria-label="الإعدادات" data-tab="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
   </header>
   <input class="search" id="q" type="search" placeholder="ابحث في كتبك وأعمالك وملفاتك…" aria-label="بحث">
   <main id="main"></main>
@@ -125,7 +166,7 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.3";
+const APP_VER="1.4";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -255,6 +296,19 @@ async function classify(f,a){
 }
 function guessCat(t,n){return 'أخرى'}
 
+/* ---------- الإعدادات (خاصة بكل جهاز، لا تُزامَن) ---------- */
+const SET_KEY='khizana.settings';
+const S=Object.assign({theme:'auto',fs:'16',font:'naskh',hidden:[],start:'profile',sort:'new',smart:true,autoBook:true,
+  pin:'',salt:'',bio:false,lockAfter:'60',backupRemind:true,lastBackup:0},(()=>{try{return JSON.parse(localStorage.getItem(SET_KEY)||'{}')}catch(_){return{}}})());
+function saveS(){try{localStorage.setItem(SET_KEY,JSON.stringify(S))}catch(_){toast('تعذّر حفظ الإعداد في هذا الجهاز')}}
+function applyLook(){
+  const r=document.documentElement;
+  if(S.theme==='auto')delete r.dataset.theme;else r.dataset.theme=S.theme;
+  if(S.font==='amiri')r.dataset.font='amiri';else delete r.dataset.font;
+  r.style.setProperty('--fs',(+S.fs||16)+'px');
+}
+applyLook();
+
 /* ---------- التخزين في الجهاز (IndexedDB) ---------- */
 const IDB={
   db:null,
@@ -268,7 +322,7 @@ const IDB={
 };
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
 
-let items=new Map(); let tab='profile'; let filter=''; let q='';
+let items=new Map(); let tab=(S.start==='profile'||(KINDS[S.start]&&!S.hidden.includes(S.start)))?S.start:'profile'; let filter=''; let q='';
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function live(){return [...items.values()].filter(x=>!x.del)}
 function ofKind(k){return live().filter(x=>x.kind===k)}
@@ -358,18 +412,19 @@ function status(){
 /* ---------- العرض ---------- */
 function profile(){return Object.assign({},DEFAULT_PROFILE,items.get('profile')&&!items.get('profile').del?items.get('profile'):{})}
 function pillClass(v){return /منجز|قرأته/.test(v)?'ok':/قيد|أقرؤه|مُعار/.test(v)?'warn':''}
-function renderTabs(){$('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${k===tab}" data-tab="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${l}</button>`).join('')}
+function renderTabs(){$('#gear').setAttribute('aria-pressed',tab==='settings');$('#tabs').innerHTML=TABS.filter(([k])=>!S.hidden.includes(k)).map(([k,l])=>`<button class="tab" role="tab" aria-selected="${k===tab}" data-tab="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${l}</button>`).join('')}
 let thumbURLs=[];
 function render(){
   renderTabs();
   const p=profile();$('#hName').textContent=p.name||'قدوم خالد';$('#hJob').textContent=p.job||'';
-  $('#fab').hidden=(tab==='profile'||tab==='file')&&!q;
+  $('#fab').hidden=(tab==='profile'||tab==='file'||tab==='settings')&&!q;
   if(q){$('#fab').hidden=true}
   thumbURLs.forEach(u=>URL.revokeObjectURL(u));thumbURLs=[];
   const main=$('#main');
   if(q){main.innerHTML=renderSearch();loadThumbs();return}
+  if(tab==='settings'){main.innerHTML=renderSettings();fillStorage();return}
   if(tab==='profile'){main.innerHTML=renderProfile();return}
-  const K=KINDS[tab];const list=ofKind(tab).sort((a,b)=>(b.at||0)-(a.at||0));
+  const K=KINDS[tab];const list=ofKind(tab).sort(SORTS[S.sort]||SORTS.new);
   const opts=K.fields.find(f=>f[0]===K.filter)[4];
   const used=opts.filter(o=>list.some(x=>x[K.filter]===o));
   if(filter&&!used.includes(filter))filter='';
@@ -383,6 +438,7 @@ function render(){
   h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
   main.innerHTML=h;loadThumbs();
 }
+const SORTS={new:(a,b)=>(b.at||0)-(a.at||0),old:(a,b)=>(a.at||0)-(b.at||0),az:(a,b)=>String(a.title||'').localeCompare(String(b.title||''),'ar')};
 function card(it){
   const K=KINDS[it.kind];const sub=K.sub(it);const pv=it[K.pill];
   let extra='';
@@ -408,20 +464,138 @@ async function loadThumbs(){
 }
 function renderProfile(){
   const p=profile();
-  const counts=['book','work','file','contact','note'].map(k=>[k,ofKind(k).length]);
+  const counts=['book','work','file','contact','note'].filter(k=>!S.hidden.includes(k)).map(k=>[k,ofKind(k).length]);
   let h=`<div class="stats">${counts.map(([k,n])=>`<button class="stat" data-tab="${k}"><b>${n}</b><span>${KINDS[k].tab}</span></button>`).join('')}</div>`;
   h+=`<h2 class="sec">ملفي الشخصي</h2><div class="prof"><dl>${PROFILE_FIELDS.filter(([k])=>p[k]).map(([k,l])=>`<div class="row"><dt>${l}</dt><dd>${esc(p[k])}</dd></div>`).join('')}</dl></div>
   <div class="actions" style="margin-top:10px"><button class="btn primary" data-act="editProfile">تعديل الملف</button></div>`;
-  h+=`<h2 class="sec">المزامنة بين أجهزتي</h2><div class="panel">`;
+  if(S.backupRemind&&live().length>3&&Date.now()-(S.lastBackup||0)>7*864e5)
+    h+=`<div class="box" style="margin-top:16px"><p>${S.lastBackup?'مضى أكثر من أسبوع على آخر نسخة احتياطية.':'لم تحفظ نسخة احتياطية من خزانتك بعد.'}</p><div class="actions"><button class="btn primary" data-act="exportFiles">احفظ نسخة الآن</button></div></div>`;
+  h+=`<div class="actions" style="margin-top:16px"><button class="btn" data-tab="settings">الإعدادات والمزامنة والنسخ الاحتياطي</button></div>
+  <p class="meta" style="text-align:center;margin-top:18px">خزانتي، الإصدار ${APP_VER}</p>`;
+  return h;
+}
+function sw(key,on,dis){return `<label class="sw"><input type="checkbox" role="switch" data-set="${key}" ${on?'checked':''} ${dis?'disabled':''}><i></i></label>`}
+function sel(key,val,opts){return `<select data-set="${key}" aria-label="${key}">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===v?'selected':''}>${l}</option>`).join('')}</select>`}
+function row(title,hint,ctl){return `<div class="srow"><div class="lbl"><b>${title}</b>${hint?`<span>${hint}</span>`:''}</div>${ctl}</div>`}
+let BIO=null; /* faceID | touchID | none | old */
+function renderSettings(){
+  const bioName=BIO==='touchID'?'بصمة الإصبع':'بصمة الوجه (Face ID)';
+  let h=`<h2 class="sec">الإعدادات</h2>`;
+  /* القفل */
+  h+=`<h2 class="sec" style="font-size:1.25rem">القفل والأمان</h2><div class="sgroup">`;
+  h+=row('قفل خزانتي برمز سري',S.pin?'الخزانة مقفلة، ولا تُفتح إلا بالرمز.':'رمز من 4 إلى 8 أرقام يُطلب عند فتح التطبيق.',sw('pinOn',!!S.pin));
+  if(S.pin){
+    const bioHint=!NATIVE?'متاحة في التطبيق المثبّت من Xcode فقط.':BIO==='old'?'تحتاج إعادة التثبيت من Xcode مرة واحدة لتظهر.':BIO==='none'?'غير مفعّلة في إعدادات الآيفون.':'تُفتح الخزانة بنظرة، والرمز احتياط.';
+    h+=row('الفتح ب'+bioName,bioHint,sw('bio',S.bio&&BIO&&!['none','old'].includes(BIO),!NATIVE||!BIO||['none','old'].includes(BIO)));
+    h+=row('القفل التلقائي','متى تُقفل إذا خرجت من التطبيق ثم عدت إليه.',sel('lockAfter',S.lockAfter,[['0','فورًا'],['60','بعد دقيقة'],['300','بعد 5 دقائق'],['900','بعد 15 دقيقة'],['-1','عند فتح التطبيق فقط']]));
+    h+=`<div class="srow"><div class="lbl"><b>الرمز السري</b></div><div class="actions" style="margin:0"><button class="btn" data-act="changePin">تغيير الرمز</button><button class="btn" data-act="lockNow">اقفل الآن</button></div></div>`;
+  }
+  h+=`</div>`;
+  /* المظهر */
+  h+=`<h2 class="sec" style="font-size:1.25rem">المظهر</h2><div class="sgroup">`;
+  h+=row('السِّمة','',sel('theme',S.theme,[['auto','حسب الجهاز'],['light','فاتح'],['dark','داكن']]));
+  h+=row('حجم الخط','',sel('fs',S.fs,[['14','صغير'],['16','عادي'],['18','كبير'],['20','أكبر']]));
+  h+=row('خط النصوص','العناوين بخط Amiri دائمًا.',sel('font',S.font,[['naskh','النسخ (Noto Naskh)'],['amiri','الأميري (Amiri)']]));
+  h+=`</div>`;
+  /* الأقسام */
+  h+=`<h2 class="sec" style="font-size:1.25rem">الأقسام</h2><div class="sgroup">`;
+  for(const k of ['book','work','file','contact','note'])h+=row('إظهار «'+KINDS[k].tab+'»','',sw('show_'+k,!S.hidden.includes(k)));
+  h+=row('القسم الذي يُفتح أولًا','',sel('start',S.start,TABS.filter(([k])=>!S.hidden.includes(k)).map(([k,l])=>[k,l])));
+  h+=row('ترتيب القوائم','',sel('sort',S.sort,[['new','الأحدث أولًا'],['old','الأقدم أولًا'],['az','حسب العنوان (أ-ي)']]));
+  h+=`</div>`;
+  /* التصنيف */
+  h+=`<h2 class="sec" style="font-size:1.25rem">الملفات الواردة</h2><div class="sgroup">`;
+  h+=row('التصنيف الذكي','يقرأ محتوى الملف داخل الجهاز ليضعه في مكانه. إن أوقفته صُنّف الملف من اسمه ونوعه فقط.',sw('smart',S.smart));
+  h+=row('إضافة الكتب إلى «كتبي» تلقائيًا','كل كتاب PDF يصل يُسجَّل في «كتبي» بعنوانه ومؤلفه وموضوعه.',sw('autoBook',S.autoBook));
+  h+=`</div>`;
+  /* المزامنة */
+  h+=`<h2 class="sec" style="font-size:1.25rem">المزامنة بين أجهزتي</h2><div class="panel">`;
   if(SYNC.user)h+=`<p>متصلة بالحساب <span class="ltr">${esc(SYNC.user.email||'')}</span>. ما تضيفه هنا يظهر في الآيفون والآيباد والماك.</p><div class="actions"><button class="btn" data-act="syncNow">مزامنة الآن</button><button class="btn" data-act="signOut">الخروج من الحساب</button></div>`;
   else h+=`<p>ادخل بحساب تطبيق المدرسة نفسه، فتتزامن خزانتك بين أجهزتك وتُحفظ في حسابك.</p>
    <form id="login"><div class="field"><label for="em">البريد</label><input id="em" type="email" dir="ltr" autocomplete="username" value="khaledkadoum86@gmail.com"></div>
    <div class="field"><label for="pw">كلمة السر</label><input id="pw" type="password" dir="ltr" autocomplete="current-password"></div>
    <div class="actions"><button class="btn primary" type="submit">دخول</button><button class="btn" type="button" data-act="reset">نسيت كلمة السر</button></div><p class="meta" id="loginMsg"></p></form>`;
-  h+=`</div><h2 class="sec">نسخة احتياطية</h2><div class="panel"><p class="meta">احفظ النسخة في iCloud (الملفات ← iCloud Drive)، واختر «استبدال» لتبقى آخر نسخة فقط.</p>
+  h+=`</div>`;
+  /* النسخ */
+  h+=`<h2 class="sec" style="font-size:1.25rem">النسخ الاحتياطي</h2><div class="panel"><p class="meta">احفظ النسخة في iCloud (الملفات ← iCloud Drive)، واختر «استبدال» لتبقى آخر نسخة فقط. آخر نسخة: ${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ar-DZ',{day:'numeric',month:'long',year:'numeric'}):'لا توجد بعد'}.</p>
   <div class="actions"><button class="btn" data-act="export">نسخة البيانات</button><button class="btn" data-act="exportFiles">نسخة مع الملفات</button><label class="btn" for="imp">استعادة من نسخة</label><input id="imp" type="file" accept=".json,application/json" hidden></div></div>
-  <p class="meta" style="text-align:center;margin-top:18px">خزانتي، الإصدار ${APP_VER}</p>`;
+  <div class="sgroup" style="margin-top:10px">${row('تذكير أسبوعي بالنسخ الاحتياطي','يظهر في «ملفي» إذا مضى أسبوع دون نسخة.',sw('backupRemind',S.backupRemind))}</div>`;
+  /* التخزين */
+  const fs=ofKind('file'),tot=fs.reduce((n,f)=>n+(f.size||0),0),loc=fs.filter(f=>f.size>SYNC_MAX).length;
+  h+=`<h2 class="sec" style="font-size:1.25rem">التخزين</h2><div class="panel"><p>${fs.length} ملفًا، مجموعها ${fmtSize(tot)||'0 ك.ب'}${loc?`، منها ${loc} في هذا الجهاز فقط (أكبر من 15 م.ب)`:''}.</p><div id="stor" class="meta"></div></div>`;
+  /* حول */
+  h+=`<h2 class="sec" style="font-size:1.25rem">حول التطبيق</h2><div class="panel"><p>خزانتي، الإصدار ${APP_VER}${NATIVE?' · التطبيق المثبّت':' · نسخة المتصفح'}.</p>${NATIVE?'<p class="meta">التثبيت المجاني يحتاج إعادة ▶ من Xcode كل 7 أيام، ويصلك تذكير قبلها بيوم. بياناتك تبقى كما هي.</p>':''}</div>`;
   return h;
+}
+async function fillStorage(){
+  try{const e=await navigator.storage.estimate();const el=$('#stor');if(!el||!e.quota)return;const pc=Math.min(100,e.usage/e.quota*100);
+    el.innerHTML=`<div class="bar" style="margin:6px 0 4px"><i style="width:${Math.max(1,pc).toFixed(1)}%"></i></div>المستعمل في الجهاز ${fmtSize(e.usage)} من المتاح ${fmtSize(e.quota)}`}catch(_){}
+}
+
+/* ---------- القفل ---------- */
+async function hashPin(pin,salt){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pin));return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+let locked=false,authing=false,hiddenAt=0;
+function sealSVG(){return `<svg class="seal" viewBox="-100 -100 200 200" aria-hidden="true">${$('#seal').innerHTML}</svg>`}
+function lock(){
+  if(!S.pin||locked)return;locked=true;closeSheet();document.body.classList.add('locked');
+  const el=document.createElement('div');el.className='lock';el.id='lock';el.setAttribute('role','dialog');el.setAttribute('aria-label','خزانتي مقفلة');
+  const useBio=S.bio&&NATIVE&&BIO&&!['none','old'].includes(BIO);
+  el.innerHTML=`${sealSVG()}<h2>خزانتي</h2><div class="msg" id="lmsg">أدخل الرمز السري</div><div class="dots" id="ldots"></div>
+   <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" data-k="${n}">${n}</button>`).join('')}
+   ${useBio?`<button type="button" class="ghost" data-k="bio" aria-label="${BIO==='touchID'?'بصمة الإصبع':'بصمة الوجه'}"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M9 9v1.5M15 9v1.5M12 9v4h-1M9 16c1.7 1.3 4.3 1.3 6 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`:'<span></span>'}
+   <button type="button" data-k="0">0</button><button type="button" class="ghost" data-k="del" aria-label="حذف">⌫</button></div>
+   <button type="button" class="link" data-k="forgot">نسيت الرمز؟</button>`;
+  document.body.appendChild(el);
+  let entry='';const dots=()=>{$('#ldots').innerHTML=Array.from({length:Math.max(4,entry.length)},(_,i)=>`<i class="${i<entry.length?'on':''}"></i>`).join('')};dots();
+  el.addEventListener('click',async e=>{const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;
+    if(k==='del'){entry=entry.slice(0,-1);dots();return}
+    if(k==='bio'){bioUnlock();return}
+    if(k==='forgot'){forgotPin();return}
+    if(entry.length>=8)return;entry+=k;dots();$('#lmsg').className='msg';
+    if(await hashPin(entry,S.salt)===S.pin){unlock();return}
+    if(entry.length===8||(entry.length===(S.pinLen||0))){setTimeout(()=>{entry='';dots();const m=$('#lmsg');m.textContent='رمز غير صحيح، أعد المحاولة';m.className='msg bad'},150)}
+  });
+  if(useBio)setTimeout(bioUnlock,350);
+}
+async function bioUnlock(){if(authing)return;authing=true;try{if(await nat({action:'auth',reason:'لفتح خزانتي'}))unlock()}catch(_){}setTimeout(()=>authing=false,800)}
+function unlock(){locked=false;const l=$('#lock');if(l)l.remove();document.body.classList.remove('locked');hiddenAt=0}
+function forgotPin(){
+  const m=$('#lmsg');
+  if(!SYNC.user){m.className='msg bad';m.textContent='لا يُستعاد الرمز إلا بالدخول إلى حساب المزامنة. ادخل إلى حسابك من الإعدادات في جهاز آخر لا قفل فيه، أو تذكّر الرمز.';return}
+  const l=$('#lock');l.querySelector('.pad').hidden=true;l.querySelector('.dots').hidden=true;l.querySelector('[data-k="forgot"]').hidden=true;
+  m.className='msg';m.textContent='أدخل كلمة سر حساب المزامنة ('+(SYNC.user.email||'')+') لإزالة الرمز';
+  const f=document.createElement('form');f.style.cssText='display:grid;gap:8px;width:min(320px,100%)';
+  f.innerHTML='<input type="password" dir="ltr" autocomplete="current-password" class="search" style="margin:0" aria-label="كلمة السر" required><div class="actions" style="justify-content:center"><button class="btn primary">تأكيد</button><button class="btn" type="button" data-back>رجوع</button></div>';
+  l.appendChild(f);f.querySelector('input').focus();
+  f.querySelector('[data-back]').onclick=()=>{f.remove();l.remove();locked=false;lock()};
+  f.onsubmit=async e=>{e.preventDefault();try{await SYNC.user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(SYNC.user.email,f.querySelector('input').value));
+    S.pin='';S.salt='';S.bio=false;saveS();unlock();render();toast('أُزيل الرمز السري، فاختر رمزًا جديدًا من الإعدادات')}
+    catch(err){m.className='msg bad';m.textContent='كلمة السر غير صحيحة'}};
+}
+function pinSheet(mode){ /* new | change | off */
+  const need=mode!=='new';
+  sheet(`<form id="frm"><h3>${mode==='new'?'رمز سري جديد':mode==='change'?'تغيير الرمز السري':'إيقاف القفل'}</h3>
+   ${need?`<div class="field"><label for="p0">الرمز الحالي</label><input id="p0" type="password" inputmode="numeric" pattern="[0-9]{4,8}" autocomplete="off" dir="ltr" required></div>`:''}
+   ${mode!=='off'?`<div class="field"><label for="p1">الرمز الجديد (4 إلى 8 أرقام)</label><input id="p1" type="password" inputmode="numeric" pattern="[0-9]{4,8}" autocomplete="off" dir="ltr" required></div>
+   <div class="field"><label for="p2">أعد كتابة الرمز</label><input id="p2" type="password" inputmode="numeric" pattern="[0-9]{4,8}" autocomplete="off" dir="ltr" required></div>
+   <p class="meta">احفظ الرمز جيدًا. إن نسيته فلا يُزال إلا بكلمة سر حساب المزامنة.</p>`:''}
+   <p class="meta" id="pmsg" style="color:var(--danger)"></p>
+   <div class="foot"><button class="btn primary" type="submit">${mode==='off'?'أوقف القفل':'حفظ'}</button><button class="btn" type="button" data-act="close">إلغاء</button></div></form>`);
+  $('#frm').addEventListener('submit',async e=>{e.preventDefault();const msg=$('#pmsg');
+    if(need&&await hashPin($('#p0').value,S.salt)!==S.pin){msg.textContent='الرمز الحالي غير صحيح';return}
+    if(mode==='off'){S.pin='';S.salt='';S.bio=false;saveS();closeSheet();render();toast('أُوقف القفل');return}
+    const a=$('#p1').value,b=$('#p2').value;if(!/^\d{4,8}$/.test(a)){msg.textContent='الرمز من 4 إلى 8 أرقام';return}if(a!==b){msg.textContent='الرمزان غير متطابقين';return}
+    S.salt=uid()+uid();S.pin=await hashPin(a,S.salt);S.pinLen=a.length;if(mode==='new'&&BIO&&!['none','old'].includes(BIO))S.bio=true;saveS();closeSheet();render();toast(mode==='new'?'فُعّل القفل':'غُيّر الرمز');
+  });
+  if(!need)setTimeout(()=>$('#p1')&&$('#p1').focus(),250);
+}
+function setChange(t){
+  const k=t.dataset.set,v=t.type==='checkbox'?t.checked:t.value;
+  if(k==='pinOn'){t.checked=!!S.pin;pinSheet(v?'new':'off');return}
+  if(k==='bio'&&v&&NATIVE){nat({action:'auth',reason:'لتفعيل الفتح بالبصمة'}).then(ok=>{S.bio=!!ok;saveS();render();if(ok)toast('فُعّل الفتح بالبصمة')}).catch(()=>{});t.checked=false;return}
+  if(k.startsWith('show_')){const kind=k.slice(5);S.hidden=S.hidden.filter(x=>x!==kind);if(!v)S.hidden.push(kind);if(!v&&S.start===kind)S.start='profile'}
+  else S[k]=v;
+  saveS();applyLook();render();
 }
 function renderSearch(){
   const t=q.trim();const hits=live().filter(x=>KINDS[x.kind]&&Object.values(x).some(v=>typeof v==='string'&&v.includes(t)));
@@ -473,8 +647,9 @@ async function addFiles(list,analyses){
   if(list.length>1||NATIVE)toast('جارٍ قراءة '+(list.length>1?list.length+' ملفات':'الملف')+' وتصنيفه…');
   for(let i=0;i<list.length;i++){
     const f=list[i];
-    const a=(analyses&&analyses[i])||await analyzeNative(f);
+    const a=S.smart?((analyses&&analyses[i])||await analyzeNative(f)):null;
     const c=await classify(f,a);
+    if(c.book&&!S.autoBook)c.book=false;
     if(c.to==='contact'){await importVcf([f],true);bump('جهات اتصال','contact');continue}
     if(c.to==='backup'){await doImport(f);bump('نسخة احتياطية استُعيدت','profile');continue}
     if(c.to==='note'){await save({_id:uid(),kind:'note',tag:'فائدة علمية',title:baseName(f.name),body:await f.text()});bump('مذكرات','note');continue}
@@ -545,6 +720,7 @@ function b64(blob){return new Promise(ok=>{const r=new FileReader();r.onload=()=
 async function doExport(withFiles){
   const recs=[...items.values()];const out={app:'khizana',ver:APP_VER,date:new Date().toISOString(),recs};
   if(withFiles){toast('جارٍ تجهيز النسخة…');out.files={};for(const r of recs)if(r.kind==='file'&&!r.del){const b=await IDB.getBlob(r._id).catch(()=>null);if(b)out.files[r._id]=await b64(b)}}
+  S.lastBackup=Date.now();saveS();
   const f=new File([JSON.stringify(out)],(withFiles?'خزانتي-مع-الملفات':'خزانتي')+'.json',{type:'application/json'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(_){}}else saveAs(f);
 }
@@ -559,8 +735,8 @@ async function doImport(file){
 
 /* ---------- الأحداث ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share]');if(!t||t.closest('#frm')||t.closest('.viewer'))return;
-  if(t.dataset.tab){tab=t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
+  if(t.dataset.tab){tab=(t.dataset.tab==='settings'&&tab==='settings')?'profile':t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
   else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
   else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
   else if(t.dataset.open)openFile(t.dataset.open);
@@ -569,6 +745,8 @@ document.addEventListener('click',async e=>{
   else{const a=t.dataset.act;
     if(a==='seed'){for(const [title,type,status,notes] of MY_WORKS)await save({_id:uid(),kind:'work',title,type,status,notes});await save({_id:'_seeded',kind:'meta'});render();toast('أُضيفت أعمالك')}
     else if(a==='editProfile')openProfile();
+    else if(a==='changePin')pinSheet('change');
+    else if(a==='lockNow')lock();
     else if(a==='export')doExport(false);
     else if(a==='exportFiles')doExport(true);
     else if(a==='syncNow'){await SYNC.pushAll();toast('تمت المزامنة')}
@@ -584,6 +762,7 @@ document.addEventListener('submit',async e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.dataset&&t.dataset.set){setChange(t);return}
   if(t.id==='up'&&t.files.length){addFiles([...t.files]);t.value=''}
   if(t.id==='vcf'&&t.files.length){importVcf([...t.files]);t.value=''}
   if(t.id==='imp'&&t.files[0]){doImport(t.files[0]);t.value=''}
@@ -595,6 +774,12 @@ $('#fab').addEventListener('click',()=>openForm(tab));
 $('#q').addEventListener('input',e=>{q=e.target.value;render()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 window.addEventListener('online',()=>{if(!SYNC.started)SYNC.start()});
+document.addEventListener('visibilitychange',()=>{
+  if(!S.pin||authing||locked)return;
+  if(document.hidden){hiddenAt=Date.now();return}
+  const after=+S.lockAfter;if(after<0||!hiddenAt)return;
+  if(Date.now()-hiddenAt>=after*1000)lock();hiddenAt=0;
+});
 
 /* ---------- التطبيق الأصلي: الملفات الواردة من قائمة المشاركة، والعرض بـ Quick Look ---------- */
 const NATIVE=!!(window.KHIZANA_NATIVE&&window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.khizanaFile);
@@ -618,6 +803,9 @@ async function nativeShow(it,b){
 }
 
 (async function boot(){
+  if(S.pin){document.body.classList.add('locked')}
+  if(NATIVE){try{const r=await nat({action:'biometry'});BIO=r||'old'}catch(_){BIO='old'}}
+  if(S.pin){document.body.classList.remove('locked');lock()}
   render();
   try{const all=await IDB.all();items=new Map(all.map(r=>[r._id,r]))}catch(e){toast('تعذّر فتح بيانات الجهاز')}
   render();status();

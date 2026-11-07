@@ -10,6 +10,8 @@
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>لاختيار الصور وحفظها في خزانتك.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>لقفل خزانتي وفتحها ببصمة الوجه.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>لتصوير الوثائق وحفظها في خزانتك.</string>
 	<key>CFBundleDocumentTypes</key>

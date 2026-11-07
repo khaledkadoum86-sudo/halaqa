@@ -3,6 +3,7 @@ import WebKit
 import QuickLook
 import PDFKit
 import Vision
+import LocalAuthentication
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/khizana/")!
 let appHost = "khaledkadoum86-sudo.github.io"
@@ -93,6 +94,20 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             guard (try? FileManager.default.moveItem(at: Viewer.partURL(for: id), to: file)) != nil else { replyHandler(false, nil); return }
             show(file, title: name)
             replyHandler(true, nil)
+        case "biometry":
+            // نوع القفل المتاح في الجهاز: faceID أو touchID أو none
+            let ctx = LAContext()
+            var err: NSError?
+            guard ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &err) else { replyHandler("none", nil); return }
+            replyHandler(ctx.biometryType == .faceID ? "faceID" : ctx.biometryType == .touchID ? "touchID" : "none", nil)
+        case "auth":
+            // فتح القفل ببصمة الوجه (أو رمز الجهاز إن تعذّرت البصمة)
+            let ctx = LAContext()
+            ctx.localizedCancelTitle = "إلغاء"
+            ctx.localizedFallbackTitle = "رمز الجهاز"
+            ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: body["reason"] as? String ?? "لفتح خزانتي") { ok, _ in
+                DispatchQueue.main.async { replyHandler(ok, nil) }
+            }
         default:
             replyHandler(nil, nil)
         }
