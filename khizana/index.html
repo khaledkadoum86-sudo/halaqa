@@ -355,6 +355,31 @@ async function rescueBooks(){
   if(n){render();toast('نُقل '+n+(n===1?' كتاب':' كتب')+' من «ملفاتي» إلى «كتبي»')}
 }
 
+/* الترتيب الذكي لـ«أعمالي»: كل ملف في «ملفاتي» يُفحص مرة واحدة،
+   فإن طابق عملًا رُبط به (وإن كان قد ذهب إلى «كتبي» خطأً أُخرج منها)،
+   وإن كان بحثًا أو مذكرة أو نسخة من عمل صار عملًا جديدًا في «أعمالي». */
+let sorting=false;
+async function sortWorks(quiet){
+  if(sorting)return 0;sorting=true;let linked=0,made=0;
+  try{
+    for(const f of live()){
+      if(f.kind!=='file'||f.sorted)continue;
+      const nm=f.fname||f.title,w=workOf(nm)||(f.title&&f.title!==nm?workOf(f.title):null);
+      const inWork=live().some(x=>x.kind==='work'&&(x.files||[]).includes(f._id));
+      if(!inWork){
+        if(w){await save({...items.get(w._id),files:[...new Set([...(items.get(w._id).files||[]),f._id])]});linked++;
+          const b=bookOf(f._id);if(b)await save({_id:b._id,kind:'book',del:true})}
+        else if(!bookOf(f._id)&&(f.cat==='أبحاث'||WORK_RE.test(baseName(nm)))){
+          const au=((f.notes||'').match(/المؤلف: ([^\n]+)/)||[])[1]||'';
+          await save({_id:uid(),kind:'work',title:baseName(f.title&&f.title!==f.fname?f.title:nm),type:/مذكر/.test(nm)?'مذكرة':'بحث',status:'منجز',notes:au?'المؤلف: '+au:'',files:[f._id]});made++}
+      }
+      await save({...items.get(f._id),sorted:true});
+    }
+  }finally{sorting=false}
+  if((linked||made)&&!quiet){render();toast('رُتّبت أعمالك: '+[linked?linked+' ملف رُبط بعمله':'',made?made+' عمل جديد في «أعمالي»':''].filter(Boolean).join('، '))}
+  return linked+made;
+}
+
 /* ---------- الإعدادات (خاصة بكل جهاز، لا تُزامَن) ---------- */
 const SET_KEY='khizana.settings';
 const S=Object.assign({theme:'auto',fs:'16',font:'naskh',hidden:[],start:'profile',sort:'new',smart:true,autoBook:true,
@@ -433,7 +458,7 @@ const SYNC={
         const l=items.get(r._id);
         if(!l||(r.at||0)>(l.at||0)){save(r,true);if(r.del&&r.kind==='file')IDB.delBlob(r._id).catch(()=>{})}
       });
-      if(first){first=false;this.pushAll();migrateStatus()}
+      if(first){first=false;this.pushAll();migrateStatus();setTimeout(()=>sortWorks().catch(()=>{}),1500)}
       this.err='';status();render();
     },e=>{this.err='تعذّر الاتصال بالحساب: '+(e.code||e.message||'');status()});
   },
@@ -538,7 +563,7 @@ function card(it){
     extra=`<div class="actions">${ph?`<span class="ltr">${esc(ph)}</span><a class="btn" href="tel:${esc(ph.replace(/\s/g,''))}">اتصال</a><button class="btn" data-copy="${esc(ph)}">نسخ</button>`:''}${wa?`<a class="btn" href="https://wa.me/${wa}">واتساب</a>`:''}${it.email?`<a class="btn" href="mailto:${esc(it.email)}">بريد</a>`:''}</div>`;
   }
   if(it.kind==='file'){
-    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button>${!live().some(w=>w.kind==='work'&&(w.files||[]).includes(it._id))?`<button class="btn" data-towork="${it._id}">إضافة إلى «أعمالي»</button>`:''}${canBeBook(it)?`<button class="btn" data-tobook="${it._id}">إضافة إلى «كتبي»</button>`:''}</div>`;
+    extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button>${canBeBook(it)?`<button class="btn" data-tobook="${it._id}">إضافة إلى «كتبي»</button>`:''}</div>`;
   }
   if(it.kind==='book'&&it.fileId&&items.get(it.fileId)&&!items.get(it.fileId).del)extra+=`<div class="actions"><button class="btn primary" data-open="${it.fileId}">فتح الكتاب</button></div>`;
   if(it.kind==='work'){const fs=filesOfWork(it);if(fs.length)extra+=`<div class="actions">${fs.map(f=>`<button class="btn${fs.length===1?' primary':''}" data-open="${f._id}">📄 ${esc(fs.length===1?'فتح الملف':(f.fname||f.title))}</button>`).join('')}</div>`}
@@ -753,7 +778,7 @@ async function addFiles(list,analyses){
     try{await IDB.putBlob(id,f)}catch(e){toast('لا توجد مساحة كافية لـ«'+f.name+'»');continue}
     const title=c.title&&c.title!==baseName(f.name)?c.title:f.name;
     const notes=[c.author?'المؤلف: '+c.author:'',c.pages?c.pages+' صفحة':'',title!==f.name?'اسم الملف: '+f.name:''].filter(Boolean).join('\n');
-    await save({_id:id,kind:'file',title,fname:f.name,cat:c.cat,type:f.type,size:f.size,pages:c.pages||0,notes,up:false});
+    await save({_id:id,kind:'file',title,fname:f.name,cat:c.cat,type:f.type,size:f.size,pages:c.pages||0,notes,up:false,sorted:true});
     if(w){await save({...w,files:[...new Set([...(w.files||[]),id])]});bump('ملفات في «أعمالي»','work')}
     else if(c.cat==='أبحاث'||c.work||WORK_RE.test(baseName(f.name))){await save({_id:uid(),kind:'work',title:c.title||baseName(f.name),type:'بحث',status:'منجز',notes:c.author?'المؤلف: '+c.author:'',files:[id]});bump('أعمال جديدة في «أعمالي»','work')}
     else if(c.book){await save({_id:uid(),kind:'book',title:c.title||baseName(f.name),author:c.author||'',cat:c.subject||'أخرى',status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(c.pages?' · '+c.pages+' صفحة':''),fileId:id});bump('كتب في «كتبي»','book')}
@@ -833,13 +858,12 @@ async function doImport(file){
 
 /* ---------- الأحداث ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook],[data-towork]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
   if(t.dataset.tab){tab=(t.dataset.tab==='settings'&&tab==='settings')?'profile':t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
   else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
   else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
   else if(t.dataset.open)openFile(t.dataset.open);
   else if(t.dataset.share)shareFile(t.dataset.share);
-  else if(t.dataset.towork){const it=items.get(t.dataset.towork);if(it){const w=workOf(it.fname||it.title);if(w)save({...w,files:[...new Set([...(w.files||[]),it._id])]});else save({_id:uid(),kind:'work',title:baseName(it.title||it.fname),type:'بحث',status:'منجز',notes:'',files:[it._id]});render();toast('أُضيف إلى «أعمالي»')}}
   else if(t.dataset.tobook){const it=items.get(t.dataset.tobook);if(it&&canBeBook(it))fileToBook(it)}
   else if(t.dataset.copy){try{await navigator.clipboard.writeText(t.dataset.copy);toast('نُسخ')}catch(_){toast('تعذّر النسخ')}}
   else{const a=t.dataset.act;
@@ -1044,7 +1068,7 @@ async function nativeShow(it,b){
       b.onclick=()=>location.reload();document.body.appendChild(b)});
   }
   if(NATIVE)khizanaPoll();
-  setTimeout(()=>rescueBooks().catch(()=>{}),3000);
+  setTimeout(()=>rescueBooks().catch(()=>{}).then(()=>sortWorks()).catch(()=>{}),3000);
 })();
 </script>
 </body>
