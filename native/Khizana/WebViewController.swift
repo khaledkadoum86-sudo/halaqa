@@ -294,7 +294,7 @@ final class Inbox {
     }
 
     func receive(_ url: URL) {
-        if url.scheme == "khizana" { if takeContact(url) || takeNote(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }; return }
+        if url.scheme == "khizana" { if takeBox() > 0 || takeContact(url) || takeNote(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }; return }
         if take(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }
     }
 
@@ -307,6 +307,23 @@ final class Inbox {
         try? url.lastPathComponent.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
         if url.path.contains("/Inbox/") { try? fm.removeItem(at: url) }
         return true
+    }
+
+    /// الملفات التي وضعها امتداد المشاركة في الصندوق المشترك (لوحة نسخ مسمّاة لحساب المطوّر نفسه).
+    @discardableResult func takeBox() -> Int {
+        guard let box = UIPasteboard(name: UIPasteboard.Name("com.khaledkadoum.khizana.box"), create: false), box.numberOfItems > 0 else { return 0 }
+        var n = 0
+        for item in box.items {
+            guard let data = item["com.khaledkadoum.khizana.file"] as? Data else { continue }
+            let rawName = (item["com.khaledkadoum.khizana.name"] as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? "ملف"
+            let name = String(rawName.filter { !"/\\:".contains($0) }.prefix(120))
+            let id = "b" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36) + String(n)
+            guard fm.createFile(atPath: folder.appendingPathComponent(id + ".bin").path, contents: data) else { continue }
+            try? name.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
+            n += 1
+        }
+        box.items = []
+        return n
     }
 
     /// جهة اتصال وصلت من امتداد المشاركة: khizana://contact?d=<vCard بترميز base64url>
@@ -337,6 +354,7 @@ final class Inbox {
     }
 
     func pending() -> [[String: Any]] {
+        takeBox()
         let systemInbox = fm.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Inbox", isDirectory: true)
         for f in (try? fm.contentsOfDirectory(at: systemInbox, includingPropertiesForKeys: nil)) ?? [] { take(f) }
         let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []

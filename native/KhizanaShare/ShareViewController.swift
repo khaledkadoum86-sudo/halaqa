@@ -1,97 +1,132 @@
 import UIKit
 import UniformTypeIdentifiers
+import UserNotifications
 
-/// امتداد المشاركة: يُظهر «خزانتي» في قائمة المشاركة لتطبيق «جهات الاتصال».
-/// يأخذ بطاقة الجهة (vCard) ويفتح «خزانتي» بها مباشرة، فتدخل قسم «جهاتي».
+/// امتداد المشاركة: يُظهر «خزانتي» في قائمة المشاركة لأي ملف (واحد أو عدة ملفات معًا)
+/// ولبطاقات جهات الاتصال. يضع الملفات في «صندوق مشترك» بين الامتداد والتطبيق
+/// (لوحة نسخ مسمّاة خاصة بحساب المطوّر، تعمل مع الحساب المجاني دون App Groups)،
+/// ثم يُظهر تأكيدًا واضحًا ويرسل تنبيهًا، ويفتح «خزانتي» إن أمكن.
 final class ShareViewController: UIViewController {
+    static let boxName = UIPasteboard.Name("com.khaledkadoum.khizana.box")
+    static let fileType = "com.khaledkadoum.khizana.file"
+    static let nameType = "com.khaledkadoum.khizana.name"
+
+    private let icon = UILabel()
     private let label = UILabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.96)
-        label.text = "جارٍ إرسال الجهة إلى خزانتي…"
+        view.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.97)
+        icon.text = "📥"; icon.font = .systemFont(ofSize: 54); icon.textAlignment = .center
+        label.text = "جارٍ الإرسال إلى خزانتي…"
         label.textAlignment = .center
         label.numberOfLines = 0
         label.font = .preferredFont(forTextStyle: .headline)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
+        let stack = UIStackView(arrangedSubviews: [icon, label])
+        stack.axis = .vertical; stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
         NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24)
+            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24)
         ])
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        collect { [weak self] text in
-            DispatchQueue.main.async { self?.deliver(text) }
-        }
+        collect { [weak self] files in DispatchQueue.main.async { self?.deliver(files) } }
     }
 
-    /// يجمع كل بطاقات vCard المرسلة في نص واحد.
-    private func collect(_ done: @escaping (String) -> Void) {
-        let vcard = "public.vcard"
-        let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
-            .flatMap { $0.attachments ?? [] }
-            .filter { $0.hasItemConformingToTypeIdentifier(vcard) }
-        var parts: [String] = []
+    private struct Got { let name: String; let data: Data }
+
+    /// يجمع كل ما أُرسل: ملفات من أي نوع، وبطاقات جهات الاتصال (دون صورها).
+    private func collect(_ done: @escaping ([Got]) -> Void) {
+        let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? []).flatMap { $0.attachments ?? [] }
+        var out = [Got?](repeating: nil, count: providers.count)
         let group = DispatchGroup()
-        let lock = NSLock()
-        for p in providers {
+        for (i, p) in providers.enumerated() {
             group.enter()
-            p.loadItem(forTypeIdentifier: vcard, options: nil) { item, _ in
-                var data: Data?
-                if let d = item as? Data { data = d }
-                else if let u = item as? URL { data = try? Data(contentsOf: u) }
-                else if let s = item as? String { data = s.data(using: .utf8) }
-                if let d = data, let s = String(data: d, encoding: .utf8) ?? String(data: d, encoding: .utf16) {
-                    lock.lock(); parts.append(s); lock.unlock()
+            if p.hasItemConformingToTypeIdentifier("public.vcard") {
+                p.loadItem(forTypeIdentifier: "public.vcard", options: nil) { item, _ in
+                    var d: Data?
+                    if let x = item as? Data { d = x } else if let u = item as? URL { d = try? Data(contentsOf: u) } else if let s = item as? String { d = s.data(using: .utf8) }
+                    if let d = d, let s = String(data: d, encoding: .utf8) ?? String(data: d, encoding: .utf16) {
+                        out[i] = Got(name: "جهة اتصال.vcf", data: Data(Self.stripPhotos(s).utf8))
+                    }
+                    group.leave()
+                }
+                continue
+            }
+            let type = p.registeredTypeIdentifiers.first { id in
+                guard let t = UTType(id) else { return false }
+                return t.conforms(to: .data) || t.conforms(to: .content)
+            } ?? "public.data"
+            p.loadFileRepresentation(forTypeIdentifier: type) { url, _ in
+                if let url = url, let d = try? Data(contentsOf: url) {
+                    var name = p.suggestedName ?? url.lastPathComponent
+                    if (name as NSString).pathExtension.isEmpty, let ext = UTType(type)?.preferredFilenameExtension ?? (url.pathExtension.isEmpty ? nil : url.pathExtension) {
+                        name += "." + ext
+                    }
+                    out[i] = Got(name: name, data: d)
                 }
                 group.leave()
             }
         }
-        group.notify(queue: .global()) { done(parts.joined(separator: "\n")) }
+        group.notify(queue: .global()) { done(out.compactMap { $0 }) }
     }
 
-    /// يحذف الصور من البطاقة (فهي كبيرة ولا تُحفظ في الخزانة) ثم يفتح «خزانتي» بها.
-    private func deliver(_ text: String) {
-        guard !text.isEmpty else { finish("لم أجد بطاقة جهة اتصال."); return }
-        var lines: [String] = []
-        var inPhoto = false
+    private func deliver(_ files: [Got]) {
+        guard !files.isEmpty else { finish("لم أستطع قراءة ما أُرسل.", ok: false); return }
+        guard let box = UIPasteboard(name: Self.boxName, create: true) else { finish("تعذّر الإرسال، حاول مرة أخرى.", ok: false); return }
+        // نضيف إلى ما في الصندوق (إن بقي فيه شيء لم يأخذه التطبيق بعد) ولا نمسحه
+        let items: [[String: Any]] = box.items + files.map { [Self.fileType: $0.data, Self.nameType: Data($0.name.utf8)] }
+        box.setItems(items, options: [:])
+        guard box.numberOfItems >= files.count else { finish("الملفات كبيرة جدًّا للإرسال دفعة واحدة. أرسلها على دفعات.", ok: false); return }
+
+        let n = files.count
+        let what = n == 1 ? "«\(files[0].name)»" : "\(n) ملفات"
+        notify(what)
+        _ = openApp(URL(string: "khizana://box")!)
+        finish("✓ وصل \(what) إلى خزانتي", ok: true)
+    }
+
+    /// تنبيه على الآيفون: يظهر حتى لو لم تُفتح «خزانتي».
+    private func notify(_ what: String) {
+        let c = UNMutableNotificationContent()
+        c.title = "📥 وصل إلى خزانتي"
+        c.body = what + " — افتح «خزانتي» لترتيبه في مكانه."
+        c.sound = .default
+        let req = UNNotificationRequest(identifier: "khizana-box-\(Date().timeIntervalSince1970)", content: c,
+                                        trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false))
+        UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
+    }
+
+    private static func stripPhotos(_ text: String) -> String {
+        var lines: [String] = []; var inPhoto = false
         for raw in text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n") {
             if inPhoto { if raw.hasPrefix(" ") || raw.hasPrefix("\t") { continue } else { inPhoto = false } }
             if raw.uppercased().hasPrefix("PHOTO") { inPhoto = true; continue }
             lines.append(raw)
         }
-        let clean = lines.joined(separator: "\r\n")
-        let b64 = Data(clean.utf8).base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
-        guard let url = URL(string: "khizana://contact?d=" + b64), openApp(url) else {
-            UIPasteboard.general.string = clean
-            finish("نُسخت الجهة. افتح «خزانتي» ← «جهاتي» ← «لصق جهة منسوخة».")
-            return
-        }
-        extensionContext?.completeRequest(returningItems: nil)
+        return lines.joined(separator: "\r\n")
     }
 
-    /// فتح التطبيق الأصلي من الامتداد عبر سلسلة المستجيبات (دون واجهات ممنوعة على الامتدادات).
+    /// فتح التطبيق الأصلي من الامتداد عبر سلسلة المستجيبات.
     private func openApp(_ url: URL) -> Bool {
         let sel = NSSelectorFromString("openURL:options:completionHandler:")
         var responder: UIResponder? = self
         while let r = responder {
-            if r is UIApplication, r.responds(to: sel) {
-                _ = r.perform(sel, with: url, with: NSDictionary())
-                return true
-            }
+            if r is UIApplication, r.responds(to: sel) { _ = r.perform(sel, with: url, with: NSDictionary()); return true }
             responder = r.next
         }
         return false
     }
 
-    private func finish(_ message: String) {
+    private func finish(_ message: String, ok: Bool) {
+        icon.text = ok ? "✅" : "⚠️"
         label.text = message
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + (ok ? 1.6 : 2.6)) { [weak self] in
             self?.extensionContext?.completeRequest(returningItems: nil)
         }
     }
