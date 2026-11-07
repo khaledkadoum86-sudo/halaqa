@@ -103,8 +103,13 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             // قراءة كل جهات الاتصال (يطلب الإذن أول مرة) لتبحث الصفحة عن المكرر
             ContactsCleaner.scan { replyHandler($0, nil) }
         case "contactsBackup":
-            // نسخة كاملة من جهات الاتصال بصيغة vCard، تحفظها الصفحة قبل أي حذف
+            // نسخة كاملة من جهات الاتصال بصيغة vCard في ملف مؤقت، تقرؤه الصفحة قطعة قطعة وتحفظه قبل أي حذف
             ContactsCleaner.backup { replyHandler($0, nil) }
+        case "contactsBackupPiece":
+            replyHandler(ContactsCleaner.backupPiece(index), nil)
+        case "contactsBackupDone":
+            try? FileManager.default.removeItem(at: ContactsCleaner.backupFile)
+            replyHandler(true, nil)
         case "contactsMerge":
             // دمج كل مجموعة في الجهة الباقية ثم حذف المكرر منها
             ContactsCleaner.merge(body["groups"] as? [[String: Any]] ?? []) { replyHandler($0, nil) }
@@ -490,7 +495,7 @@ enum ContactsCleaner {
                 var list: [[String: Any]] = []
                 let request = CNContactFetchRequest(keysToFetch: scanKeys)
                 request.sortOrder = .userDefault
-                try? store.enumerateContacts(with: request) { c, _ in
+                do { try store.enumerateContacts(with: request) { c, _ in
                     let name = CNContactFormatter.string(from: c, style: .fullName) ?? ""
                     list.append([
                         "id": c.identifier,
@@ -501,23 +506,39 @@ enum ContactsCleaner {
                         "extra": c.postalAddresses.count + c.urlAddresses.count + (c.birthday == nil ? 0 : 1),
                         "photo": c.imageDataAvailable
                     ])
-                }
+                } } catch { DispatchQueue.main.async { done(["status": "error", "list": []]) }; return }
                 DispatchQueue.main.async { done(["status": state, "list": list]) }
             }
         }
     }
 
-    static func backup(_ done: @escaping (String?) -> Void) {
+    static var backupFile: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("contacts-backup.vcf")
+    }
+
+    /// يكتب كل الجهات (بصورها) في ملف vCard مؤقت ← {count, size}، أو nil إن تعذّر
+    static func backup(_ done: @escaping ([String: Any]?) -> Void) {
         access { state in
             guard state != "denied" else { DispatchQueue.main.async { done(nil) }; return }
             work.async {
                 var all: [CNContact] = []
                 let request = CNContactFetchRequest(keysToFetch: [CNContactVCardSerialization.descriptorForRequiredKeys()])
-                do { try store.enumerateContacts(with: request) { c, _ in all.append(c) } } catch { DispatchQueue.main.async { done(nil) }; return }
-                let text = (try? CNContactVCardSerialization.data(with: all)).flatMap { String(data: $0, encoding: .utf8) }
-                DispatchQueue.main.async { done(text) }
+                do {
+                    try store.enumerateContacts(with: request) { c, _ in all.append(c) }
+                    let data = try CNContactVCardSerialization.data(with: all)
+                    try data.write(to: backupFile, options: .atomic)
+                    DispatchQueue.main.async { done(["count": all.count, "size": data.count]) }
+                } catch { DispatchQueue.main.async { done(nil) } }
             }
         }
+    }
+
+    /// القطعة رقم index من ملف النسخة بترميز base64، أو "" بعد آخر قطعة
+    static func backupPiece(_ index: Int) -> String {
+        guard index >= 0, let h = try? FileHandle(forReadingFrom: backupFile) else { return "" }
+        defer { h.closeFile() }
+        h.seek(toFileOffset: UInt64(index) * UInt64(Inbox.step))
+        return h.readData(ofLength: Inbox.step).base64EncodedString()
     }
 
     private static func digits(_ s: String) -> String {

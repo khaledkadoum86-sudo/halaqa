@@ -826,21 +826,24 @@ function ddFind(list){
     const sig=c=>c.pk.slice().sort().join()+'|'+c.ek.slice().sort().join();
     const keys=m.flatMap(c=>[...c.pk.map(p=>'p'+p),...c.ek.map(e=>'e'+e)]);
     const shared=keys.length!==new Set(keys).size;
-    const type=same&&m.every(c=>sig(c)===sig(m[0]))?'exact':shared?'phone':'name';
+    /* أسماء متوافقة: متطابقة، أو أحدها فارغ، أو أحدها جزء من الآخر («خالد» و«خالد قدوم») */
+    const fit=(a,b)=>{if(!a.nk||!b.nk)return true;const x=a.nk.split(' '),y=b.nk.split(' '),[s1,l1]=x.length<=y.length?[x,y]:[y,x];return s1.every(t=>l1.includes(t))};
+    const agree=m.every((a,i)=>m.every((b,j)=>j<=i||fit(a,b)));
+    const type=same&&m.every(c=>sig(c)===sig(m[0]))?'exact':shared?(agree?'phone':'phoneName'):'name';
     m.sort((a,b)=>b.score-a.score);
-    out.push({type,members:m,keep:m[0].id,on:type!=='name'});
+    out.push({type,members:m,keep:m[0].id,on:type==='exact'||type==='phone'});
   }
-  const rank={exact:0,phone:1,name:2};
+  const rank={exact:0,phone:1,phoneName:2,name:3};
   return out.sort((a,b)=>rank[a.type]-rank[b.type]||(a.members[0].name||'').localeCompare(b.members[0].name||'','ar'));
 }
-const DD_TYPE={exact:'مكررة تمامًا',phone:'الرقم نفسه',name:'الاسم نفسه بأرقام مختلفة — تأكد أنه الشخص نفسه'};
+const DD_TYPE={exact:'مكررة تمامًا',phone:'الرقم نفسه',phoneName:'الرقم نفسه بأسماء مختلفة — تأكد أنه الشخص نفسه',name:'الاسم نفسه بأرقام مختلفة — تأكد أنه الشخص نفسه'};
 function ddCount(){const g=DD.groups.filter(x=>x.on);return{g:g.length,n:g.reduce((s,x)=>s+x.members.length-1,0)}}
 function ddView(){
   const c=ddCount(),gs=DD.groups;
   if(!gs.length){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>فحصتُ ${DD.total} جهة اتصال، ولا يوجد فيها مكرر. جهاتك نظيفة.</p></div><div class="actions"><button class="btn primary" data-act="close">تم</button></div>`);return}
-  const types=['exact','phone','name'].map(t=>[t,gs.filter(g=>g.type===t).length]).filter(x=>x[1]);
+  const types=['exact','phone','phoneName','name'].map(t=>[t,gs.filter(g=>g.type===t).length]).filter(x=>x[1]);
   sheet(`<h3>تنظيف جهات الاتصال</h3>
-  <p style="margin:0 0 6px;color:var(--muted);font-size:.9rem">فحصتُ ${DD.total} جهة. في كل مجموعة تبقى الجهة المعلَّمة ★، وتُنقل إليها أرقام الأخرى وبريدها ثم تُحذف. اضغط جهة لتجعلها هي الباقية.</p>
+  <p style="margin:0 0 6px;color:var(--muted);font-size:.9rem">فحصتُ ${DD.total} جهة. في كل مجموعة تبقى الجهة المعلَّمة ★، وتُنقل إليها أرقام الأخرى وبريدها ثم تُحذف. اضغط جهة لتجعلها هي الباقية. المجموعات غير المحددة تحتاج نظرك قبل تحديدها.</p>
   <div class="dd-sum">${types.map(([t,n])=>`<b>${DD_TYPE[t].split(' — ')[0]}: ${n}</b>`).join('')}</div>
   <div class="actions" style="margin-bottom:8px"><button class="btn" data-dd="all">حدد الكل</button><button class="btn" data-dd="none">ألغِ التحديد</button></div>
   <div class="list" id="ddList">${gs.map((g,gi)=>`<section class="dd-g" data-off="${g.on?0:1}">
@@ -868,11 +871,16 @@ function ddConfirm(){
 }
 async function ddRun(){
   sheet(`<h3>تنظيف جهات الاتصال</h3><div class="empty">جارٍ حفظ نسخة من جهاتك…</div>`);
-  let txt=null;try{txt=await nat({action:'contactsBackup'})}catch(_){}
-  if(typeof txt!=='string'||!/BEGIN:VCARD/i.test(txt)){sheet(`<h3>توقفتُ قبل الحذف</h3><div class="box"><p>لم أستطع حفظ نسخة من جهاتك، فلم أحذف شيئًا.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
+  let txt=null;
+  try{const info=await nat({action:'contactsBackup'});
+    if(info&&info.size){const parts=[];for(let i=0;;i++){const p=await nat({action:'contactsBackupPiece',i});if(!p)break;parts.push(Uint8Array.from(atob(p),c=>c.charCodeAt(0)))}
+      const blob=new Blob(parts,{type:'text/vcard'});if(blob.size===info.size)txt=blob}
+  }catch(_){}
+  nat({action:'contactsBackupDone'}).catch(()=>{});
+  if(!txt||!/BEGIN:VCARD/i.test(await txt.slice(0,200).text())){sheet(`<h3>توقفتُ قبل الحذف</h3><div class="box"><p>لم أستطع حفظ نسخة من جهاتك، فلم أحذف شيئًا.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
   const d=new Date().toLocaleDateString('en-CA'),f=new File([txt],'contacts-backup-'+d+'.vcf',{type:'text/vcard'}),id=uid();
   try{await IDB.putBlob(id,f)}catch(_){sheet(`<h3>توقفتُ قبل الحذف</h3><div class="box"><p>لا توجد مساحة كافية لحفظ النسخة، فلم أحذف شيئًا.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
-  const total=(txt.match(/BEGIN:VCARD/gi)||[]).length;
+  const total=(( await txt.text()).match(/BEGIN:VCARD/gi)||[]).length;
   await save({_id:id,kind:'file',title:'نسخة جهات الاتصال قبل التنظيف · '+d,fname:f.name,cat:'أخرى',type:f.type,size:f.size,pages:0,notes:total+' جهة اتصال، حُفظت قبل حذف المكرر',up:false});
   $('.sheet .empty').textContent='جارٍ الدمج والحذف…';
   const groups=DD.groups.filter(g=>g.on).map(g=>({keep:g.keep,remove:g.members.map(m=>m.id).filter(x=>x!==g.keep)}));
@@ -889,6 +897,7 @@ async function ddScan(){
   sheet(`<h3>تنظيف جهات الاتصال</h3><div class="empty">جارٍ فحص جهات الاتصال…</div>`);
   let r=null;try{r=await nat({action:'contactsScan'})}catch(_){}
   if(!r){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>هذه الميزة تحتاج إعادة تثبيت «خزانتي» من Xcode مرة واحدة: افتح <b>Khizana.xcodeproj</b> بعد تنزيل المشروع من جديد، واضغط ▶.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
+  if(r.status==='error'){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>تعذّرت قراءة جهات الاتصال هذه المرة. أغلق «خزانتي» وافتحها ثم أعد المحاولة.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
   if(r.status==='denied'){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>لم تسمح لـ«خزانتي» بالوصول إلى جهات الاتصال. فعّله من: الإعدادات ← خزانتي ← جهات الاتصال ← الوصول الكامل.</p></div><div class="actions"><button class="btn primary" data-dd="settings">افتح الإعدادات</button><button class="btn" data-act="close">إغلاق</button></div>`);
     $('#ov').addEventListener('click',e=>{if(e.target.closest('[data-dd="settings"]'))nat({action:'openSettings'})});return}
   DD.total=r.list.length;DD.groups=ddFind(r.list);ddView();
