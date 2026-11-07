@@ -192,7 +192,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.8";
+const APP_VER="1.9";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -1017,7 +1017,16 @@ async function nativeShow(it,b){
   render();status();
   setTimeout(()=>{if(!SYNC.user)migrateStatus()},8000);
   SYNC.start();
-  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').then(r=>{r.update();
+      /* كلما عاد التطبيق إلى الواجهة يسأل عن نسخة أحدث */
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update().catch(()=>{})})}).catch(()=>{});
+    /* إذا نزلت نسخة جديدة يظهر شريط أخضر كتطبيق المدرسة، ولا يُعاد التحميل وحده (فلا يُقطع ما تكتبه) */
+    if(navigator.serviceWorker.controller)navigator.serviceWorker.addEventListener('controllerchange',()=>{if(document.getElementById('updBar'))return;
+      const b=document.createElement('button');b.id='updBar';b.type='button';b.textContent='🔄 نسخة جديدة من خزانتي جاهزة — اضغط هنا للتحديث';
+      b.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:99999;padding:14px;border:0;border-radius:14px;background:#0e5a4f;color:#fff;font:inherit;font-weight:700;font-size:1rem;box-shadow:0 6px 20px rgba(0,0,0,.35)';
+      b.onclick=()=>location.reload();document.body.appendChild(b)});
+  }
   if(NATIVE)khizanaPoll();
   setTimeout(()=>rescueBooks().catch(()=>{}),3000);
 })();
