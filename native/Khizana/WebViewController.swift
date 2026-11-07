@@ -1,6 +1,8 @@
 import UIKit
 import WebKit
 import QuickLook
+import PDFKit
+import Vision
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/khizana/")!
 let appHost = "khaledkadoum86-sudo.github.io"
@@ -73,6 +75,16 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                 handle.seekToEndOfFile(); handle.write(data); handle.closeFile()
                 replyHandler(true, nil)
             } else { replyHandler(false, nil) }
+        case "analyze":
+            // قراءة الملف في الجهاز: عدد الصفحات وبيانات الكتاب ونصّ أوله (وقراءة الصور بالتعرّف على النص)
+            let name = body["name"] as? String ?? ""
+            let fromInbox = (body["src"] as? String) == "inbox"
+            let file = fromInbox ? Inbox.shared.fileURL(id) : Viewer.partURL(for: id)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let result = Analyzer.analyze(file, name: name)
+                if !fromInbox { try? FileManager.default.removeItem(at: file) }
+                DispatchQueue.main.async { replyHandler(result, nil) }
+            }
         case "show":
             let name = body["name"] as? String ?? "ملف"
             let file = Viewer.fileURL(for: id, name: name)
@@ -272,6 +284,8 @@ final class Inbox {
 
     private static func safe(_ id: String) -> String { String(id.filter { $0.isASCII && ($0.isLetter || $0.isNumber) }.prefix(40)) }
 
+    func fileURL(_ id: String) -> URL { folder.appendingPathComponent(Inbox.safe(id) + ".bin") }
+
     /// القطعة رقم index من الملف بترميز base64، أو "" بعد آخر قطعة.
     func piece(_ id: String, index: Int) -> String {
         let file = folder.appendingPathComponent(Inbox.safe(id) + ".bin")
@@ -306,4 +320,58 @@ final class PreviewItem: NSObject, QLPreviewItem {
     let previewItemURL: URL?
     let previewItemTitle: String?
     init(url: URL, title: String) { previewItemURL = url; previewItemTitle = title }
+}
+
+// MARK: - قراءة الملف للتصنيف (في الجهاز، لا يخرج شيء منه)
+
+enum Analyzer {
+    static let imageExts: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "tif", "tiff", "gif", "webp"]
+
+    static func analyze(_ file: URL, name: String) -> [String: Any] {
+        let ext = (name as NSString).pathExtension.lowercased()
+        var out: [String: Any] = ["text": "", "pages": 0, "title": "", "author": "", "ocr": false]
+        if ext == "pdf", let doc = PDFDocument(url: file) {
+            out["pages"] = doc.pageCount
+            let attrs = doc.documentAttributes ?? [:]
+            out["title"] = (attrs[PDFDocumentAttribute.titleAttribute] as? String) ?? ""
+            out["author"] = (attrs[PDFDocumentAttribute.authorAttribute] as? String) ?? ""
+            var text = ""
+            for i in 0..<min(doc.pageCount, 4) { text += (doc.page(at: i)?.string ?? "") + "\n" }
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).count < 40, let page = doc.page(at: 0) {
+                // PDF مصوَّر: نقرأ الصفحة الأولى بالتعرّف على النص
+                let image = page.thumbnail(of: CGSize(width: 1600, height: 2200), for: .mediaBox)
+                if let cg = image.cgImage { text = ocr(cg); out["ocr"] = true }
+            }
+            out["text"] = String(text.prefix(5000))
+        } else if imageExts.contains(ext), let data = try? Data(contentsOf: file), let image = UIImage(data: data) {
+            let small = WebViewController.fit(image, longest: 2000)
+            if let cg = small.cgImage { out["text"] = String(ocr(cg).prefix(3000)); out["ocr"] = true }
+        } else if ["txt", "md", "csv"].contains(ext), let t = try? String(contentsOf: file, encoding: .utf8) {
+            out["text"] = String(t.prefix(5000))
+        }
+        return out
+    }
+
+    static func ocr(_ image: CGImage) -> String {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+        let supported = (try? request.supportedRecognitionLanguages()) ?? []
+        let langs = ["ar-SA", "ars-SA", "fr-FR", "en-US"].filter { supported.contains($0) }
+        if !langs.isEmpty { request.recognitionLanguages = langs }
+        try? VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
+    }
+}
+
+extension WebViewController {
+    static func fit(_ image: UIImage, longest: CGFloat) -> UIImage {
+        let side = max(image.size.width, image.size.height)
+        guard side > longest else { return image }
+        let scale = longest / side
+        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+    }
 }
