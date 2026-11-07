@@ -275,6 +275,7 @@ final class Inbox {
     }
 
     func receive(_ url: URL) {
+        if url.scheme == "khizana" { if takeContact(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }; return }
         if take(url) { NotificationCenter.default.post(name: Inbox.arrived, object: nil) }
     }
 
@@ -286,6 +287,19 @@ final class Inbox {
         do { try fm.copyItem(at: url, to: folder.appendingPathComponent(id + ".bin")) } catch { return false }
         try? url.lastPathComponent.write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
         if url.path.contains("/Inbox/") { try? fm.removeItem(at: url) }
+        return true
+    }
+
+    /// جهة اتصال وصلت من امتداد المشاركة: khizana://contact?d=<vCard بترميز base64url>
+    private func takeContact(_ url: URL) -> Bool {
+        guard url.host == "contact",
+              var d = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "d" })?.value else { return false }
+        d = d.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while d.count % 4 != 0 { d += "=" }
+        guard let data = Data(base64Encoded: d) else { return false }
+        let id = "c" + String(Int(Date().timeIntervalSince1970 * 1000), radix: 36) + String(Int.random(in: 1296...46655), radix: 36)
+        guard fm.createFile(atPath: folder.appendingPathComponent(id + ".bin").path, contents: data) else { return false }
+        try? "جهة اتصال.vcf".write(to: folder.appendingPathComponent(id + ".name"), atomically: true, encoding: .utf8)
         return true
     }
 

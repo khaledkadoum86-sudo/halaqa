@@ -14,6 +14,17 @@
 	<string>لقفل خزانتي وفتحها ببصمة الوجه.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>لتصوير الوثائق وحفظها في خزانتك.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.khaledkadoum.khizana</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>khizana</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
