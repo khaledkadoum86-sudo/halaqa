@@ -141,6 +141,8 @@ struct RenewalIndicator: View {
     @State private var drag: CGSize = .zero
     @AppStorage("renewal.y") private var yFraction: Double = 0.36
     @AppStorage("renewal.left") private var onLeft: Bool = true
+    @State private var awake = true
+    @State private var sleepWork: DispatchWorkItem?
     private let tick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private var hasExpiry: Bool { expiry != nil }
@@ -178,35 +180,94 @@ struct RenewalIndicator: View {
         }
     }
 
+    // MARK: الزر الزجاجي العائم
+    // زجاج شفاف (Liquid Glass في iOS 26، وزجاج ضبابي فيما قبله)، يبقى ظاهرًا في كل الصفحات،
+    // يتنفّس بحلقة ضوئية لا تنطفئ، ويخفت وحده بعد ثوانٍ فلا يزعج، ويضيء عند لمسه.
+    // حول الرقم قوس يتناقص مع الأيام الباقية للتجديد.
+    // يُسحب إلى أي مكان، ويلتصق بأقرب حافة (يمين أو يسار) مع اهتزاز خفيف.
+    // ضغطة مطوّلة: قائمة سريعة للانتقال بين التطبيقات دون فتح البطاقة.
+
+    private func wake() {
+        withAnimation(.easeOut(duration: 0.25)) { awake = true }
+        sleepWork?.cancel()
+        let w = DispatchWorkItem { withAnimation(.easeInOut(duration: 1.2)) { awake = false } }
+        sleepWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: w)
+    }
+
+    @ViewBuilder private var glassDisc: some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            Circle().fill(Color.clear)
+                .glassEffect(.regular.tint(tint.opacity(0.18)).interactive(), in: Circle())
+        } else { frosted }
+        #else
+        frosted
+        #endif
+    }
+
+    private var frosted: some View {
+        Circle().fill(.ultraThinMaterial)
+            .overlay(Circle().fill(tint.opacity(0.12)))
+            .overlay(Circle().stroke(LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.08)],
+                                                    startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+    }
+
     private func dot(in size: CGSize) -> some View {
-        // مثبّت دائمًا على الحافة اليسرى، في الهامش الذي تتركه الصفحة له، فلا يغطي أي نص أو زر.
-        let w: CGFloat = 54, h: CGFloat = 34
-        let x: CGFloat = 6 + w / 2
-        // لا ينزل إلى زر «إضافة» ولا إلى شريط الأقسام في الأسفل.
+        let d: CGFloat = 46
+        let margin: CGFloat = 8
+        let x: CGFloat = onLeft ? margin + d / 2 : size.width - margin - d / 2
         let y = max(70, min(size.height - 165, size.height * CGFloat(yFraction)))
+        let left = max(0, min(1, Double(days) / 7))
         return ZStack {
-            Capsule().stroke(tint, lineWidth: 3)
-                .scaleEffect(pulse ? 1.35 : 1).opacity(pulse ? 0 : (level == 0 ? 0.35 : 0.85))
-            Capsule().fill(navy).shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-            HStack(spacing: 5) {
-                Image(systemName: "square.grid.2x2.fill").font(.system(size: 13, weight: .bold)).foregroundColor(.white.opacity(0.9))
-                ZStack {
-                    Circle().fill(tint).opacity(level == 2 && pulse ? 0.35 : 1)
-                    Text("\(days)").font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundColor(.white)
+            // حلقة ضوئية تتنفّس ولا تنطفئ أبدًا
+            Circle().stroke(tint, lineWidth: 2.5)
+                .scaleEffect(pulse ? 1.45 : 1.05)
+                .opacity(pulse ? 0.0 : (level == 0 ? 0.55 : 0.95))
+            Circle().fill(tint.opacity(pulse ? 0.10 : 0.28)).blur(radius: 10).scaleEffect(1.15)
+            glassDisc.shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+            // قوس الأيام الباقية
+            Circle().stroke(Color.white.opacity(0.18), lineWidth: 3).padding(5)
+            Circle().trim(from: 0, to: left)
+                .stroke(tint, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90)).padding(5)
+                .opacity(level == 2 && pulse ? 0.4 : 1)
+            VStack(spacing: -2) {
+                Text("\(days)").font(.system(size: 17, weight: .heavy, design: .rounded))
+                Image(systemName: "square.grid.2x2.fill").font(.system(size: 7, weight: .bold)).opacity(0.75)
+            }
+            .foregroundColor(.white)
+            .shadow(color: .black.opacity(0.45), radius: 1.5, y: 0.5)
+        }
+        .frame(width: d, height: d)
+        .opacity(awake || drag != .zero ? 1 : 0.55)
+        .scaleEffect(drag != .zero ? 1.12 : (awake ? 1 : 0.92))
+        .contentShape(Circle())
+        .contentShape(.contextMenuPreview, Circle())
+        .contextMenu {
+            ForEach(Siblings.all, id: \.id) { a in
+                Button { if a.id != current { Siblings.open(a.id) } } label: {
+                    Label(a.id == current ? "\(a.name) (أنت هنا)" : a.name, systemImage: a.symbol)
                 }
-                .frame(width: 24, height: 24)
+                .disabled(a.id == current)
             }
         }
-        .frame(width: w, height: h)
-        .contentShape(Capsule())
-        .position(x: x, y: y + drag.height)
+        .position(x: x + drag.width, y: y + drag.height)
         .gesture(DragGesture(minimumDistance: 6)
-            .onChanged { drag = $0.translation }
+            .onChanged { v in drag = v.translation; if !awake { wake() } }
             .onEnded { v in
-                yFraction = Double(max(0.1, min(0.88, (y + v.translation.height) / size.height)))
-                withAnimation(.spring()) { drag = .zero }
+                let fx = x + v.translation.width
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    onLeft = fx < size.width / 2
+                    yFraction = Double(max(0.1, min(0.88, (y + v.translation.height) / size.height)))
+                    drag = .zero
+                }
+                wake()
             })
-        .onTapGesture { open = true }
+        .onTapGesture { wake(); open = true }
+        .onAppear { wake() }
+        .environment(\.layoutDirection, .leftToRight)   // فلا تقلب الواجهةُ العربية جهة الحافة
         .accessibilityLabel("تطبيقاتي، وباقٍ \(days) أيام على التجديد")
     }
 
@@ -273,7 +334,7 @@ struct RenewalIndicator: View {
                     Text("إغلاق").bold().frame(maxWidth: .infinity).padding(.vertical, 10)
                         .background(navy).foregroundColor(.white).cornerRadius(10)
                 }
-                Text("اسحب الزر إلى الأعلى أو الأسفل ليناسبك.").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity)
+                Text("اسحب الزر إلى أي مكان فيلتصق بأقرب حافة، واضغطه مطوّلًا للانتقال السريع بين التطبيقات.").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity)
             }
             .padding(18)
             .frame(maxWidth: 340)
