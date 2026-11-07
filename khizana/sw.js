@@ -1,5 +1,5 @@
 // خزانتي: يفتح فورًا من النسخة المحفوظة في الجهاز، ثم يجلب أحدث نسخة في الخلفية للمرة القادمة.
-const CACHE = "khizana-v19";
+const CACHE = "khizana-v20";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-152.png", "icon-167.png", "icon-180.png", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith("khizana-") && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

@@ -192,7 +192,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.9";
+const APP_VER="2.0";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -223,15 +223,17 @@ const ICON={
  note:'<path d="M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
 };
 function fmtSize(n){if(!n)return'';return n>1048576?(n/1048576).toFixed(1)+' م.ب':Math.max(1,Math.round(n/1024))+' ك.ب'}
+const BOOK_CATS=['المصاحف','مرجع في الرسم والضبط','القراءات والتجويد','التفسير وعلوم القرآن','الحديث والسيرة','الفقه وأصوله','العقيدة','آل البيت عليهم السلام','التصوف والأذكار','التاريخ والتراجم','اللغة','مخطوط','أخرى'];
+const FILE_CATS=['من أعمالي','كتب PDF','أبحاث','وثائق رسمية','مستندات','صور','صوتيات','فيديو','جداول','أخرى'];
 const KINDS={
  book:{tab:'كتبي',title:'الكتب',one:'كتابًا',
-   fields:[['title','عنوان الكتاب','text',1],['author','المؤلف','text'],['cat','التصنيف','select',0,['مرجع في الرسم والضبط','القراءات','التفسير','الحديث والسيرة','اللغة','مخطوط','أخرى']],['status','الحالة','select',0,['أملكه','أقرؤه','قرأته','أريد اقتناءه','مُعار']],['place','مكانه (رف، ملف، رابط)','text'],['link','رابط (إن وجد)','url'],['notes','ملاحظات','textarea']],
-   filter:'status',pill:'status',sub:it=>[it.author,it.cat,it.place].filter(Boolean).join(' · ')},
+   fields:[['title','عنوان الكتاب','text',1],['author','المؤلف','text'],['cat','الموضوع','select',0,BOOK_CATS],['status','الحالة','select',0,['أملكه','أقرؤه','قرأته','أريد اقتناءه','مُعار']],['place','مكانه (رف، ملف، رابط)','text'],['link','رابط (إن وجد)','url'],['notes','ملاحظات','textarea']],
+   filter:'cat',pill:'status',sub:it=>[it.author,it.place].filter(Boolean).join(' · ')},
  work:{tab:'أعمالي',title:'الأعمال والأبحاث',one:'عملًا',
    fields:[['title','عنوان العمل','text',1],['type','النوع','select',0,['بحث','كتاب','مذكرة','تطبيق','مجموع','مشروع','درس']],['status','الحالة','select',0,['مخطط','قيد الإنجاز','في المراجعة','متوقف','منجز']],['date','التاريخ','text'],['link','رابط أو مكان الملف','text'],['notes','ملاحظات','textarea']],
    filter:'type',pill:'status',sub:it=>[it.type,it.date,it.link].filter(Boolean).join(' · ')},
  file:{tab:'ملفاتي',title:'الملفات',one:'ملفًا',
-   fields:[['title','اسم الملف','text',1],['cat','التصنيف','select',0,['وثائق رسمية','أبحاث','كتب PDF','مستندات','صور','صوتيات','فيديو','جداول','أخرى']],['notes','ملاحظات','textarea']],
+   fields:[['title','اسم الملف','text',1],['cat','التصنيف','select',0,FILE_CATS],['notes','ملاحظات','textarea']],
    filter:'cat',pill:'cat',sub:it=>[fmtSize(it.size),it.size>SYNC_MAX?'في هذا الجهاز فقط':''].filter(Boolean).join(' · ')},
  contact:{tab:'جهاتي',title:'جهات الاتصال',one:'جهة اتصال',
    fields:[['title','الاسم','text',1],['role','الصفة / العلاقة','text'],['group','المجموعة','select',0,['العائلة','الزملاء','المشايخ والأساتذة','الطلبة وأولياؤهم','الإدارة','أخرى']],['phone','الهاتف','tel'],['whatsapp','واتساب (إن اختلف)','tel'],['email','البريد','email'],['address','العنوان','text'],['notes','ملاحظات','textarea']],
@@ -270,12 +272,20 @@ const RULES={
    [/فهرس|المحتويات|الجزء|المجلد|tome|volume/i,3],[/مقدمة المحقق|ترجمة المؤلف|الحمد لله رب العالمين/i,2],[/كتاب|متن|منظوم[ةه]|ديوان|تفسير|موسوع[ةه]|book|livre/i,3]],
  sheet:[],photo:[],audio:[],video:[],doc:[]
 };
+/* موضوعات الكتب: لكل موضوع علامات بأوزان، وما في العنوان واسم الملف والمؤلف يُضاعف ثلاثًا على ما في النص */
 const SUBJECTS=[
- ['مرجع في الرسم والضبط',/الرسم|رسم المصحف|الضبط|مورد الظمآن|الخراز|الطراز|التنسي|الداني|المقنع|أبي داود|التنزيل|عقيلة|الهجاء|المصاحف|ابن عاشر|فتح المنان|دليل الحيران|المارغني/],
- ['القراءات',/القراءات|قراء[ةه]|ورش|قالون|نافع|الأزرق|الأصبهاني|الشاطبي|الدرر اللوامع|ابن بري|الطرق العشر|العشر الصغير|التيسير|النشر|الجزري|التجويد|الوقف والابتداء|حرز الأماني/],
- ['التفسير',/تفسير|التحرير والتنوير|ابن كثير|الطبري|القرطبي|الجلالين|علوم القرآن|أسباب النزول|البرهان|الإتقان/],
- ['الحديث والسيرة',/حديث|الحديث|البخاري|مسلم|السنن|الموطأ|السير[ةه]|الشمائل|المسند|مصطلح|الأربعين/],
- ['اللغة',/النحو|الصرف|البلاغ[ةه]|الألفي[ةه]|الآجرومي|ابن مالك|لسان العرب|المعجم|القاموس|العروض|الإعراب/]
+ ['المصاحف',[[/مصحف|المصحف الشريف|القرآن الكريم برواية|برواي[ةه] (ورش|قالون|حفص)|رواي[ةه] ورش عن نافع/,5],[/مصحف (المدين[ةه]|الجزائر|التجويد)/,3]]],
+ ['مرجع في الرسم والضبط',[[/رسم المصحف|الرسم العثماني|الضبط|مورد الظمآن|الخراز|الطراز|التنسي|المقنع|أبي داود|التنزيل|عقيل[ةه] أتراب|الهجاء|فتح المنان|دليل الحيران|المارغني|التبيان|الأخضري في الرسم|المحكم في نقط|النقط/,4],[/الرسم|المصاحف|الداني|ابن عاشر/,2]]],
+ ['القراءات والتجويد',[[/القراءات|الطرق العشر|العشر الصغير|الدرر اللوامع|ابن بري|حرز الأماني|الشاطبي[ةه]|التيسير|النشر|الجزري|طيب[ةه] النشر|التجويد|مخارج الحروف|الوقف والابتداء|الأزرق|الأصبهاني/,4],[/ورش|قالون|نافع|قراء[ةه]|المقرئ|الإقراء/,2]]],
+ ['التفسير وعلوم القرآن',[[/تفسير|التحرير والتنوير|ابن كثير|الطبري|القرطبي|الجلالين|علوم القرآن|أسباب النزول|البرهان في علوم|الإتقان|الناسخ والمنسوخ|إعراب القرآن|غريب القرآن|معاني القرآن/,4]]],
+ ['الحديث والسيرة',[[/صحيح البخاري|صحيح مسلم|السنن|الموطأ|المسند|الشمائل|السير[ةه] النبوي[ةه]|مصطلح الحديث|الأربعين النووي|رياض الصالحين|فتح الباري|شرح الحديث/,4],[/حديث|الحديث|السير[ةه]|البخاري/,2]]],
+ ['الفقه وأصوله',[[/الفقه|فقه|مختصر خليل|رسال[ةه] ابن أبي زيد|المرشد المعين|متن ابن عاشر|الأخضري في العبادات|العشماوي|المدون[ةه]|أصول الفقه|الورقات|النوازل|المعيار|فتاوى|الأحكام|المواريث|الفرائض/,4]]],
+ ['العقيدة',[[/عقيد[ةه]|العقائد|التوحيد|أم البراهين|السنوسي[ةه]?|جوهر[ةه] التوحيد|الطحاوي[ةه]|الإيمان|أصول الدين|علم الكلام/,4]]],
+ ['آل البيت عليهم السلام',[[/أهل البيت|آل البيت|فاطم[ةه] الزهراء|الإمام علي|علي بن أبي طالب|الحسن والحسين|الإمام الحسين|نهج البلاغ[ةه]|ذخائر العقبى|العتر[ةه]|مناقب|فضائل أهل|الشرفاء|الأشراف/,5]]],
+ ['التصوف والأذكار',[[/التصوف|تصوف|الأذكار|أوراد|الورد|دلائل الخيرات|الصلا[ةه] على النبي|البرد[ةه]|الهمزي[ةه]|الحكم العطائي[ةه]|ابن عطاء الله|القشيري[ةه]|إحياء علوم الدين|الغزالي|زروق|الشاذلي|المديح|الطريق[ةه]/,4]]],
+ ['التاريخ والتراجم',[[/تاريخ|التاريخ|تراجم|طبقات|سير أعلام|الأعلام|معجم أعلام|رحل[ةه]|فهرس[ةه]|الثبت|الإجاز[ةه]|الأسانيد|وفيات/,4],[/الجزائر|قسنطين[ةه]|المغرب|الأندلس/,1]]],
+ ['اللغة',[[/النحو|الصرف|البلاغ[ةه]|الألفي[ةه]|الآجرومي[ةه]|ابن مالك|لسان العرب|المعجم الوسيط|القاموس المحيط|العروض|الإعراب|قطر الندى|شذور الذهب|مغني اللبيب/,4]]],
+ ['مخطوط',[[/مخطوط|manuscri/i,6]]]
 ];
 function extOf(n){return (String(n).split('.').pop()||'').toLowerCase()}
 /* مطابقة ملف بعمل من «أعمالي» بعنوانه (تسوية الهمزات والتاء المربوطة والتشكيل) */
@@ -294,7 +304,14 @@ async function pdfPages(f){
     if(m)return +m[1];return (head.match(/\/Type\s*\/Page[^s]/g)||[]).length}catch(_){return 0}
 }
 function score(set,txt){let s=0;for(const [rx,w] of RULES[set]){const m=txt.match(new RegExp(rx.source,rx.flags.replace('g','')+'g'));if(m)s+=w*Math.min(m.length,3)}return s}
-function subjectOf(txt){let best=null,bn=0;for(const [name,rx] of SUBJECTS){const n=(txt.match(new RegExp(rx.source,'g'))||[]).length;if(n>bn){bn=n;best=name}}return best||'أخرى'}
+function subjectOf(txt,head){
+  const H=String(head||''),T=String(txt||'');let best='أخرى',bn=0;
+  for(const [name,rules] of SUBJECTS){let n=0;
+    for(const [rx,w] of rules){const g=new RegExp(rx.source,(rx.flags||'').replace('g','')+'g');
+      n+=w*3*Math.min((H.match(g)||[]).length,2)+w*Math.min((T.match(g)||[]).length,4)}
+    if(n>bn){bn=n;best=name}}
+  return bn>=4?best:'أخرى';
+}
 function cleanLine(l){return l.replace(/[ـ]/g,'').replace(/\s+/g,' ').trim()}
 function guessTitle(a,n){
   if(a&&a.title&&a.title.length>3&&!/^(untitled|microsoft|document|doc\d|scan|img)/i.test(a.title))return cleanLine(a.title);
@@ -315,7 +332,7 @@ async function classify(f,a){
   if(['xls','xlsx','csv','numbers','ods'].includes(e))return{cat:'جداول'};
   const isImg=/^image\//.test(t)||['jpg','jpeg','png','heic','heif','gif','webp','tif','tiff'].includes(e);
   const isPdf=e==='pdf'||/pdf/.test(t);
-  if(EBOOK.includes(e))return{cat:'كتب PDF',book:true,pages:a.pages||0,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(n+'\n'+(a.text||''))};
+  if(EBOOK.includes(e))return{cat:'كتب PDF',book:true,pages:a.pages||0,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(a.text||'',n+' '+(a.title||'')+' '+(a.author||''))};
   const pages=a.pages||(isPdf?await pdfPages(f):0);
   const txt=n+'\n'+(a.title||'')+'\n'+(a.author||'')+'\n'+(a.text||'');
   const sc={official:score('official',txt),research:score('research',txt),book:score('book',txt)};
@@ -327,12 +344,12 @@ async function classify(f,a){
   /* ملف PDF كبير (40 صفحة فأكثر، أو حجم كبير لم تُعرف صفحاته) كتابٌ ما لم يكن وثيقة رسمية أو مذكرة جامعية صريحة */
   const thesis=/مذكر[ةه] (تخرج|لنيل|مقدم)|رسال[ةه] (ماجستير|دكتوراه)|أطروح|اطروح|th[èe]se|m[ée]moire/i.test(txt);
   if(isPdf&&(pages>=40||(!pages&&f.size>3*1048576))&&best!=='official'&&!(best==='research'&&thesis))
-    return{cat:'كتب PDF',book:true,pages,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(txt)};
+    return{cat:'كتب PDF',book:true,pages,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(txt,n+' '+(a.title||'')+' '+(a.author||''))};
   if(top<4){if(isImg)return{cat:'صور',pages};return{cat:'مستندات',pages}}
   if(best==='official')return{cat:'وثائق رسمية',pages,title:guessTitle(a,n)};
   if(best==='research')return{cat:'أبحاث',pages,title:guessTitle(a,n),work:pages>=15,author:guessAuthor(a)};
   if(isImg)return{cat:'مستندات',pages};
-  return{cat:'كتب PDF',book:true,pages,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(txt)};
+  return{cat:'كتب PDF',book:true,pages,title:guessTitle(a,n),author:guessAuthor(a),subject:subjectOf(txt,n+' '+(a.title||'')+' '+(a.author||''))};
 }
 function guessCat(t,n){return 'أخرى'}
 const EBOOK=['epub','mobi','azw','azw3','djvu','fb2'];
@@ -342,7 +359,7 @@ function canBeBook(it){const e=extOf(it.fname||it.title);return it.kind==='file'
 async function fileToBook(it,quiet){
   const t=baseName(it.title&&it.title!==it.fname?it.title:(it.fname||it.title));
   const au=((it.notes||'').match(/المؤلف: ([^\n]+)/)||[])[1]||'';
-  await save({_id:uid(),kind:'book',title:t,author:au,cat:subjectOf(t+' '+au),status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(it.pages?' · '+it.pages+' صفحة':''),fileId:it._id});
+  await save({_id:uid(),kind:'book',title:t,author:au,cat:subjectOf(it.notes||'',t+' '+au),status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(it.pages?' · '+it.pages+' صفحة':''),fileId:it._id});
   if(it.cat!=='كتب PDF')await save(Object.assign({},it,{cat:'كتب PDF'}));
   if(!quiet){render();toast('أُضيف «'+t+'» إلى «كتبي»')}
 }
@@ -367,17 +384,106 @@ async function sortWorks(quiet){
       const nm=f.fname||f.title,w=workOf(nm)||(f.title&&f.title!==nm?workOf(f.title):null);
       const inWork=live().some(x=>x.kind==='work'&&(x.files||[]).includes(f._id));
       if(!inWork){
-        if(w){await save({...items.get(w._id),files:[...new Set([...(items.get(w._id).files||[]),f._id])]});linked++;
+        if(w){await save({...items.get(w._id),files:[...new Set([...(items.get(w._id).files||[]),f._id])]});linked++;await save({...items.get(f._id),cat:'من أعمالي'});
           const b=bookOf(f._id);if(b)await save({_id:b._id,kind:'book',del:true})}
         else if(!bookOf(f._id)&&(f.cat==='أبحاث'||WORK_RE.test(baseName(nm)))){
           const au=((f.notes||'').match(/المؤلف: ([^\n]+)/)||[])[1]||'';
-          await save({_id:uid(),kind:'work',title:baseName(f.title&&f.title!==f.fname?f.title:nm),type:/مذكر/.test(nm)?'مذكرة':'بحث',status:'منجز',notes:au?'المؤلف: '+au:'',files:[f._id]});made++}
+          await save({_id:uid(),kind:'work',title:baseName(f.title&&f.title!==f.fname?f.title:nm),type:/مذكر/.test(nm)?'مذكرة':'بحث',status:'منجز',notes:au?'المؤلف: '+au:'',files:[f._id]});made++;await save({...items.get(f._id),cat:'من أعمالي'})}
       }
       await save({...items.get(f._id),sorted:true});
     }
   }finally{sorting=false}
   if((linked||made)&&!quiet){render();toast('رُتّبت أعمالك: '+[linked?linked+' ملف رُبط بعمله':'',made?made+' عمل جديد في «أعمالي»':''].filter(Boolean).join('، '))}
   return linked+made;
+}
+
+/* ====== الترتيب الشامل وتصفية المكرر ======
+   يمرّ على كل ما في الخزانة: ينظّف العناوين، ويحذف المكرر (ملفات وكتب وأعمال ومذكرات وجهات)
+   مع نقل روابطه إلى النسخة الباقية، ويضع كل كتاب في موضوعه وكل ملف في نوعه.
+   لا يغيّر موضوعًا أو تصنيفًا اخترته بيدك إلا ما كان «أخرى» أو بلا تصنيف. */
+function dupKey(n){return normAr(String(n||'').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/\s*[\(\[]\d{1,3}[\)\]]\s*$/,'').replace(/[-_ ]*(copy|نسخ[ةه])\s*\d*$/i,''))}
+function cleanTitle(t){const o=String(t||'');let c=o.replace(/\.(pdf|docx?|epub|mobi|azw3?|djvu|pages|txt|rtf|jpe?g|png|heic)$/i,'').replace(/_/g,' ').replace(/\s*[\(\[]\d{1,3}[\)\]]\s*$/,'').replace(/\s+/g,' ').trim();return c.length>=2?c:o}
+function phoneKey(p){const d=String(p||'').replace(/\D/g,'');return d.length>=8?d.slice(-9):''}
+const OLD_CATS={'القراءات':'القراءات والتجويد','التفسير':'التفسير وعلوم القرآن'};
+function quickFileCat(it){
+  const n=it.fname||it.title||'',e=extOf(n),t=it.type||'';
+  if(/^audio\//.test(t)||['mp3','m4a','aac','wav','ogg','opus','amr','caf'].includes(e))return'صوتيات';
+  if(/^video\//.test(t)||['mp4','mov','m4v','3gp','avi','mkv'].includes(e))return'فيديو';
+  if(['xls','xlsx','csv','numbers','ods'].includes(e))return'جداول';
+  const txt=n+'\n'+(it.title||'')+'\n'+(it.notes||'');
+  const o=score('official',txt),r=score('research',txt);
+  if(o>=4&&o>=r)return'وثائق رسمية';if(r>=5)return'أبحاث';
+  if(/^image\//.test(t)||['jpg','jpeg','png','heic','heif','gif','webp'].includes(e))return'صور';
+  return'';
+}
+let tidying=false;
+async function tidyAll(show){
+  if(tidying)return;tidying=true;
+  const R={titles:0,dupFiles:0,dupBooks:0,dupWorks:0,dupNotes:0,dupContacts:0,subjects:0,fileCats:0};
+  const kill=async id=>{const it=items.get(id);if(!it||it.del)return;if(it.kind==='file'){try{await IDB.delBlob(id)}catch(_){}SYNC.delBlob(it)}await save({_id:id,kind:it.kind,del:true})};
+  const richer=(a,b)=>Object.values(a).filter(v=>v&&String(v).length).length>=Object.values(b).filter(v=>v&&String(v).length).length?[a,b]:[b,a];
+  try{
+    await sortWorks(true);
+    /* ١. الملفات المكررة: الاسم نفسه والحجم نفسه */
+    const fg=new Map();
+    for(const f of live())if(f.kind==='file'&&f.size){const k=dupKey(f.fname||f.title)+'|'+f.size;(fg.get(k)||fg.set(k,[]).get(k)).push(f)}
+    for(const g of fg.values()){if(g.length<2)continue;
+      const linked=x=>live().some(w=>w.kind==='work'&&(w.files||[]).includes(x._id))||bookOf(x._id);
+      g.sort((a,b)=>(linked(b)?1:0)-(linked(a)?1:0)||(a.at||0)-(b.at||0));
+      const keep=g[0];
+      for(const d of g.slice(1)){
+        for(const w of live())if(w.kind==='work'&&(w.files||[]).includes(d._id))await save({...w,files:[...new Set(w.files.map(x=>x===d._id?keep._id:x))]});
+        const b=bookOf(d._id);if(b){if(bookOf(keep._id))await kill(b._id);else await save({...b,fileId:keep._id})}
+        await kill(d._id);R.dupFiles++}}
+    /* ٢. الكتب المكررة: العنوان نفسه (والمؤلف إن وُجد) */
+    const bg=new Map();
+    for(const b of live())if(b.kind==='book'){const k=dupKey(b.title)+'|'+(b.author?normAr(b.author).split(' ').slice(0,2).join(' '):'');(bg.get(k)||bg.set(k,[]).get(k)).push(b)}
+    for(const g of bg.values()){if(g.length<2)continue;let keep=g.find(b=>b.fileId&&items.get(b.fileId)&&!items.get(b.fileId).del)||g[0];
+      for(const d of g){if(d===keep)continue;const m={...d,...keep};
+        for(const f of ['author','place','link','notes','cat'])if(!m[f]||m[f]==='أخرى')m[f]=d[f]||m[f];
+        await save(m);keep=items.get(keep._id);await kill(d._id);R.dupBooks++}}
+    /* ٣. الأعمال المكررة: تُجمع ملفاتها في عمل واحد */
+    const wg=new Map();
+    for(const w of live())if(w.kind==='work'){const k=dupKey(w.title);(wg.get(k)||wg.set(k,[]).get(k)).push(w)}
+    for(const g of wg.values()){if(g.length<2)continue;g.sort((a,b)=>(b.files||[]).length-(a.files||[]).length||(MY_WORKS.some(m=>m[0]===b.title)?1:0)-(MY_WORKS.some(m=>m[0]===a.title)?1:0));
+      const keep=g[0];let files=[...(keep.files||[])],notes=keep.notes||'';
+      for(const d of g.slice(1)){files.push(...(d.files||[]));if(d.notes&&!notes.includes(d.notes))notes=[notes,d.notes].filter(Boolean).join('\n');await kill(d._id);R.dupWorks++}
+      await save({...items.get(keep._id),files:[...new Set(files)],notes})}
+    /* ٤. المذكرات المكررة */
+    const ng=new Set();
+    for(const n of live().filter(x=>x.kind==='note').sort((a,b)=>(a.at||0)-(b.at||0))){const k=normAr(n.title)+'|'+normAr(n.body).slice(0,400);if(ng.has(k)){await kill(n._id);R.dupNotes++}else ng.add(k)}
+    /* ٥. جهات الاتصال المكررة داخل خزانتي (الرقم نفسه) تُدمج في بطاقة واحدة */
+    const cg=new Map();
+    for(const c of live())if(c.kind==='contact'){const k=phoneKey(c.phone)||phoneKey(c.whatsapp)||('n:'+normAr(c.title));if(k==='n:')continue;(cg.get(k)||cg.set(k,[]).get(k)).push(c)}
+    for(const g of cg.values()){if(g.length<2)continue;let m={...g[0]};
+      for(const d of g.slice(1)){for(const f of ['role','group','phone','whatsapp','email','address'])if(!m[f])m[f]=d[f];
+        if(d.notes&&!(m.notes||'').includes(d.notes))m.notes=[m.notes,d.notes].filter(Boolean).join('\n');
+        if((d.title||'').length>(m.title||'').length)m.title=d.title;await kill(d._id);R.dupContacts++}
+      await save(m)}
+    /* ٦. العناوين: بلا امتداد ولا «_» ولا «(1)» */
+    for(const it of live()){if(!['file','book','work'].includes(it.kind))continue;const c=cleanTitle(it.title);if(c!==it.title){await save({...it,title:c});R.titles++}}
+    /* ٧. كل كتاب في موضوعه */
+    for(const b of live()){if(b.kind!=='book')continue;let cat=OLD_CATS[b.cat]||b.cat;
+      if(!cat||cat==='أخرى'||!BOOK_CATS.includes(cat)){const f=b.fileId&&items.get(b.fileId);const c=subjectOf((b.notes||'')+' '+(f&&f.notes||''),b.title+' '+(b.author||'')+' '+(f&&f.fname||''));if(c!=='أخرى'||!cat||!BOOK_CATS.includes(cat))cat=c}
+      if(cat!==b.cat){await save({...b,cat});R.subjects++}}
+    /* ٨. كل ملف في نوعه */
+    for(const f of live()){if(f.kind!=='file')continue;let cat=f.cat;
+      if(live().some(w=>w.kind==='work'&&(w.files||[]).includes(f._id)))cat='من أعمالي';
+      else if(bookOf(f._id))cat='كتب PDF';
+      else if(!cat||cat==='أخرى'||cat==='مستندات'||!FILE_CATS.includes(cat)||cat==='من أعمالي')cat=quickFileCat(f)||(cat==='من أعمالي'||!FILE_CATS.includes(cat||'')?'مستندات':cat||'مستندات');
+      if(cat!==f.cat){await save({...f,cat});R.fileCats++}}
+  }finally{tidying=false}
+  await save({_id:'_tidy1',kind:'meta'});
+  const total=Object.values(R).reduce((a,b)=>a+b,0);
+  render();
+  if(show||total)tidySheet(R,total);
+  return R;
+}
+function tidySheet(R,total){
+  const L=[[R.dupFiles,'ملف مكرر حُذف (وبقيت نسخة واحدة بروابطها)'],[R.dupBooks,'كتاب مكرر دُمج في «كتبي»'],[R.dupWorks,'عمل مكرر جُمعت ملفاته في «أعمالي»'],[R.dupNotes,'مذكرة مكررة حُذفت'],[R.dupContacts,'جهة اتصال مكررة دُمجت في «جهاتي»'],
+    [R.subjects,'كتاب وُضع في موضوعه'],[R.fileCats,'ملف وُضع في نوعه في «ملفاتي»'],[R.titles,'عنوان نُظّف من الامتداد والزوائد']].filter(x=>x[0]);
+  sheet(`<h3>ترتيب الخزانة</h3><div class="box">${total?`<p>رُتّبت خزانتك:</p><ul style="margin:6px 0 0;padding-inline-start:20px;line-height:1.9">${L.map(([n,t])=>`<li><b>${n}</b> ${t}</li>`).join('')}</ul>`:'<p>فحصتُ كل ما في خزانتك، وكل شيء في مكانه ولا مكرر فيه.</p>'}</div>
+   <p class="meta">الكتب في «كتبي» صارت مقسّمة حسب الموضوع، والملفات في «ملفاتي» حسب النوع. ما اخترته بيدك من قبل بقي كما هو.</p><div class="actions"><button class="btn primary" data-act="close">تم</button></div>`);
 }
 
 /* ---------- الإعدادات (خاصة بكل جهاز، لا تُزامَن) ---------- */
@@ -625,6 +731,7 @@ function renderSettings(){
   /* التصنيف */
   h+=`<h2 class="sec" style="font-size:1.25rem">الملفات الواردة</h2><div class="sgroup">`;
   h+=row('التصنيف الذكي','يقرأ محتوى الملف داخل الجهاز ليضعه في مكانه. إن أوقفته صُنّف الملف من اسمه ونوعه فقط.',sw('smart',S.smart));
+  h+=row('ترتيب الخزانة كلها','يضع كل كتاب في موضوعه وكل ملف في نوعه، ويحذف المكرر من الملفات والكتب والأعمال والمذكرات وجهات الاتصال.','<button class="btn" data-act="tidy">رتّب الآن</button>');
   h+=row('إضافة الكتب إلى «كتبي» تلقائيًا','كل كتاب PDF يصل يُسجَّل في «كتبي» بعنوانه ومؤلفه وموضوعه.',sw('autoBook',S.autoBook));
   h+=`</div>`;
   /* المزامنة */
@@ -772,15 +879,17 @@ async function addFiles(list,analyses){
     if(c.to==='contact'){const n=await importVcf([f],true);if(n)bump(n===1?'جهة اتصال في «جهاتي»':'جهات اتصال في «جهاتي»','contact');else toast('وصلت بطاقة لكن لم أجد فيها اسمًا ولا هاتفًا');continue}
     if(c.to==='backup'){await doImport(f);bump('نسخة احتياطية استُعيدت','profile');continue}
     if(c.to==='note'){await save({_id:uid(),kind:'note',tag:'فائدة علمية',title:baseName(f.name),body:await f.text()});bump('مذكرات','note');continue}
+    const twin=live().find(x=>x.kind==='file'&&x.size===f.size&&dupKey(x.fname||x.title)===dupKey(f.name));
+    if(twin){bump('ملف موجود من قبل فلم يُكرَّر','file');continue}
     const w=workOf(f.name)||(c.title?workOf(c.title):null);
-    if(w)c.book=false;
+    if(w){c.book=false;c.cat='من أعمالي'}
     const id=uid();
     try{await IDB.putBlob(id,f)}catch(e){toast('لا توجد مساحة كافية لـ«'+f.name+'»');continue}
     const title=c.title&&c.title!==baseName(f.name)?c.title:f.name;
     const notes=[c.author?'المؤلف: '+c.author:'',c.pages?c.pages+' صفحة':'',title!==f.name?'اسم الملف: '+f.name:''].filter(Boolean).join('\n');
     await save({_id:id,kind:'file',title,fname:f.name,cat:c.cat,type:f.type,size:f.size,pages:c.pages||0,notes,up:false,sorted:true});
     if(w){await save({...w,files:[...new Set([...(w.files||[]),id])]});bump('ملفات في «أعمالي»','work')}
-    else if(c.cat==='أبحاث'||c.work||WORK_RE.test(baseName(f.name))){await save({_id:uid(),kind:'work',title:c.title||baseName(f.name),type:'بحث',status:'منجز',notes:c.author?'المؤلف: '+c.author:'',files:[id]});bump('أعمال جديدة في «أعمالي»','work')}
+    else if(c.cat==='أبحاث'||c.work||WORK_RE.test(baseName(f.name))){await save({...items.get(id),cat:'من أعمالي'});await save({_id:uid(),kind:'work',title:c.title||baseName(f.name),type:'بحث',status:'منجز',notes:c.author?'المؤلف: '+c.author:'',files:[id]});bump('أعمال جديدة في «أعمالي»','work')}
     else if(c.book){await save({_id:uid(),kind:'book',title:c.title||baseName(f.name),author:c.author||'',cat:c.subject||'أخرى',status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(c.pages?' · '+c.pages+' صفحة':''),fileId:id});bump('كتب في «كتبي»','book')}
     else bump(c.cat,'file');
   }
@@ -876,6 +985,7 @@ document.addEventListener('click',async e=>{
       if(typeof txt==='string'&&txt)await importVcf([new File([txt],'contacts.vcf',{type:'text/vcard'})]);
     }
     else if(a==='dedupe')ddOpen();
+    else if(a==='tidy'){toast('جارٍ ترتيب الخزانة…');tidyAll(true)}
     else if(a==='app')openSibling(t.dataset.app,t.dataset.path);
     else if(a==='lockNow')lock();
     else if(a==='pasteVcf'){let t='';try{t=await navigator.clipboard.readText()}catch(_){}
@@ -1068,7 +1178,7 @@ async function nativeShow(it,b){
       b.onclick=()=>location.reload();document.body.appendChild(b)});
   }
   if(NATIVE)khizanaPoll();
-  setTimeout(()=>rescueBooks().catch(()=>{}).then(()=>sortWorks()).catch(()=>{}),3000);
+  setTimeout(()=>rescueBooks().catch(()=>{}).then(()=>sortWorks()).then(()=>items.get('_tidy1')?0:tidyAll()).catch(()=>{}),3000);
 })();
 </script>
 </body>
