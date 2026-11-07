@@ -125,7 +125,7 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.1";
+const APP_VER="1.2";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -164,7 +164,7 @@ const KINDS={
    fields:[['title','عنوان العمل','text',1],['type','النوع','select',0,['بحث','كتاب','مذكرة','تطبيق','مجموع','مشروع','درس']],['status','الحالة','select',0,['مخطط','قيد الإنجاز','منجز']],['date','التاريخ','text'],['link','رابط أو مكان الملف','text'],['notes','ملاحظات','textarea']],
    filter:'type',pill:'status',sub:it=>[it.type,it.date,it.link].filter(Boolean).join(' · ')},
  file:{tab:'ملفاتي',title:'الملفات',one:'ملفًا',
-   fields:[['title','اسم الملف','text',1],['cat','التصنيف','select',0,['وثائق رسمية','أبحاث','كتب PDF','صور','صوتيات','أخرى']],['notes','ملاحظات','textarea']],
+   fields:[['title','اسم الملف','text',1],['cat','التصنيف','select',0,['وثائق رسمية','أبحاث','كتب PDF','مستندات','صور','صوتيات','فيديو','جداول','أخرى']],['notes','ملاحظات','textarea']],
    filter:'cat',pill:'cat',sub:it=>[fmtSize(it.size),it.size>SYNC_MAX?'في هذا الجهاز فقط':''].filter(Boolean).join(' · ')},
  contact:{tab:'جهاتي',title:'جهات الاتصال',one:'جهة اتصال',
    fields:[['title','الاسم','text',1],['role','الصفة / العلاقة','text'],['group','المجموعة','select',0,['العائلة','الزملاء','المشايخ والأساتذة','الطلبة وأولياؤهم','الإدارة','أخرى']],['phone','الهاتف','tel'],['whatsapp','واتساب (إن اختلف)','tel'],['email','البريد','email'],['address','العنوان','text'],['notes','ملاحظات','textarea']],
@@ -189,7 +189,38 @@ const MY_WORKS=[
  ['تطبيق مدرسة آل البيت عليهم السلام','تطبيق','قيد الإنجاز','جمع مرويات أهل البيت عليهم السلام مع القرآن الكريم']
 ];
 const TABS=[['profile','ملفي'],['book','كتبي'],['work','أعمالي'],['file','ملفاتي'],['contact','جهاتي'],['note','مذكراتي']];
-function guessCat(t,n){if(/^image\//.test(t))return'صور';if(/^audio\//.test(t))return'صوتيات';if(/pdf/.test(t)||/\.pdf$/i.test(n))return'كتب PDF';if(/word|document|text/.test(t)||/\.(docx?|txt|odt|pages)$/i.test(n))return'أبحاث';return'أخرى'}
+/* التعرّف على الملف الوارد: نوعه من امتداده ونوعه، ثم كلمات اسمه، ثم عدد صفحاته إن كان PDF */
+const RX_OFFICIAL=/شهاد|بطاق|جواز|عقد|وثيق|استمار|وصل|إيصال|فاتور|قرار|محضر|ترخيص|إجاز|رخص|كشف|بيان|طلب|ديبلوم|دبلوم|certificat|carte|attestation|contrat|facture|recu|reçu|diplome|diplôme|passport|scan/i;
+const RX_RESEARCH=/بحث|مذكر|رسال|أطروح|اطروح|مقال|دراس|تحقيق|ملخص|مداخل|محاضر|درس|memoire|mémoire|these|thèse|article/i;
+const RX_BOOK=/كتاب|شرح|متن|منظوم|ديوان|تفسير|مصحف|حاشي|مختصر|سلسل|موسوع|مجلد|ج\s?\d|الجزء|book|livre/i;
+function extOf(n){return (String(n).split('.').pop()||'').toLowerCase()}
+function baseName(n){return String(n).replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').trim()||n}
+async function pdfPages(f){
+  try{const head=await f.slice(0,Math.min(f.size,4*1048576)).text();
+    const m=head.match(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/)||head.match(/\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages/);
+    if(m)return +m[1];
+    const k=(head.match(/\/Type\s*\/Page[^s]/g)||[]).length;return k||0}catch(_){return 0}
+}
+async function classify(f){
+  const n=f.name||'',e=extOf(n),t=f.type||'';
+  if(e==='vcf'||/vcard/.test(t))return{to:'contact'};
+  if(e==='json'&&f.size<50*1048576){try{const o=JSON.parse(await f.text());if(o&&o.app==='khizana')return{to:'backup'}}catch(_){}}
+  if((e==='txt'||e==='md'||t==='text/plain')&&f.size<300000)return{to:'note'};
+  if(/^image\//.test(t)||['jpg','jpeg','png','heic','heif','gif','webp','tif','tiff'].includes(e))return{cat:RX_OFFICIAL.test(n)?'وثائق رسمية':'صور'};
+  if(/^audio\//.test(t)||['mp3','m4a','aac','wav','ogg','opus','amr'].includes(e))return{cat:'صوتيات'};
+  if(/^video\//.test(t)||['mp4','mov','m4v','3gp','avi','mkv'].includes(e))return{cat:'فيديو'};
+  if(['xls','xlsx','csv','numbers','ods'].includes(e))return{cat:'جداول'};
+  if(e==='pdf'||/pdf/.test(t)){
+    if(RX_OFFICIAL.test(n))return{cat:'وثائق رسمية'};
+    if(RX_RESEARCH.test(n))return{cat:'أبحاث'};
+    const pages=await pdfPages(f);
+    if(RX_BOOK.test(n)||pages>=40)return{cat:'كتب PDF',book:true,pages};
+    return{cat:'مستندات',pages};
+  }
+  if(['doc','docx','odt','pages','rtf'].includes(e))return{cat:RX_OFFICIAL.test(n)?'وثائق رسمية':RX_RESEARCH.test(n)?'أبحاث':'مستندات'};
+  return{cat:'أخرى'};
+}
+function guessCat(t,n){return 'أخرى'}
 
 /* ---------- التخزين في الجهاز (IndexedDB) ---------- */
 const IDB={
@@ -329,6 +360,7 @@ function card(it){
   if(it.kind==='file'){
     extra=(/^image\//.test(it.type||'')?`<img class="thumb" data-thumb="${it._id}" alt="">`:'')+`<div class="actions"><button class="btn primary" data-open="${it._id}">فتح</button><button class="btn" data-share="${it._id}">مشاركة</button></div>`;
   }
+  if(it.kind==='book'&&it.fileId&&items.get(it.fileId)&&!items.get(it.fileId).del)extra+=`<div class="actions"><button class="btn primary" data-open="${it.fileId}">فتح الكتاب</button></div>`;
   const link=it.link&&/^https?:\/\//.test(it.link)?`<a class="btn" href="${esc(it.link)}" target="_blank" rel="noopener">فتح الرابط</a>`:'';
   const notes=it.notes||it.body;
   return `<article class="card"><div class="head"><h3>${esc(it.title)}</h3>${pv?`<span class="pill ${pillClass(pv)}">${esc(pv)}</span>`:''}</div>
@@ -397,12 +429,22 @@ let tt;function toast(m){clearTimeout(tt);let t=$('.toast');if(!t){t=document.cr
 
 /* ---------- الملفات ---------- */
 async function addFiles(list){
+  const tally={};const bump=(k,tb)=>{tally[k]=tally[k]||{n:0,tab:tb};tally[k].n++};
   for(const f of list){
+    const c=await classify(f);
+    if(c.to==='contact'){await importVcf([f],true);bump('جهات اتصال','contact');continue}
+    if(c.to==='backup'){await doImport(f);bump('نسخة احتياطية استُعيدت','profile');continue}
+    if(c.to==='note'){await save({_id:uid(),kind:'note',tag:'فائدة علمية',title:baseName(f.name),body:await f.text()});bump('مذكرات','note');continue}
     const id=uid();
     try{await IDB.putBlob(id,f)}catch(e){toast('لا توجد مساحة كافية لـ«'+f.name+'»');continue}
-    await save({_id:id,kind:'file',title:f.name,cat:guessCat(f.type,f.name),type:f.type,size:f.size,up:false});
+    await save({_id:id,kind:'file',title:f.name,cat:c.cat,type:f.type,size:f.size,pages:c.pages||0,up:false});
+    if(c.book){await save({_id:uid(),kind:'book',title:baseName(f.name),cat:'أخرى',status:'أملكه',place:'نسخة PDF في «ملفاتي»'+(c.pages?' · '+c.pages+' صفحة':''),fileId:id});bump('كتب في «كتبي»','book')}
+    else bump(c.cat,'file');
   }
-  render();toast(list.length>1?'أُضيفت '+list.length+' ملفات':'أُضيف الملف');
+  const keys=Object.keys(tally);if(!keys.length){render();return}
+  const top=keys.sort((a,b)=>tally[b].n-tally[a].n)[0];
+  tab=tally[top].tab;filter=tab==='file'&&keys.length===1?top:'';q='';$('#q').value='';render();
+  toast('وصل: '+keys.map(k=>tally[k].n+' '+k).join('، '));
 }
 async function getFile(it){
   let b=await IDB.getBlob(it._id).catch(()=>null);
@@ -448,9 +490,9 @@ function parseVcf(txt){
   }
   return out;
 }
-async function importVcf(files){
+async function importVcf(files,quiet){
   let n=0;for(const f of files){for(const c of parseVcf(await f.text())){await save(Object.assign({_id:uid(),kind:'contact',group:'أخرى',title:c.title||c.phone},c));n++}}
-  render();toast(n?'أُضيفت '+n+' جهة اتصال':'لم أجد جهات اتصال في الملف');
+  if(quiet)return n;render();toast(n?'أُضيفت '+n+' جهة اتصال':'لم أجد جهات اتصال في الملف');
 }
 
 /* ---------- النسخ الاحتياطية ---------- */
