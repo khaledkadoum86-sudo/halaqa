@@ -110,6 +110,19 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 .viewer img,.viewer video{max-width:100%;max-height:60vh;display:block;margin:0 auto 10px;border-radius:8px}
 .viewer iframe{width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-bottom:10px;background:#fff}
 .viewer audio{width:100%;margin-bottom:10px}
+.dd-sum{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
+.dd-sum b{background:var(--gold-soft);border:1px solid var(--gold);border-radius:10px;padding:6px 10px;font-weight:normal;font-size:.9rem}
+.dd-g{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.dd-g[data-off="1"]{opacity:.55}
+.dd-g header{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.dd-g header input{width:20px;height:20px;accent-color:var(--ink-btn)}
+.dd-m{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:var(--paper);cursor:pointer}
+.dd-m input{margin-top:5px;accent-color:var(--gold)}
+.dd-m div{min-width:0;overflow-wrap:anywhere}
+.dd-m small{display:block;color:var(--muted);direction:ltr;text-align:right}
+.dd-m em{font-style:normal;font-size:.75rem;color:var(--gold)}
+.dd-m:not(:has(input:checked)) em{color:var(--danger)}
+.dd-bar{position:sticky;bottom:-18px;background:var(--paper);padding:10px 0 4px;margin-top:10px;display:grid;gap:6px;border-top:1px solid var(--line)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:7px 16px;border-radius:999px;font-size:.88rem;z-index:30;max-width:90%;text-align:center}
 .sgroup{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:2px 16px}
 .srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -433,7 +446,7 @@ function render(){
   if(tab==='work'&&!items.get('_seeded')&&!list.length)
     h+=`<div class="box"><p>أعمالك وأبحاثك التي اشتغلنا عليها جاهزة للإضافة (${MY_WORKS.length} أعمال). عدّل حالة كل عمل بعدها.</p><div><button class="btn primary" data-act="seed">أضف أعمالي</button></div></div>`;
   if(tab==='file')h+=`<label class="drop" for="up"><b>اختر ملفات من الهاتف</b><span>${NATIVE?'أو من أي تطبيق: افتح الملف ثم مشاركة ← «خزانتي»':'من «الملفات» أو الصور أو iCloud أو تنزيلات واتساب: PDF وWord وصور وصوت…'}</span></label><input id="up" type="file" multiple hidden>`;
-  if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px">${NATIVE?'<button class="btn primary" data-act="pickContacts">اختر من جهات اتصال الآيفون</button>':''}<label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><button class="btn" data-act="pasteVcf">لصق جهة منسوخة</button><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
+  if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px">${NATIVE?'<button class="btn primary" data-act="pickContacts">اختر من جهات اتصال الآيفون</button><button class="btn" data-act="dedupe">تنظيف المكرر في جهات الآيفون</button>':''}<label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><button class="btn" data-act="pasteVcf">لصق جهة منسوخة</button><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
   if(used.length>1)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
   h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
   main.innerHTML=h;loadThumbs();
@@ -751,6 +764,7 @@ document.addEventListener('click',async e=>{
       let txt=null;try{txt=await nat({action:'pickContacts'})}catch(_){}
       if(typeof txt==='string'&&txt)await importVcf([new File([txt],'contacts.vcf',{type:'text/vcard'})]);
     }
+    else if(a==='dedupe')ddOpen();
     else if(a==='lockNow')lock();
     else if(a==='pasteVcf'){let t='';try{t=await navigator.clipboard.readText()}catch(_){}
       if(/BEGIN:VCARD/i.test(t))await importVcf([new File([t],'contacts.vcf',{type:'text/vcard'})]);else toast('لا توجد جهة اتصال منسوخة')}
@@ -790,6 +804,104 @@ document.addEventListener('visibilitychange',()=>{
 
 /* ---------- التطبيق الأصلي: الملفات الواردة من قائمة المشاركة، والعرض بـ Quick Look ---------- */
 const NATIVE=!!(window.KHIZANA_NATIVE&&window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.khizanaFile);
+/* ====== تنظيف جهات الاتصال المكررة في الآيفون ======
+   الصفحة تقرأ الجهات وتجمع المكرر، والمستخدم يراجع ويختار، ثم يدمج التطبيق كل مجموعة في جهة واحدة
+   (فلا يضيع رقم ولا بريد) ويحذف الباقي. قبل أي حذف تُحفظ نسخة كاملة في «ملفاتي». */
+const DD={groups:[],total:0};
+const ddName=s=>(s||'').replace(/[ً-ْٰـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+  .toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').split(' ').filter(Boolean).sort().join(' ');
+const ddPhone=p=>{const d=(p||'').replace(/\D/g,'');return d.length>=6?d.slice(-9):''};
+function ddFind(list){
+  const par=list.map((_,i)=>i),root=i=>par[i]===i?i:(par[i]=root(par[i]));
+  const seen=new Map(),link=(k,i)=>{if(!seen.has(k)){seen.set(k,i);return}const a=root(seen.get(k)),b=root(i);if(a!==b)par[b]=a};
+  list.forEach((c,i)=>{
+    c.nk=ddName(c.name||c.org);c.pk=[...new Set((c.phones||[]).map(ddPhone).filter(Boolean))];c.ek=[...new Set((c.emails||[]).map(e=>e.trim().toLowerCase()).filter(Boolean))];
+    c.score=c.pk.length*3+c.ek.length*2+(c.extra||0)+(c.photo?2:0)+(c.name?1:0)+(c.org?1:0);
+    if(c.nk)link('n:'+c.nk,i);c.pk.forEach(p=>link('p:'+p,i));c.ek.forEach(e=>link('e:'+e,i));
+  });
+  const by=new Map();list.forEach((c,i)=>{const r=root(i);by.has(r)?by.get(r).push(c):by.set(r,[c])});
+  const out=[];
+  for(const m of by.values()){if(m.length<2)continue;
+    const same=m.every(c=>c.nk&&c.nk===m[0].nk);
+    const sig=c=>c.pk.slice().sort().join()+'|'+c.ek.slice().sort().join();
+    const keys=m.flatMap(c=>[...c.pk.map(p=>'p'+p),...c.ek.map(e=>'e'+e)]);
+    const shared=keys.length!==new Set(keys).size;
+    const type=same&&m.every(c=>sig(c)===sig(m[0]))?'exact':shared?'phone':'name';
+    m.sort((a,b)=>b.score-a.score);
+    out.push({type,members:m,keep:m[0].id,on:type!=='name'});
+  }
+  const rank={exact:0,phone:1,name:2};
+  return out.sort((a,b)=>rank[a.type]-rank[b.type]||(a.members[0].name||'').localeCompare(b.members[0].name||'','ar'));
+}
+const DD_TYPE={exact:'مكررة تمامًا',phone:'الرقم نفسه',name:'الاسم نفسه بأرقام مختلفة — تأكد أنه الشخص نفسه'};
+function ddCount(){const g=DD.groups.filter(x=>x.on);return{g:g.length,n:g.reduce((s,x)=>s+x.members.length-1,0)}}
+function ddView(){
+  const c=ddCount(),gs=DD.groups;
+  if(!gs.length){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>فحصتُ ${DD.total} جهة اتصال، ولا يوجد فيها مكرر. جهاتك نظيفة.</p></div><div class="actions"><button class="btn primary" data-act="close">تم</button></div>`);return}
+  const types=['exact','phone','name'].map(t=>[t,gs.filter(g=>g.type===t).length]).filter(x=>x[1]);
+  sheet(`<h3>تنظيف جهات الاتصال</h3>
+  <p style="margin:0 0 6px;color:var(--muted);font-size:.9rem">فحصتُ ${DD.total} جهة. في كل مجموعة تبقى الجهة المعلَّمة ★، وتُنقل إليها أرقام الأخرى وبريدها ثم تُحذف. اضغط جهة لتجعلها هي الباقية.</p>
+  <div class="dd-sum">${types.map(([t,n])=>`<b>${DD_TYPE[t].split(' — ')[0]}: ${n}</b>`).join('')}</div>
+  <div class="actions" style="margin-bottom:8px"><button class="btn" data-dd="all">حدد الكل</button><button class="btn" data-dd="none">ألغِ التحديد</button></div>
+  <div class="list" id="ddList">${gs.map((g,gi)=>`<section class="dd-g" data-off="${g.on?0:1}">
+    <header><input type="checkbox" data-dd-on="${gi}" ${g.on?'checked':''} aria-label="دمج هذه المجموعة"><span>${DD_TYPE[g.type]} · ${g.members.length} جهات</span></header>
+    ${g.members.map(m=>`<label class="dd-m"><input type="radio" name="dd${gi}" data-dd-keep="${gi}" value="${esc(m.id)}" ${m.id===g.keep?'checked':''}><div><b>${esc(m.name||m.org||'(دون اسم)')}</b> <em>${m.id===g.keep?'★ تبقى':'تُدمج وتُحذف'}</em>${(m.phones||[]).length||(m.emails||[]).length?`<small>${esc([...(m.phones||[]),...(m.emails||[])].join(' · '))}</small>`:''}</div></label>`).join('')}
+  </section>`).join('')}</div>
+  <div class="dd-bar"><button class="btn danger" data-dd="go" ${c.n?'':'disabled'} style="justify-content:center;padding:9px">${c.n?`ادمج واحذف ${c.n} جهة مكررة (${c.g} مجموعة)`:'لم تحدد شيئًا'}</button><button class="btn" data-act="close" style="justify-content:center">إلغاء</button></div>`);
+  const ov=$('#ov');
+  ov.addEventListener('change',e=>{const t=e.target;
+    if(t.dataset.ddOn!==undefined){DD.groups[+t.dataset.ddOn].on=t.checked;ddRefresh()}
+    else if(t.dataset.ddKeep!==undefined){DD.groups[+t.dataset.ddKeep].keep=t.value;DD.groups[+t.dataset.ddKeep].on=true;ddRefresh()}});
+  ov.addEventListener('click',e=>{const b=e.target.closest('[data-dd]');if(!b)return;const a=b.dataset.dd;
+    if(a==='all'||a==='none'){DD.groups.forEach(g=>g.on=a==='all');ddRefresh()}
+    else if(a==='go')ddConfirm()});
+}
+/* إعادة الرسم مع الحفاظ على موضع التمرير */
+function ddRefresh(){const sh=$('.sheet'),y=sh?sh.scrollTop:0;ddView();const n=$('.sheet');if(n)n.scrollTop=y}
+function ddConfirm(){
+  const c=ddCount();
+  sheet(`<h3>تأكيد الحذف</h3><div class="box"><p>ستُحذف <b>${c.n}</b> جهة من جهات اتصال الآيفون بعد نقل أرقامها وبريدها إلى الجهة الباقية في كل مجموعة.</p>
+  <p>قبل الحذف أحفظ نسخة كاملة من كل جهاتك في «ملفاتي»، فيمكنك استرجاع أي جهة منها.</p>
+  <p style="color:var(--muted);font-size:.9rem">إن كانت جهاتك متزامنة مع iCloud فالحذف يسري على أجهزتك الأخرى أيضًا.</p></div>
+  <div class="actions"><button class="btn danger" data-dd="yes">نعم، ادمج واحذف</button><button class="btn" data-dd="back">رجوع</button></div>`);
+  $('#ov').addEventListener('click',e=>{const b=e.target.closest('[data-dd]');if(!b)return;if(b.dataset.dd==='back')ddView();else ddRun()});
+}
+async function ddRun(){
+  sheet(`<h3>تنظيف جهات الاتصال</h3><div class="empty">جارٍ حفظ نسخة من جهاتك…</div>`);
+  let txt=null;try{txt=await nat({action:'contactsBackup'})}catch(_){}
+  if(typeof txt!=='string'||!/BEGIN:VCARD/i.test(txt)){sheet(`<h3>توقفتُ قبل الحذف</h3><div class="box"><p>لم أستطع حفظ نسخة من جهاتك، فلم أحذف شيئًا.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
+  const d=new Date().toLocaleDateString('en-CA'),f=new File([txt],'contacts-backup-'+d+'.vcf',{type:'text/vcard'}),id=uid();
+  try{await IDB.putBlob(id,f)}catch(_){sheet(`<h3>توقفتُ قبل الحذف</h3><div class="box"><p>لا توجد مساحة كافية لحفظ النسخة، فلم أحذف شيئًا.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
+  const total=(txt.match(/BEGIN:VCARD/gi)||[]).length;
+  await save({_id:id,kind:'file',title:'نسخة جهات الاتصال قبل التنظيف · '+d,fname:f.name,cat:'أخرى',type:f.type,size:f.size,pages:0,notes:total+' جهة اتصال، حُفظت قبل حذف المكرر',up:false});
+  $('.sheet .empty').textContent='جارٍ الدمج والحذف…';
+  const groups=DD.groups.filter(g=>g.on).map(g=>({keep:g.keep,remove:g.members.map(m=>m.id).filter(x=>x!==g.keep)}));
+  let r=null;try{r=await nat({action:'contactsMerge',groups})}catch(_){}
+  r=r||{merged:0,deleted:0,failed:groups.length};
+  sheet(`<h3>تم التنظيف</h3><div class="box"><p>دُمجت ${r.merged} مجموعة، وحُذفت <b>${r.deleted}</b> جهة مكررة.</p>
+  ${r.failed?`<p>تعذّر دمج ${r.failed} مجموعة فبقيت كما هي (قد تكون من حساب لا يسمح بالتعديل).</p>`:''}
+  <p>النسخة الكاملة قبل التنظيف محفوظة في «ملفاتي» باسم «نسخة جهات الاتصال قبل التنظيف».</p></div>
+  <div class="actions"><button class="btn primary" data-dd="again">افحص من جديد</button><button class="btn" data-act="close">إغلاق</button></div>`);
+  $('#ov').addEventListener('click',e=>{if(e.target.closest('[data-dd="again"]'))ddScan()});
+  render();
+}
+async function ddScan(){
+  sheet(`<h3>تنظيف جهات الاتصال</h3><div class="empty">جارٍ فحص جهات الاتصال…</div>`);
+  let r=null;try{r=await nat({action:'contactsScan'})}catch(_){}
+  if(!r){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>هذه الميزة تحتاج إعادة تثبيت «خزانتي» من Xcode مرة واحدة: افتح <b>Khizana.xcodeproj</b> بعد تنزيل المشروع من جديد، واضغط ▶.</p></div><div class="actions"><button class="btn" data-act="close">إغلاق</button></div>`);return}
+  if(r.status==='denied'){sheet(`<h3>تنظيف جهات الاتصال</h3><div class="box"><p>لم تسمح لـ«خزانتي» بالوصول إلى جهات الاتصال. فعّله من: الإعدادات ← خزانتي ← جهات الاتصال ← الوصول الكامل.</p></div><div class="actions"><button class="btn primary" data-dd="settings">افتح الإعدادات</button><button class="btn" data-act="close">إغلاق</button></div>`);
+    $('#ov').addEventListener('click',e=>{if(e.target.closest('[data-dd="settings"]'))nat({action:'openSettings'})});return}
+  DD.total=r.list.length;DD.groups=ddFind(r.list);ddView();
+  if(r.status==='limited')toast('سمحت ببعض الجهات فقط؛ للفحص الكامل: الإعدادات ← خزانتي ← جهات الاتصال ← الوصول الكامل');
+}
+function ddOpen(){
+  if(BIO==='old'){toast('أعد تثبيت التطبيق من Xcode مرة واحدة لتظهر هذه الميزة');return}
+  sheet(`<h3>تنظيف جهات الاتصال المكررة</h3><div class="box">
+  <p>أفحص كل جهات الاتصال في الآيفون وأجمع المكرر منها: المكررة تمامًا، والتي لها الرقم نفسه، والتي لها الاسم نفسه.</p>
+  <p>لا أحذف شيئًا قبل أن تراجع وتوافق. وعند الحذف أنقل أرقام الجهة المكررة وبريدها إلى الجهة الباقية فلا يضيع رقم، وأحفظ قبلها نسخة كاملة من جهاتك في «ملفاتي».</p></div>
+  <div class="actions"><button class="btn primary" data-dd="scan">افحص جهات الاتصال</button><button class="btn" data-act="close">إلغاء</button></div>`);
+  $('#ov').addEventListener('click',e=>{if(e.target.closest('[data-dd="scan"]'))ddScan()});
+}
 const nat=m=>webkit.messageHandlers.khizanaFile.postMessage(m);
 const MIME={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',wav:'audio/wav',ogg:'audio/ogg',opus:'audio/ogg',mp4:'video/mp4',mov:'video/quicktime',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',txt:'text/plain',zip:'application/zip'};
 let polling=false;

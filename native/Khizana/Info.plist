@@ -12,6 +12,8 @@
 	<string>لاختيار الصور وحفظها في خزانتك.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>لقفل خزانتي وفتحها ببصمة الوجه.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>لتنظيف جهات الاتصال المكررة: تدمج «خزانتي» المكرر في جهة واحدة بعد موافقتك، وتحفظ نسخة كاملة قبل أي حذف.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>لتصوير الوثائق وحفظها في خزانتك.</string>
 	<key>CFBundleURLTypes</key>

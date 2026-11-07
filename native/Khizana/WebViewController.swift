@@ -5,6 +5,7 @@ import PDFKit
 import Vision
 import LocalAuthentication
 import ContactsUI
+import Contacts
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/khizana/")!
 let appHost = "khaledkadoum86-sudo.github.io"
@@ -98,6 +99,18 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         case "pickContacts":
             // اختيار جهات من «جهات الاتصال» في الآيفون (لا يحتاج إذنًا)، وتعود بصيغة vCard
             ContactPicker.shared.present(from: self) { replyHandler($0, nil) }
+        case "contactsScan":
+            // قراءة كل جهات الاتصال (يطلب الإذن أول مرة) لتبحث الصفحة عن المكرر
+            ContactsCleaner.scan { replyHandler($0, nil) }
+        case "contactsBackup":
+            // نسخة كاملة من جهات الاتصال بصيغة vCard، تحفظها الصفحة قبل أي حذف
+            ContactsCleaner.backup { replyHandler($0, nil) }
+        case "contactsMerge":
+            // دمج كل مجموعة في الجهة الباقية ثم حذف المكرر منها
+            ContactsCleaner.merge(body["groups"] as? [[String: Any]] ?? []) { replyHandler($0, nil) }
+        case "openSettings":
+            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            replyHandler(true, nil)
         case "biometry":
             // نوع القفل المتاح في الجهاز: faceID أو touchID أو none
             let ctx = LAContext()
@@ -432,5 +445,135 @@ final class ContactPicker: NSObject, CNContactPickerDelegate {
     func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
         guard let data = try? CNContactVCardSerialization.data(with: contacts) else { finish(nil); return }
         finish(String(data: data, encoding: .utf8))
+    }
+}
+
+
+/// تنظيف جهات الاتصال المكررة في الآيفون: القراءة، والنسخ الاحتياطي، والدمج ثم الحذف.
+/// الصفحة هي التي تقرّر ما المكرر وما يبقى، وهذا الجزء ينفّذ فقط بعد موافقة المستخدم.
+enum ContactsCleaner {
+    private static let store = CNContactStore()
+    private static let work = DispatchQueue(label: "khizana.contacts", qos: .userInitiated)
+
+    /// "full" أو "limited" (سمح ببعض الجهات فقط) أو "denied"
+    private static func access(_ done: @escaping (String) -> Void) {
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+        if status == .authorized { done("full"); return }
+        if status.rawValue == 4 { done("limited"); return }   // الوصول المحدود (iOS 18)
+        if status == .notDetermined {
+            store.requestAccess(for: .contacts) { _, _ in
+                let now = CNContactStore.authorizationStatus(for: .contacts)
+                done(now == .authorized ? "full" : now.rawValue == 4 ? "limited" : "denied")
+            }
+            return
+        }
+        done("denied")
+    }
+
+    private static let mergeKeys: [CNKeyDescriptor] = ([
+        CNContactGivenNameKey, CNContactFamilyNameKey, CNContactMiddleNameKey, CNContactNicknameKey,
+        CNContactOrganizationNameKey, CNContactJobTitleKey, CNContactPhoneNumbersKey, CNContactEmailAddressesKey,
+        CNContactPostalAddressesKey, CNContactUrlAddressesKey, CNContactBirthdayKey, CNContactImageDataKey,
+        CNContactImageDataAvailableKey
+    ] as [CNKeyDescriptor]) + [CNContactFormatter.descriptorForRequiredKeys(for: .fullName)]
+
+    /// للفحص: دون الصور حتى يبقى خفيفًا ولو كانت الجهات بالآلاف
+    private static let scanKeys: [CNKeyDescriptor] = ([
+        CNContactOrganizationNameKey, CNContactPhoneNumbersKey, CNContactEmailAddressesKey,
+        CNContactPostalAddressesKey, CNContactUrlAddressesKey, CNContactBirthdayKey, CNContactImageDataAvailableKey
+    ] as [CNKeyDescriptor]) + [CNContactFormatter.descriptorForRequiredKeys(for: .fullName)]
+
+    static func scan(_ done: @escaping ([String: Any]) -> Void) {
+        access { state in
+            guard state != "denied" else { DispatchQueue.main.async { done(["status": state, "list": []]) }; return }
+            work.async {
+                var list: [[String: Any]] = []
+                let request = CNContactFetchRequest(keysToFetch: scanKeys)
+                request.sortOrder = .userDefault
+                try? store.enumerateContacts(with: request) { c, _ in
+                    let name = CNContactFormatter.string(from: c, style: .fullName) ?? ""
+                    list.append([
+                        "id": c.identifier,
+                        "name": name,
+                        "org": c.organizationName,
+                        "phones": c.phoneNumbers.map { $0.value.stringValue },
+                        "emails": c.emailAddresses.map { $0.value as String },
+                        "extra": c.postalAddresses.count + c.urlAddresses.count + (c.birthday == nil ? 0 : 1),
+                        "photo": c.imageDataAvailable
+                    ])
+                }
+                DispatchQueue.main.async { done(["status": state, "list": list]) }
+            }
+        }
+    }
+
+    static func backup(_ done: @escaping (String?) -> Void) {
+        access { state in
+            guard state != "denied" else { DispatchQueue.main.async { done(nil) }; return }
+            work.async {
+                var all: [CNContact] = []
+                let request = CNContactFetchRequest(keysToFetch: [CNContactVCardSerialization.descriptorForRequiredKeys()])
+                do { try store.enumerateContacts(with: request) { c, _ in all.append(c) } } catch { DispatchQueue.main.async { done(nil) }; return }
+                let text = (try? CNContactVCardSerialization.data(with: all)).flatMap { String(data: $0, encoding: .utf8) }
+                DispatchQueue.main.async { done(text) }
+            }
+        }
+    }
+
+    private static func digits(_ s: String) -> String {
+        let d = s.filter { $0.isNumber }.map { String($0) }.joined()
+        return String(d.suffix(9))
+    }
+
+    /// groups: [{keep: id, remove: [id]}] ← {merged, deleted, failed}
+    static func merge(_ groups: [[String: Any]], _ done: @escaping ([String: Any]) -> Void) {
+        access { state in
+            guard state != "denied" else { DispatchQueue.main.async { done(["merged": 0, "deleted": 0, "failed": groups.count]) }; return }
+            work.async {
+                var merged = 0, deleted = 0, failed = 0
+                for g in groups {
+                    guard let keepId = g["keep"] as? String, let removeIds = g["remove"] as? [String], !removeIds.isEmpty else { failed += 1; continue }
+                    do {
+                        let keep = try store.unifiedContact(withIdentifier: keepId, keysToFetch: mergeKeys).mutableCopy() as! CNMutableContact
+                        let others = try store.unifiedContacts(matching: CNContact.predicateForContacts(withIdentifiers: removeIds), keysToFetch: mergeKeys)
+                        guard !others.isEmpty else { failed += 1; continue }
+                        var phones = Set(keep.phoneNumbers.map { digits($0.value.stringValue) })
+                        var emails = Set(keep.emailAddresses.map { ($0.value as String).lowercased() })
+                        var places = Set(keep.postalAddresses.map { CNPostalAddressFormatter.string(from: $0.value, style: .mailingAddress) })
+                        var urls = Set(keep.urlAddresses.map { ($0.value as String).lowercased() })
+                        for o in others {
+                            for p in o.phoneNumbers {
+                                let d = digits(p.value.stringValue)
+                                if !d.isEmpty && !phones.contains(d) { phones.insert(d); keep.phoneNumbers.append(CNLabeledValue(label: p.label, value: p.value)) }
+                            }
+                            for e in o.emailAddresses {
+                                let k = (e.value as String).lowercased()
+                                if !emails.contains(k) { emails.insert(k); keep.emailAddresses.append(CNLabeledValue(label: e.label, value: e.value)) }
+                            }
+                            for a in o.postalAddresses {
+                                let k = CNPostalAddressFormatter.string(from: a.value, style: .mailingAddress)
+                                if !places.contains(k) { places.insert(k); keep.postalAddresses.append(CNLabeledValue(label: a.label, value: a.value)) }
+                            }
+                            for u in o.urlAddresses {
+                                let k = (u.value as String).lowercased()
+                                if !urls.contains(k) { urls.insert(k); keep.urlAddresses.append(CNLabeledValue(label: u.label, value: u.value)) }
+                            }
+                            if keep.givenName.isEmpty && keep.familyName.isEmpty { keep.givenName = o.givenName; keep.familyName = o.familyName; keep.middleName = o.middleName }
+                            if keep.organizationName.isEmpty { keep.organizationName = o.organizationName }
+                            if keep.jobTitle.isEmpty { keep.jobTitle = o.jobTitle }
+                            if keep.nickname.isEmpty { keep.nickname = o.nickname }
+                            if keep.birthday == nil { keep.birthday = o.birthday }
+                            if keep.imageData == nil, let img = o.imageData { keep.imageData = img }
+                        }
+                        let save = CNSaveRequest()
+                        save.update(keep)
+                        for o in others { save.delete(o.mutableCopy() as! CNMutableContact) }
+                        try store.execute(save)
+                        merged += 1; deleted += others.count
+                    } catch { failed += 1 }
+                }
+                DispatchQueue.main.async { done(["merged": merged, "deleted": deleted, "failed": failed]) }
+            }
+        }
     }
 }
