@@ -25,6 +25,7 @@
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
+				<string>public.vcard</string>
 				<string>public.data</string>
 				<string>public.content</string>
 			</array>

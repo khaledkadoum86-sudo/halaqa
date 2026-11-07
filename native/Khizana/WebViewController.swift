@@ -4,6 +4,7 @@ import QuickLook
 import PDFKit
 import Vision
 import LocalAuthentication
+import ContactsUI
 
 let appURL = URL(string: "https://khaledkadoum86-sudo.github.io/halaqa/khizana/")!
 let appHost = "khaledkadoum86-sudo.github.io"
@@ -94,6 +95,9 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             guard (try? FileManager.default.moveItem(at: Viewer.partURL(for: id), to: file)) != nil else { replyHandler(false, nil); return }
             show(file, title: name)
             replyHandler(true, nil)
+        case "pickContacts":
+            // اختيار جهات من «جهات الاتصال» في الآيفون (لا يحتاج إذنًا)، وتعود بصيغة vCard
+            ContactPicker.shared.present(from: self) { replyHandler($0, nil) }
         case "biometry":
             // نوع القفل المتاح في الجهاز: faceID أو touchID أو none
             let ctx = LAContext()
@@ -388,5 +392,31 @@ extension WebViewController {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+    }
+}
+
+
+/// نافذة اختيار جهات الاتصال من الآيفون، تعيد البطاقات المختارة نصًّا بصيغة vCard (أو nil عند الإلغاء).
+final class ContactPicker: NSObject, CNContactPickerDelegate {
+    static let shared = ContactPicker()
+    private var done: ((String?) -> Void)?
+
+    func present(from vc: UIViewController, done: @escaping (String?) -> Void) {
+        self.done?(nil)
+        self.done = done
+        let picker = CNContactPickerViewController()
+        picker.delegate = self
+        var top = vc
+        while let p = top.presentedViewController { top = p }
+        top.present(picker, animated: true)
+    }
+
+    private func finish(_ text: String?) { let d = done; done = nil; d?(text) }
+
+    func contactPickerDidCancel(_ picker: CNContactPickerViewController) { finish(nil) }
+
+    func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
+        guard let data = try? CNContactVCardSerialization.data(with: contacts) else { finish(nil); return }
+        finish(String(data: data, encoding: .utf8))
     }
 }

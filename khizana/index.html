@@ -166,7 +166,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="1.4";
+const APP_VER="1.5";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -433,7 +433,7 @@ function render(){
   if(tab==='work'&&!items.get('_seeded')&&!list.length)
     h+=`<div class="box"><p>أعمالك وأبحاثك التي اشتغلنا عليها جاهزة للإضافة (${MY_WORKS.length} أعمال). عدّل حالة كل عمل بعدها.</p><div><button class="btn primary" data-act="seed">أضف أعمالي</button></div></div>`;
   if(tab==='file')h+=`<label class="drop" for="up"><b>اختر ملفات من الهاتف</b><span>${NATIVE?'أو من أي تطبيق: افتح الملف ثم مشاركة ← «خزانتي»':'من «الملفات» أو الصور أو iCloud أو تنزيلات واتساب: PDF وWord وصور وصوت…'}</span></label><input id="up" type="file" multiple hidden>`;
-  if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px"><label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
+  if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px">${NATIVE?'<button class="btn primary" data-act="pickContacts">اختر من جهات اتصال الآيفون</button>':''}<label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
   if(used.length>1)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
   h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
   main.innerHTML=h;loadThumbs();
@@ -746,6 +746,11 @@ document.addEventListener('click',async e=>{
     if(a==='seed'){for(const [title,type,status,notes] of MY_WORKS)await save({_id:uid(),kind:'work',title,type,status,notes});await save({_id:'_seeded',kind:'meta'});render();toast('أُضيفت أعمالك')}
     else if(a==='editProfile')openProfile();
     else if(a==='changePin')pinSheet('change');
+    else if(a==='pickContacts'){
+      if(BIO==='old'){toast('أعد تثبيت التطبيق من Xcode مرة واحدة لتظهر جهات اتصال الآيفون');return}
+      let txt=null;try{txt=await nat({action:'pickContacts'})}catch(_){}
+      if(typeof txt==='string'&&txt)await importVcf([new File([txt],'contacts.vcf',{type:'text/vcard'})]);
+    }
     else if(a==='lockNow')lock();
     else if(a==='export')doExport(false);
     else if(a==='exportFiles')doExport(true);
