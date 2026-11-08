@@ -297,7 +297,7 @@ button,.btn,label.btn{touch-action:manipulation;-webkit-user-select:none;user-se
   html.ios .datebox{width:100%;justify-content:space-between}
   html.ios .datebox .lbl{min-width:0;flex:1}
   html.ios .sbox{flex:1 1 100%}
-  html.ios #filter,html.ios #sortBy{flex:1}
+  html.ios #filter,html.ios #tdSort,html.ios #sortBy{flex:1}
   html.ios .list,html.ios .gridwrap{border-radius:14px}
   html.ios .row{padding-block:10px;min-height:56px}
   html.ios /* full name on its own line,html.ios controls underneath */
@@ -763,6 +763,7 @@ body:not([data-view="home"]) .rdz{display:none}
         <select id="filter" aria-label="تصفية">
         <option value="all">الكل</option><option value="p">الحاضرون</option><option value="j">حضور جزئي</option><option value="a">الغائبون</option><option value="none">غير مسجَّل</option>
       </select>
+        <select id="tdSort" aria-label="ترتيب القائمة"><option value="">الترتيب المعتاد</option><option value="hi">الأعلى حضورًا</option><option value="lo">الأقل حضورًا</option></select>
         <button class="btn" id="allPresent">الباقي حاضر</button>
         <button class="btn" id="offBtn" type="button">📅 لا حصة (عطلة)</button>
       </div>
@@ -1093,6 +1094,10 @@ function renderTodayInner(){
     const v=dd.att[s.id];
     if(S.filter==="p")return v===P; if(S.filter==="j")return v===J; if(S.filter==="a")return v===A; if(S.filter==="none")return !isRec(v); return true;
   });
+  /* attendance order: from earlier sessions only, so rows don't jump while marking today */
+  const TS=TDSORT?(()=>{try{return attRates(S.date)}catch(_){return {}}})():null;
+  if(TS){const g=s=>{const o=TS[s.id];return o&&o.r!=null?o.r:null},hi=TDSORT==="hi";
+    rows.sort(sexFirst((x,y)=>{const a=g(x),b=g(y);if(a==null&&b==null)return 0;if(a==null)return 1;if(b==null)return -1;return hi?b-a:a-b}))}
   const dis=S.canWrite?"":"disabled";
   box.html=`<div class="hd"><span class="n">رقم</span><span>اسم ولقب الطالب</span><span class="c1">ح / ج / غ</span><span class="c2">الثمن</span></div>`+
    (rows.length?rows.map((s,i)=>{const v=dd.att[s.id],th=dd.th[s.id];
@@ -1105,6 +1110,7 @@ function renderTodayInner(){
     </div>`}).join(""):(S.filter!=="all"&&!q?`<div class="empty">لا يوجد طالب بفلتر «${FILTER_LBL[S.filter]||""}» في هذا اليوم (${list.length} طالبًا في القائمة). <button type="button" class="btn sm" onclick="resetTodayFilter()">عرض الكل</button></div>`:`<div class="empty">لا يوجد طالب يطابق البحث.</div>`));
 }
 const FILTER_LBL={p:"الحاضرون",j:"حضور جزئي",a:"الغائبون",none:"غير مسجَّل"};
+let TDSORT=(()=>{try{const v=localStorage.getItem("halaqa.tdsort");return v==="hi"||v==="lo"?v:""}catch(_){return ""}})();
 function resetTodayFilter(){S.filter="all";const f=document.getElementById("filter");if(f)f.value="all";renderToday()}
 
 function monthStats(mk){
@@ -1495,6 +1501,7 @@ document.getElementById("q").addEventListener("input",()=>syncClear("q"));
 document.getElementById("mq").addEventListener("input",()=>syncClear("mq"));
 document.getElementById("q").oninput=e=>{S.q=e.target.value;renderToday()};
 document.getElementById("filter").onchange=e=>{S.filter=e.target.value;renderToday()};
+{const ts=document.getElementById("tdSort");ts.value=TDSORT;ts.onchange=e=>{TDSORT=e.target.value;try{localStorage.setItem("halaqa.tdsort",TDSORT)}catch(_){}renderToday()}}
 document.getElementById("mq").oninput=e=>{S.mq=e.target.value;renderMonth()};
 document.getElementById("sortBy").onchange=e=>{const v=e.target.value;S.sortBy=v;if(v==="n"||v==="file"||v==="num"||v==="hz")setOrder(v==="n"?"name":v);else renderMonth()};
 function shiftMonth(dir){const [y,m]=S.month.split("-").map(Number);const d=new Date(y,m-1+dir,1);S.month=iso(d).slice(0,7);subscribeMonth();render()}
@@ -4539,7 +4546,7 @@ try{SPG.i=localStorage.getItem("halaqa.schpg")==="1"?1:0;const o=localStorage.ge
 function hzRates(){const out={};for(const [,r] of hzDays()){const att=r.att||{},th=r.th||{};
   for(const id in att){const v=att[id];if(v===P||v===J){const o=out[id]||(out[id]={n:0,t:0});o.n++;o.t+=Number(th[id])||0}}}
   for(const id in out)out[id].r=out[id].t/out[id].n;return out}
-function attRates(){const out={};for(const [,r] of hzDays()){const att=r.att||{};
+function attRates(skip){const out={};for(const [d,r] of hzDays()){if(d===skip)continue;const att=r.att||{};
   for(const id in att){const v=att[id];if(!isRec(v))continue;const o=out[id]||(out[id]={p:0,a:0,j:0});if(v===P)o.p++;else if(v===A)o.a++;else o.j++}}
   for(const id in out){const o=out[id];o.r=rateOf(o.p,o.j,o.a);o.n=o.p+o.j+o.a}return out}
 const rateTxt=x=>{const v=Math.round(x*10)/10;return String(v).replace(".",",")};
