@@ -1110,7 +1110,7 @@ function renderTodayInner(){
     </div>`}).join(""):(S.filter!=="all"&&!q?`<div class="empty">لا يوجد طالب بفلتر «${FILTER_LBL[S.filter]||""}» في هذا اليوم (${list.length} طالبًا في القائمة). <button type="button" class="btn sm" onclick="resetTodayFilter()">عرض الكل</button></div>`:`<div class="empty">لا يوجد طالب يطابق البحث.</div>`));
 }
 const FILTER_LBL={p:"الحاضرون",j:"حضور جزئي",a:"الغائبون",none:"غير مسجَّل"};
-let TDSORT=(()=>{try{const v=localStorage.getItem("halaqa.tdsort");return v==="hi"||v==="lo"?v:""}catch(_){return ""}})();
+var TDSORT=(()=>{try{const v=localStorage.getItem("halaqa.tdsort");return v==="hi"||v==="lo"?v:""}catch(_){return ""}})();
 function resetTodayFilter(){S.filter="all";const f=document.getElementById("filter");if(f)f.value="all";renderToday()}
 
 function monthStats(mk){
