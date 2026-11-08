@@ -794,7 +794,7 @@ body:not([data-view="home"]) .rdz{display:none}
   <section id="v-students" hidden>
     <div class="bar">
       <span class="sbox"><input type="search" id="sq" placeholder="ابحث في الطلبة…"><button type="button" class="sclear" data-for="sq" aria-label="مسح البحث" hidden>✕</button></span>
-      <select id="stuOrder" aria-label="ترتيب الطلبة"><option value="name">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option><option value="hz">الأعلى أحزابًا</option></select>
+      <select id="stuOrder" aria-label="ترتيب الطلبة"><option value="name">أبجديًا</option><option value="file">حسب رقم الملف</option><option value="num">حسب الرقم</option><option value="hz">الأعلى أحزابًا</option><option value="att">الأعلى حضورًا</option></select>
     </div>
     <input type="file" id="vcfIn" accept=".vcf,text/vcard,text/x-vcard,text/directory" hidden>
     <div class="addrow"><button class="btn primary addbtn" type="button" id="addStuBtn"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>إضافة طالب</button></div>
@@ -988,10 +988,12 @@ let ORDER=(()=>{try{return localStorage.getItem("halaqa.order")||"name"}catch(_)
 /* most memorized first: athman counted from the hizb position (students without a set position go last) */
 const hzT=s=>{const i=typeof hzInfo==="function"?hzInfo(s):null;return i?i.t:-1};
 const byHz=(a,b)=>hzT(b)-hzT(a)||byName(a,b);
-const orderFn=()=>ORDER==="file"?byFile:ORDER==="num"?byNum:ORDER==="hz"?byHz:byName;
+let ATC=null;const attOf=s=>{const o=(ATC||{})[s.id];return o&&o.r!=null?o.r:-1};
+const byAtt=(a,b)=>attOf(b)-attOf(a)||(((ATC||{})[b.id]||{}).p||0)-(((ATC||{})[a.id]||{}).p||0)||byName(a,b);
+const orderFn=()=>ORDER==="att"?(ATC=(()=>{try{return attRates()}catch(_){return {}}})(),byAtt):ORDER==="file"?byFile:ORDER==="num"?byNum:ORDER==="hz"?byHz:byName;
 function setOrder(o){ORDER=o;try{localStorage.setItem("halaqa.order",o)}catch(_){}
   const so=document.getElementById("stuOrder");if(so)so.value=o;
-  const sb=document.getElementById("sortBy");if(sb&&["n","file","num","hz"].includes(sb.value))sb.value=o==="name"?"n":o;
+  const sb=document.getElementById("sortBy");if(sb&&["n","file","num","hz","rate"].includes(sb.value)){sb.value=o==="name"?"n":o==="att"?"rate":o;S.sortBy=sb.value}
   render()}
 // males first, then females (each part keeps the chosen order); the lists show a heading for each part
 const sexFirst=fn=>(a,b)=>(isF(a)-isF(b))||fn(a,b);
@@ -3406,7 +3408,7 @@ setTimeout(refreshCloud,500);setInterval(refreshCloud,15000);
 
 document.getElementById("stuOrder").value=ORDER;
 document.getElementById("stuOrder").addEventListener("change",e=>setOrder(e.target.value));
-(function(){const sb=document.getElementById("sortBy");sb.value=ORDER==="name"?"n":ORDER;S.sortBy=sb.value})();
+(function(){const sb=document.getElementById("sortBy");sb.value=ORDER==="name"?"n":ORDER==="att"?"rate":ORDER;S.sortBy=sb.value})();
 
 // ---- add a student: the same electronic form as the student card (10.7), empty, saved with «حفظ الطالب» ----
 function openNewStudent(){
@@ -4532,22 +4534,26 @@ const sexst=document.createElement("style");sexst.textContent=`
 /* ===== School tab, page 2 (swipe left): every student with the number of ahzab memorized,
    males and females each under a big heading. Page 1 is the existing school page. ===== */
 const SPG={i:0,ord:"name"};
-try{SPG.i=localStorage.getItem("halaqa.schpg")==="1"?1:0;const o=localStorage.getItem("halaqa.schpgord");SPG.ord=["num","file","hz","rate"].includes(o)?o:"name"}catch(_){}
+try{SPG.i=localStorage.getItem("halaqa.schpg")==="1"?1:0;const o=localStorage.getItem("halaqa.schpgord");SPG.ord=["num","file","hz","rate","att"].includes(o)?o:"name"}catch(_){}
 /* memorization rate: athman recorded ÷ sessions attended (present or partial), over every recorded day */
 function hzRates(){const out={};for(const [,r] of hzDays()){const att=r.att||{},th=r.th||{};
   for(const id in att){const v=att[id];if(v===P||v===J){const o=out[id]||(out[id]={n:0,t:0});o.n++;o.t+=Number(th[id])||0}}}
   for(const id in out)out[id].r=out[id].t/out[id].n;return out}
+function attRates(){const out={};for(const [,r] of hzDays()){const att=r.att||{};
+  for(const id in att){const v=att[id];if(!isRec(v))continue;const o=out[id]||(out[id]={p:0,a:0,j:0});if(v===P)o.p++;else if(v===A)o.a++;else o.j++}}
+  for(const id in out){const o=out[id];o.r=rateOf(o.p,o.j,o.a);o.n=o.p+o.j+o.a}return out}
 const rateTxt=x=>{const v=Math.round(x*10)/10;return String(v).replace(".",",")};
 const sessW=n=>n===1?"حصة واحدة":n===2?"حصتين":n<=10?n+" حصص":n+" حصة";
 const hzWord=c=>c===1?"حزب":c===2?"حزبان":c>=3&&c<=10?"أحزاب":"حزبًا";
 function schStuHTML(){
   if(!S.studentsLoaded)return `<div class="empty">جارٍ التحميل…</div>`;
   const L=active();if(!L.length)return `<div class="empty">لا يوجد طلبة بعد. أضفهم من تبويب «الطلبة».</div>`;
-  const RT=SPG.ord==="rate"?hzRates():null;
-  const rows=L.map(s=>({s,i:hzInfo(s),q:RT?RT[s.id]:null}));
+  const RT=SPG.ord==="rate"?hzRates():null,AT=SPG.ord==="att"?attRates():null;
+  const rows=L.map(s=>({s,i:hzInfo(s),q:RT?RT[s.id]:null,w:AT?AT[s.id]:null}));
   const sum=a=>a.reduce((t,r)=>t+(r.i?r.i.c:0),0);
   const sorter=SPG.ord==="hz"?(a,b)=>((b.i?b.i.c:-1)-(a.i?a.i.c:-1))||a.s.name.localeCompare(b.s.name,"ar")
     :SPG.ord==="rate"?(a,b)=>((b.q?b.q.r:-1)-(a.q?a.q.r:-1))||((b.q?b.q.n:0)-(a.q?a.q.n:0))||a.s.name.localeCompare(b.s.name,"ar")
+    :SPG.ord==="att"?(a,b)=>((b.w?b.w.r:-1)-(a.w?a.w.r:-1))||((b.w?b.w.p:0)-(a.w?a.w.p:0))||((a.w?a.w.a:0)-(b.w?b.w.a:0))||a.s.name.localeCompare(b.s.name,"ar")
     :SPG.ord==="num"?(a,b)=>byNum(a.s,b.s):SPG.ord==="file"?(a,b)=>byFile(a.s,b.s)
     :(a,b)=>a.s.name.localeCompare(b.s.name,"ar");
   const part=(f)=>{const R=rows.filter(r=>isF(r.s)===f).sort(sorter);if(!R.length)return"";const t=sum(R);
@@ -4555,12 +4561,13 @@ function schStuHTML(){
     <div class="stuhz-list"><div class="stuhz-row stuhz-h"><span>#</span><span>${f?"اسم الطالبة":"اسم الطالب"}</span><span>الأحزاب التي أتمّها</span></div>
     ${R.map((r,k)=>{const i=r.i;const sub=!i?"لم يُحدَّد حزبه بعد":i.khatm?"🏅 "+gw(r.s,"خاتم","خاتمة")+" للقرءان":"وصل إلى الحزب "+i.cur;
       const idl=SPG.ord==="num"||SPG.ord==="file"?`<em class="hzrate">الرقم <b class="num">${r.s.n}</b>${r.s.fileNo?` · رقم الملف <b class="num">${esc(r.s.fileNo)}</b>`:" · لا رقم ملف"}</em>`:"";
+      const at=SPG.ord==="att"?`<em class="hzrate">${r.w?`الحضور: <b class="num">${r.w.r}%</b> · حضر <b class="num">${r.w.p}</b>${r.w.j?` · جزئي <b class="num">${r.w.j}</b>`:""} · غاب <b class="num">${r.w.a}</b> من ${sessW(r.w.n)}`:gw(r.s,"لم يُسجَّل له حضور بعد","لم يُسجَّل لها حضور بعد")}</em>`:"";
       const rt=SPG.ord==="rate"?`<em class="hzrate">${r.q?`معدل الحفظ: <b class="num">${rateTxt(r.q.r)}</b> ثمن في الحصة (${sessW(r.q.n)})`:gw(r.s,"لم يُسجَّل له حضور بعد","لم يُسجَّل لها حضور بعد")}</em>`:"";
-      return `<div class="stuhz-row"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n" data-hzopen="${r.s.id}" role="button" tabindex="0"><b>${esc(r.s.name)}</b><em>${sub}</em>${idl}${rt}</span><span class="stuhz-c"><em>${gw(r.s,"أتمّ","أتمّت")}</em><span class="hzstep" data-hzstep="${r.s.id}"><button type="button" class="hzpm" data-hzpm="1" aria-label="زيادة حزب" ${S.canWrite?"":"disabled"}>+</button><input type="number" inputmode="numeric" min="0" max="60" class="num hzin" value="${i?i.c:""}" placeholder="—" aria-label="عدد الأحزاب التي ${gw(r.s,"أتمّها","أتمّتها")} ${esc(r.s.name)}" ${S.canWrite?"":"disabled"}><button type="button" class="hzpm" data-hzpm="-1" aria-label="إنقاص حزب" ${S.canWrite?"":"disabled"}>−</button></span></span></div>`}).join("")}
+      return `<div class="stuhz-row"><span class="num stuhz-k">${k+1}</span><span class="stuhz-n" data-hzopen="${r.s.id}" role="button" tabindex="0"><b>${esc(r.s.name)}</b><em>${sub}</em>${idl}${rt}${at}</span><span class="stuhz-c"><em>${gw(r.s,"أتمّ","أتمّت")}</em><span class="hzstep" data-hzstep="${r.s.id}"><button type="button" class="hzpm" data-hzpm="1" aria-label="زيادة حزب" ${S.canWrite?"":"disabled"}>+</button><input type="number" inputmode="numeric" min="0" max="60" class="num hzin" value="${i?i.c:""}" placeholder="—" aria-label="عدد الأحزاب التي ${gw(r.s,"أتمّها","أتمّتها")} ${esc(r.s.name)}" ${S.canWrite?"":"disabled"}><button type="button" class="hzpm" data-hzpm="-1" aria-label="إنقاص حزب" ${S.canWrite?"":"disabled"}>−</button></span></span></div>`}).join("")}
     <div class="stuhz-row stuhz-f"><span></span><span>${f?"مجموع ما أتمّته الإناث":"مجموع ما أتمّه الذكور"}</span><span class="num">${t}</span></div></div>`};
   const m=rows.filter(r=>!isF(r.s)).length,f=rows.length-m;
   return `<div class="stats mini"><div class="stat"><b class="num">${rows.length}</b><span>طالبًا</span></div><div class="stat"><b class="num">${m}</b><span>ذكور</span></div><div class="stat"><b class="num">${f}</b><span>إناث</span></div><div class="stat"><b class="num">${sum(rows)}</b><span>حزبًا أُتِمّ</span></div></div>
-  <div class="seg hzord" role="group" aria-label="ترتيب القائمة">${[["name","الاسم"],["num","الرقم"],["file","رقم الملف"],["hz","الأعلى أحزابًا"],["rate","معدل الحفظ"]].map(([k,t])=>`<button type="button" data-hzord="${k}" aria-selected="${SPG.ord===k}">${t}</button>`).join("")}</div>
+  <div class="seg hzord" role="group" aria-label="ترتيب القائمة">${[["name","الاسم"],["num","الرقم"],["file","رقم الملف"],["hz","الأعلى أحزابًا"],["rate","معدل الحفظ"],["att","الحضور"]].map(([k,t])=>`<button type="button" data-hzord="${k}" aria-selected="${SPG.ord===k}">${t}</button>`).join("")}</div>
   ${part(false)}${part(true)}
   <p class="note">غيّر عدد الأحزاب بزرّي + و− أو اكتبه مباشرة، فيُحفظ وحده. اضغط على الاسم لفتح ملفه. يُحسب عدد الأحزاب المُتمَّمة من الحزب المحدَّد لكل طالب ومن الأثمان المسجَّلة في الحصص.${SPG.ord==="rate"?" ومعدل الحفظ = مجموع الأثمان المسجَّلة ÷ عدد الحصص التي حضرها (حضورًا كاملًا أو جزئيًا)، فلا تُحسب عليه الحصص التي غاب عنها.":""}</p>`;
 }
