@@ -5734,8 +5734,16 @@ function hmShown(v){
 }
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;
   // 10.9: tapping the button of the page already open takes it back to the top (like the tab bar of iPhone apps)
-  if(e.isTrusted&&HM.cur===b.dataset.v){HM.scroll[b.dataset.v]=0;if(window.scrollY>0)window.scrollTo({top:0,behavior:"smooth"});return}
+  if(HM.cur===b.dataset.v){HM.scroll[b.dataset.v]=0;hmTop();return}
   hmShown(b.dataset.v)});
+/* الرجوع إلى أعلى الصفحة: انزلاق ناعم، ثم تثبيت فوري إن لم يكتمل (WKWebView قد يقطع الانزلاق) */
+function hmTop(){
+  const se=document.scrollingElement||document.documentElement;
+  const all=()=>{try{window.scrollTo(0,0)}catch(_){}se.scrollTop=0;document.body.scrollTop=0};
+  if((window.scrollY||se.scrollTop)<=0){all();return}
+  try{window.scrollTo({top:0,behavior:"smooth"})}catch(_){all()}
+  setTimeout(()=>{if((window.scrollY||se.scrollTop)>0)all()},450);
+}
 function hmGo(v){const t=document.getElementById("tab-"+v);if(t)t.click()}
 document.addEventListener("click",e=>{
   const t=e.target.closest&&e.target.closest("[data-hm]");if(!t)return;const k=t.dataset.hm;
