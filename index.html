@@ -352,6 +352,7 @@ html.ipad #todayList .lhead{grid-column:1/-1}
 tr.sexrow td{background:#E3ECF8;font-weight:800;font-size:1.25rem;color:#1B3557;text-align:center;padding:10px 12px}
 tr.sexrow .sxt,tr.sexrow .sxn{display:block}tr.sexrow .sxn{font-size:1rem;margin-top:4px}
 tr.sexrow.fem td{background:#F7E4EE;color:#8E3567}
+#grid tr.sexrow td{font-size:1.05rem;padding:6px 8px}#grid tr.sexrow td.sxlbl{font-size:.95rem;text-align:right}
 @media (prefers-color-scheme:dark){tr.sexrow td{background:#1E3352;color:#DCE7F5}tr.sexrow.fem td{background:#3A2233;color:#F2C6DD}}
 .list .scard.srow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);cursor:pointer;background:var(--surface)}
 .list .lhead+.scard{border-top:0}
@@ -461,8 +462,7 @@ body.locked{overflow:hidden}
 /* ---- iPad: use the whole screen ---- */
 html.ipad,html.ipad body{min-height:100%}
 html.ipad .wrap{max-width:none;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
-/* في التطبيق الأصلي: هامش يسار ثابت لزر «تطبيقاتي» العائم فلا يغطي شيئًا */
-html.native .wrap{padding-left:max(64px,env(safe-area-inset-left,0px))}
+/* في التطبيق الأصلي: لا هامش يسار خاص؛ زر «تطبيقاتي» العائم يخفت وحده ويُسحب إلى أي مكان */
 html.ipad .banner img{height:260px}
 @media (orientation:landscape){html.ipad .banner img{height:220px}}
 html.ipad main{padding-block:20px 40px}
@@ -1144,7 +1144,7 @@ function renderMonth(){
   const today=iso(new Date());
   MG.g=
    `<thead><tr>${days.map(d=>{const x=parse(d);return `<th class="${d===today?"today":""}${d>today?" fut":""}" data-d="${d}" style="${d>today?"":"cursor:pointer"}" title="${d>today?"":"افتح هذا اليوم"}"><span class="dname">${DAYN[x.getDay()]}</span>${x.getDate()}</th>`}).join("")}<th>الحفظ الشهري</th><th>الحضور</th><th>جزئي</th><th>الغياب</th><th>النسبة</th></tr></thead>
-    <tbody>${rows.map((s,i)=>{const st=per[s.id];return (gStart(s,i)?`<tr class="sexrow${isF(s)?" fem":""}"><td colspan="${days.length+5}">&nbsp;</td></tr>`:"")+`<tr>${
+    <tbody>${rows.map((s,i)=>{const st=per[s.id];return (gStart(s,i)?(()=>{const g=rows.filter(x=>isF(x)===isF(s));let p=0,j=0,a=0,t=0;g.forEach(x=>{const o=per[x.id];p+=o.p;j+=o.j;a+=o.a;t+=o.t});const rr=rateOf(p,j,a);return `<tr class="sexrow${isF(s)?" fem":""}">${days.length?`<td colspan="${days.length}" class="sxlbl">مجموع ${isF(s)?"الإناث":"الذكور"}</td>`:""}<td class="num">${t||"—"}</td><td class="num">${p}</td><td class="num">${j}</td><td class="num">${a}</td><td class="num">${rr==null?"—":rr+"%"}</td></tr>`})():"")+`<tr>${
       dds.map((dd,i)=>{const v=dd.att[s.id],t=Number(dd.th[s.id])||0;return `<td data-s="${s.id}" data-d="${days[i]}" class="cell${days[i]>today?" fut":""} ${v===P?"p":v===A?"a":v===J?"j":""}">${isRec(v)?v:""}${t?`<span class="t num">${t}</span>`:""}</td>`}).join("")
     }<td class="tot num">${st.t||""}</td><td class="num">${st.p}</td><td class="num">${st.j}</td><td class="num">${st.a}</td><td class="rate num">${st.rate==null?"—":st.rate+"%"}</td></tr>`}).join("")}</tbody>`;
   // Names live in their own table beside the scrolling days, so they never move or vanish.
