@@ -60,7 +60,7 @@ header.top{display:flex;align-items:center;gap:14px;padding-block:6px 14px;borde
 .search:focus,.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
 h2.sec{font-family:var(--f-display);font-size:1.5rem;margin:22px 0 4px;display:flex;align-items:baseline;gap:10px}
 h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-weight:400}
-.apps{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:6px 0 4px}
+.apps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px}
 .appb{border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:10px 6px;display:grid;gap:2px;text-align:center;cursor:pointer;color:var(--ink);font:inherit}
 .appb b{font-size:.95rem;color:var(--ink-btn)}
 .appb span{font-size:.8rem;color:var(--muted)}
@@ -71,6 +71,13 @@ h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-
 .list{display:grid;gap:10px}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:4px}
 .card .head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.card.kun .ktext{font-family:"Amiri",serif;font-size:1.3rem;line-height:2;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.card.kun .bayt{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:baseline;font-family:"Amiri",serif;font-size:1.22rem;line-height:2;color:var(--ink)}
+.card.kun .bayt .sadr{text-align:right}.card.kun .bayt .ajuz{text-align:left}.card.kun .bsep{color:var(--gold,#a8812f);font-size:.85rem}
+@media (max-width:460px){.card.kun .bayt{grid-template-columns:1fr;gap:0}.card.kun .bsep{display:none}.card.kun .bayt .ajuz{padding-right:22px}}
+.card.kun .ksrc{font-family:"Amiri",serif;color:var(--muted);font-size:1rem}
+.kfav{border:0;background:none;font-size:1.35rem;line-height:1;color:var(--muted);cursor:pointer;padding:2px 4px}
+.kfav[aria-pressed="true"]{color:#b8892c}
 .card h3{margin:0;font-family:var(--f-title);font-size:1.2rem;line-height:1.45;min-width:0;overflow-wrap:anywhere}
 .meta{color:var(--muted);font-size:.88rem;overflow-wrap:anywhere}
 .notes{font-size:.92rem;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -192,7 +199,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="2.1";
+const APP_VER="2.2";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -220,10 +227,12 @@ const ICON={
  work:'<path d="M7 3h7l4 4v14H7V3Zm7 0v4h4M10 12h5M10 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
  file:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
  contact:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
- note:'<path d="M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
+ note:'<path d="M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+ kunnash:'<circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6 1.6"/>'
 };
 function fmtSize(n){if(!n)return'';return n>1048576?(n/1048576).toFixed(1)+' م.ب':Math.max(1,Math.round(n/1024))+' ك.ب'}
 const BOOK_CATS=['المصاحف','مرجع في الرسم والضبط','القراءات والتجويد','التفسير وعلوم القرآن','الحديث والسيرة','الفقه وأصوله','العقيدة','آل البيت عليهم السلام','التصوف والأذكار','التاريخ والتراجم','اللغة','مخطوط','أخرى'];
+const KUN_CATS=['صيغ الصلوات','الأحاديث النبوية','الأقوال المأثورة','الحكم','الأشعار','الأدعية والأذكار','فوائد متفرقة'];
 const FILE_CATS=['من أعمالي','كتب PDF','أبحاث','وثائق رسمية','مستندات','صور','صوتيات','فيديو','جداول','أخرى'];
 const KINDS={
  book:{tab:'كتبي',title:'الكتب',one:'كتابًا',
@@ -240,7 +249,10 @@ const KINDS={
    filter:'group',pill:'group',sub:it=>[it.role,it.address].filter(Boolean).join(' · ')},
  note:{tab:'مذكراتي',title:'المذكرات',one:'مذكرة',
    fields:[['title','العنوان','text',1],['tag','الوسم','select',0,['فائدة علمية','فكرة','موعد','مهمة','شخصي']],['body','النص','textarea']],
-   filter:'tag',pill:'tag',sub:()=>''}
+   filter:'tag',pill:'tag',sub:()=>''},
+ kunnash:{tab:'الكناش',title:'كناش الصلوات والحكم',one:'تدوينًا',
+   fields:[['title','النص (للأبيات: افصل الصدر عن العجز بـ *** وكل بيت في سطر)','textarea',1],['cat','القسم','select',0,KUN_CATS],['source','المصدر أو القائل','text']],
+   filter:'cat',pill:'cat',sub:it=>it.source||''}
 };
 const PROFILE_FIELDS=[['name','الاسم'],['job','الوظيفة'],['workplace','مكان العمل'],['city','المدينة'],['phone','الهاتف'],['email','البريد الإلكتروني'],['study','الشهادات والدراسة'],['ijazat','الإجازات والأسانيد'],['interests','مجالات الاهتمام'],['bio','نبذة']];
 const DEFAULT_PROFILE={name:'قدوم خالد',job:'أستاذ التعليم القرءاني',workplace:'المدرسة القرءانية النموذجية، مسجد القطب الأمير عبد القادر',city:'قسنطينة',interests:'رسم المصحف وضبطه، القراءات النافعية، علوم القرآن'};
@@ -256,11 +268,9 @@ const MY_WORKS=[
  ['تطبيق المدرسة القرءانية النموذجية','تطبيق','منجز','سجل متابعة الطلبة'],
  ['تطبيق رسم المصحف (مورد الظمآن والطراز)','تطبيق','منجز','البحث عن الكلمة القرآنية وأبياتها وضبطها'],
  ['تطبيق مدرسة آل البيت عليهم السلام','تطبيق','قيد الإنجاز','جمع مرويات أهل البيت عليهم السلام مع القرآن الكريم'],
- ['كناش الصلوات والحكم','تطبيق','منجز','صيغ الصلاة على رسول الله وءاله، والأحاديث، وحكم نهج البلاغة']
+ ['كناش الصلوات والحكم','تطبيق','منجز','قسم «الكناش» في خزانتي: صيغ الصلاة على رسول الله وءاله، والأحاديث، وحكم نهج البلاغة']
 ];
-/* كناش الصلوات والحكم: صفحة على claude.ai، تُفتح في Safari (تحتاج الدخول إلى حساب Claude) */
-const KUNNASH_URL='https://claude.ai/artifact/FrFApPCokJ4c7JKeehBZcN';
-const TABS=[['profile','ملفي'],['book','كتبي'],['work','أعمالي'],['file','ملفاتي'],['contact','جهاتي'],['note','مذكراتي']];
+const TABS=[['profile','ملفي'],['book','كتبي'],['work','أعمالي'],['file','ملفاتي'],['contact','جهاتي'],['note','مذكراتي'],['kunnash','الكناش']];
 /* التصنيف الذكي: يقرأ اسم الملف ونوعه وعدد صفحاته وبيانات الكتاب، ونصَّ أوله (في التطبيق الأصلي يقرأ الجهاز
    نصَّ PDF ويتعرّف على نص الصور)، ثم يعطي كل تصنيف نقاطًا ويختار الأعلى، ويستخرج العنوان والمؤلف وموضوع الكتاب. */
 const RULES={
@@ -529,9 +539,17 @@ async function migrateStatus(){
 
 /* إضافة «كناش الصلوات والحكم» إلى «أعمالي» مرة واحدة (نوفمبر 2026) */
 async function addKunnash(){
-  if(items.get('_kn1'))return; const ws=ofKind('work'); if(!ws.length)return;
-  if(!ws.some(w=>/كناش الصلوات/.test(w.title))){const w=MY_WORKS.find(m=>m[0]==='كناش الصلوات والحكم');await save({_id:uid(),kind:'work',title:w[0],type:w[1],status:w[2],notes:w[3]})}
-  await save({_id:'_kn1',kind:'meta'});render();
+  if(!items.get('_kn1')){const ws=ofKind('work');
+    if(ws.length){if(!ws.some(w=>/كناش الصلوات/.test(w.title))){const w=MY_WORKS.find(m=>m[0]==='كناش الصلوات والحكم');await save({_id:uid(),kind:'work',title:w[0],type:w[1],status:w[2],notes:w[3]})}
+      await save({_id:'_kn1',kind:'meta'})}}
+  /* نقل «كناش الصلوات والحكم» إلى قسم «الكناش»، مرة واحدة، بمعرّفات ثابتة فلا يتكرر بين الأجهزة */
+  if(!items.get('_kun1')){
+    try{const r=await fetch('kunnash-seed.json',{cache:'no-store'});if(!r.ok)throw 0;const recs=await r.json();
+      for(const x of recs){const cur=items.get(x._id);if(!cur)await save(Object.assign({kind:'kunnash'},x))}
+      await save({_id:'_kun1',kind:'meta'});
+    }catch(_){}
+  }
+  render();
 }
 
 async function save(rec,fromRemote){
@@ -631,17 +649,19 @@ function render(){
   if(q){main.innerHTML=renderSearch();loadThumbs();return}
   if(tab==='settings'){main.innerHTML=renderSettings();fillStorage();return}
   if(tab==='profile'){main.innerHTML=renderProfile();return}
-  const K=KINDS[tab];const list=ofKind(tab).sort(SORTS[S.sort]||SORTS.new);
+  const K=KINDS[tab];const list=ofKind(tab).sort(tab==='kunnash'?(a,b)=>(b.created||b.at||0)-(a.created||a.at||0):(SORTS[S.sort]||SORTS.new));
   const opts=K.fields.find(f=>f[0]===K.filter)[4];
   const used=opts.filter(o=>list.some(x=>x[K.filter]===o));
-  if(filter&&!used.includes(filter))filter='';
-  const shown=filter?list.filter(x=>x[K.filter]===filter):list;
+  const favs=tab==='kunnash'&&list.some(x=>x.fav);
+  if(filter&&!used.includes(filter)&&!(filter==='★'&&favs))filter='';
+  const shown=filter==='★'?list.filter(x=>x.fav):filter?list.filter(x=>x[K.filter]===filter):list;
   let h=`<h2 class="sec">${K.title}<small>${list.length}</small></h2>`;
   if(tab==='work'&&!items.get('_seeded')&&!list.length)
     h+=`<div class="box"><p>أعمالك وأبحاثك التي اشتغلنا عليها جاهزة للإضافة (${MY_WORKS.length} أعمال). عدّل حالة كل عمل بعدها.</p><div><button class="btn primary" data-act="seed">أضف أعمالي</button></div></div>`;
   if(tab==='file')h+=`<label class="drop" for="up"><b>اختر ملفات من الهاتف</b><span>${NATIVE?'أو من أي تطبيق: افتح الملف ثم مشاركة ← «خزانتي»':'من «الملفات» أو الصور أو iCloud أو تنزيلات واتساب: PDF وWord وصور وصوت…'}</span></label><input id="up" type="file" multiple hidden>`;
   if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px">${NATIVE?'<button class="btn primary" data-act="pickContacts">اختر من جهات اتصال الآيفون</button><button class="btn" data-act="dedupe">تنظيف المكرر في جهات الآيفون</button>':''}<label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><button class="btn" data-act="pasteVcf">لصق جهة منسوخة</button><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
-  if(used.length>1)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  if(tab==='kunnash'&&!list.length&&!items.get('_kun1'))h+=`<div class="box"><p>جارٍ نقل الكناش إلى خزانتك…</p></div>`;
+  if(used.length>1||favs)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}${favs?`<button class="chip" aria-pressed="${filter==='★'}" data-filter="★">★ المفضلة</button>`:''}</div>`;
   h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
   main.innerHTML=h;loadThumbs();
 }
@@ -665,15 +685,27 @@ function siblingLinks(it){
     const m=/— (مورد الظمآن|الذيل في الضبط|الإعلان)، البيت (\d{1,4})/.exec(it.body||'');
     if(m)return `<div class="actions"><button class="btn primary" data-act="app" data-app="mawrid" data-path="verse?id=${m[1]==='الإعلان'?'i':'m'}:${m[2]}">افتح البيت في مورد الظمآن</button></div>`;
   }
-  if(it.kind==='work'&&/كناش الصلوات/.test(it.title)&&!it.link)
-    return `<div class="actions"><a class="btn primary" href="${KUNNASH_URL}" target="_blank" rel="noopener">افتح الكناش</a></div>`;
+  if(it.kind==='work'&&/كناش الصلوات/.test(it.title))
+    return `<div class="actions"><button class="btn primary" data-tab="kunnash">افتح الكناش</button></div>`;
   if(it.kind==='work'&&/المدرسة القرءانية|متابعة الطلبة/.test(it.title+' '+(it.notes||'')))
     return `<div class="actions"><button class="btn" data-act="app" data-app="halaqa">افتح المدرسة</button></div>`;
   if((it.kind==='work'||it.kind==='book')&&RASM_RE.test(it.title+' '+(it.notes||'')))
     return `<div class="actions"><button class="btn" data-act="app" data-app="mawrid">افتح مورد الظمآن</button></div>`;
   return '';
 }
+function kunBody(t){
+  if(!t.includes('***'))return `<div class="ktext">${esc(t)}</div>`;
+  return t.split('\n').filter(l=>l.trim()).map(l=>{const p=l.split('***');
+    return p.length<2?`<div class="ktext">${esc(l)}</div>`:`<div class="bayt"><span class="sadr">${esc(p[0].trim())}</span><span class="bsep">۞</span><span class="ajuz">${esc(p.slice(1).join(' ').trim())}</span></div>`}).join('');
+}
+function kunCard(it){
+  const plain=it.title.replace(/\s*\*\*\*\s*/g,'   ')+(it.source?'\n— '+it.source:'');
+  return `<article class="card kun"><div class="head"><span class="pill">${esc(it.cat||'')}</span><button class="kfav" data-kfav="${it._id}" aria-pressed="${!!it.fav}" aria-label="${it.fav?'إزالة من المفضلة':'إضافة إلى المفضلة'}">${it.fav?'★':'☆'}</button></div>
+  ${kunBody(it.title||'')}${it.source?`<div class="ksrc">— ${esc(it.source)}</div>`:''}
+  <div class="actions"><button class="btn" data-copy="${esc(plain)}">نسخ</button><button class="btn" data-edit="${it._id}">تعديل</button></div></article>`;
+}
 function card(it){
+  if(it.kind==='kunnash')return kunCard(it);
   const K=KINDS[it.kind];const sub=K.sub(it);const pv=it[K.pill];
   let extra='';
   if(it.kind==='contact'){
@@ -700,9 +732,9 @@ async function loadThumbs(){
 }
 function renderProfile(){
   const p=profile();
-  const counts=['book','work','file','contact','note'].filter(k=>!S.hidden.includes(k)).map(k=>[k,ofKind(k).length]);
+  const counts=['book','work','file','contact','note','kunnash'].filter(k=>!S.hidden.includes(k)).map(k=>[k,ofKind(k).length]);
   let h=`<div class="stats">${counts.map(([k,n])=>`<button class="stat" data-tab="${k}"><b>${n}</b><span>${KINDS[k].tab}</span></button>`).join('')}</div>`;
-  h+=`<h2 class="sec">تطبيقاتي</h2><div class="apps">${SIBLINGS.map(x=>`<button class="appb${x.id==='khizana'?' here':''}" data-act="app" data-app="${x.id}" ${x.id==='khizana'?'disabled':''}><b>${x.name}</b><span>${x.id==='khizana'?'أنت هنا':x.sub}</span></button>`).join('')}<a class="appb" href="${KUNNASH_URL}" target="_blank" rel="noopener" style="text-decoration:none"><b>كناش الصلوات</b><span>الصلوات والحكم</span></a></div>`;
+  h+=`<h2 class="sec">تطبيقاتي</h2><div class="apps">${SIBLINGS.map(x=>`<button class="appb${x.id==='khizana'?' here':''}" data-act="app" data-app="${x.id}" ${x.id==='khizana'?'disabled':''}><b>${x.name}</b><span>${x.id==='khizana'?'أنت هنا':x.sub}</span></button>`).join('')}</div>`;
   h+=`<h2 class="sec">ملفي الشخصي</h2><div class="prof"><dl>${PROFILE_FIELDS.filter(([k])=>p[k]).map(([k,l])=>`<div class="row"><dt>${l}</dt><dd>${esc(p[k])}</dd></div>`).join('')}</dl></div>
   <div class="actions" style="margin-top:10px"><button class="btn primary" data-act="editProfile">تعديل الملف</button></div>`;
   if(S.backupRemind&&live().length>3&&Date.now()-(S.lastBackup||0)>7*864e5)
@@ -736,7 +768,7 @@ function renderSettings(){
   h+=`</div>`;
   /* الأقسام */
   h+=`<h2 class="sec" style="font-size:1.25rem">الأقسام</h2><div class="sgroup">`;
-  for(const k of ['book','work','file','contact','note'])h+=row('إظهار «'+KINDS[k].tab+'»','',sw('show_'+k,!S.hidden.includes(k)));
+  for(const k of ['book','work','file','contact','note','kunnash'])h+=row('إظهار «'+KINDS[k].tab+'»','',sw('show_'+k,!S.hidden.includes(k)));
   h+=row('القسم الذي يُفتح أولًا','',sel('start',S.start,TABS.filter(([k])=>!S.hidden.includes(k)).map(([k,l])=>[k,l])));
   h+=row('ترتيب القوائم','',sel('sort',S.sort,[['new','الأحدث أولًا'],['old','الأقدم أولًا'],['az','حسب العنوان (أ-ي)']]));
   h+=`</div>`;
@@ -979,9 +1011,10 @@ async function doImport(file){
 
 /* ---------- الأحداث ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook],[data-kfav]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
   if(t.dataset.tab){tab=(t.dataset.tab==='settings'&&tab==='settings')?'profile':t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
   else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
+  else if(t.dataset.kfav){const it=items.get(t.dataset.kfav);if(it)await put(Object.assign({},it,{fav:!it.fav}))}
   else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
   else if(t.dataset.open)openFile(t.dataset.open);
   else if(t.dataset.share)shareFile(t.dataset.share);
