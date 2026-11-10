@@ -60,7 +60,7 @@ header.top{display:flex;align-items:center;gap:14px;padding-block:6px 14px;borde
 .search:focus,.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
 h2.sec{font-family:var(--f-display);font-size:1.5rem;margin:22px 0 4px;display:flex;align-items:baseline;gap:10px}
 h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-weight:400}
-.apps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px}
+.apps{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:6px 0 4px}
 .appb{border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:10px 6px;display:grid;gap:2px;text-align:center;cursor:pointer;color:var(--ink);font:inherit}
 .appb b{font-size:.95rem;color:var(--ink-btn)}
 .appb span{font-size:.8rem;color:var(--muted)}
@@ -192,7 +192,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="2.0";
+const APP_VER="2.1";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -255,8 +255,11 @@ const MY_WORKS=[
  ['موضوع أطروحة الدكتوراه في الرسم والضبط المغربي','مشروع','قيد الإنجاز','اختيار الموضوع ومقارنته بالرسائل الموجودة'],
  ['تطبيق المدرسة القرءانية النموذجية','تطبيق','منجز','سجل متابعة الطلبة'],
  ['تطبيق رسم المصحف (مورد الظمآن والطراز)','تطبيق','منجز','البحث عن الكلمة القرآنية وأبياتها وضبطها'],
- ['تطبيق مدرسة آل البيت عليهم السلام','تطبيق','قيد الإنجاز','جمع مرويات أهل البيت عليهم السلام مع القرآن الكريم']
+ ['تطبيق مدرسة آل البيت عليهم السلام','تطبيق','قيد الإنجاز','جمع مرويات أهل البيت عليهم السلام مع القرآن الكريم'],
+ ['كناش الصلوات والحكم','تطبيق','منجز','صيغ الصلاة على رسول الله وءاله، والأحاديث، وحكم نهج البلاغة']
 ];
+/* كناش الصلوات والحكم: صفحة على claude.ai، تُفتح في Safari (تحتاج الدخول إلى حساب Claude) */
+const KUNNASH_URL='https://claude.ai/artifact/FrFApPCokJ4c7JKeehBZcN';
 const TABS=[['profile','ملفي'],['book','كتبي'],['work','أعمالي'],['file','ملفاتي'],['contact','جهاتي'],['note','مذكراتي']];
 /* التصنيف الذكي: يقرأ اسم الملف ونوعه وعدد صفحاته وبيانات الكتاب، ونصَّ أوله (في التطبيق الأصلي يقرأ الجهاز
    نصَّ PDF ويتعرّف على نص الصور)، ثم يعطي كل تصنيف نقاطًا ويختار الأعلى، ويستخرج العنوان والمؤلف وموضوع الكتاب. */
@@ -524,6 +527,13 @@ async function migrateStatus(){
   await save({_id:'_st3',kind:'meta'});render();
 }
 
+/* إضافة «كناش الصلوات والحكم» إلى «أعمالي» مرة واحدة (نوفمبر 2026) */
+async function addKunnash(){
+  if(items.get('_kn1'))return; const ws=ofKind('work'); if(!ws.length)return;
+  if(!ws.some(w=>/كناش الصلوات/.test(w.title))){const w=MY_WORKS.find(m=>m[0]==='كناش الصلوات والحكم');await save({_id:uid(),kind:'work',title:w[0],type:w[1],status:w[2],notes:w[3]})}
+  await save({_id:'_kn1',kind:'meta'});render();
+}
+
 async function save(rec,fromRemote){
   if(!fromRemote)rec.at=Date.now();
   items.set(rec._id,rec);
@@ -564,7 +574,7 @@ const SYNC={
         const l=items.get(r._id);
         if(!l||(r.at||0)>(l.at||0)){save(r,true);if(r.del&&r.kind==='file')IDB.delBlob(r._id).catch(()=>{})}
       });
-      if(first){first=false;this.pushAll();migrateStatus();setTimeout(()=>sortWorks().catch(()=>{}),1500)}
+      if(first){first=false;this.pushAll();migrateStatus().then(addKunnash).catch(()=>{});setTimeout(()=>sortWorks().catch(()=>{}),1500)}
       this.err='';status();render();
     },e=>{this.err='تعذّر الاتصال بالحساب: '+(e.code||e.message||'');status()});
   },
@@ -655,6 +665,8 @@ function siblingLinks(it){
     const m=/— (مورد الظمآن|الذيل في الضبط|الإعلان)، البيت (\d{1,4})/.exec(it.body||'');
     if(m)return `<div class="actions"><button class="btn primary" data-act="app" data-app="mawrid" data-path="verse?id=${m[1]==='الإعلان'?'i':'m'}:${m[2]}">افتح البيت في مورد الظمآن</button></div>`;
   }
+  if(it.kind==='work'&&/كناش الصلوات/.test(it.title)&&!it.link)
+    return `<div class="actions"><a class="btn primary" href="${KUNNASH_URL}" target="_blank" rel="noopener">افتح الكناش</a></div>`;
   if(it.kind==='work'&&/المدرسة القرءانية|متابعة الطلبة/.test(it.title+' '+(it.notes||'')))
     return `<div class="actions"><button class="btn" data-act="app" data-app="halaqa">افتح المدرسة</button></div>`;
   if((it.kind==='work'||it.kind==='book')&&RASM_RE.test(it.title+' '+(it.notes||'')))
@@ -690,7 +702,7 @@ function renderProfile(){
   const p=profile();
   const counts=['book','work','file','contact','note'].filter(k=>!S.hidden.includes(k)).map(k=>[k,ofKind(k).length]);
   let h=`<div class="stats">${counts.map(([k,n])=>`<button class="stat" data-tab="${k}"><b>${n}</b><span>${KINDS[k].tab}</span></button>`).join('')}</div>`;
-  h+=`<h2 class="sec">تطبيقاتي</h2><div class="apps">${SIBLINGS.map(x=>`<button class="appb${x.id==='khizana'?' here':''}" data-act="app" data-app="${x.id}" ${x.id==='khizana'?'disabled':''}><b>${x.name}</b><span>${x.id==='khizana'?'أنت هنا':x.sub}</span></button>`).join('')}</div>`;
+  h+=`<h2 class="sec">تطبيقاتي</h2><div class="apps">${SIBLINGS.map(x=>`<button class="appb${x.id==='khizana'?' here':''}" data-act="app" data-app="${x.id}" ${x.id==='khizana'?'disabled':''}><b>${x.name}</b><span>${x.id==='khizana'?'أنت هنا':x.sub}</span></button>`).join('')}<a class="appb" href="${KUNNASH_URL}" target="_blank" rel="noopener" style="text-decoration:none"><b>كناش الصلوات</b><span>الصلوات والحكم</span></a></div>`;
   h+=`<h2 class="sec">ملفي الشخصي</h2><div class="prof"><dl>${PROFILE_FIELDS.filter(([k])=>p[k]).map(([k,l])=>`<div class="row"><dt>${l}</dt><dd>${esc(p[k])}</dd></div>`).join('')}</dl></div>
   <div class="actions" style="margin-top:10px"><button class="btn primary" data-act="editProfile">تعديل الملف</button></div>`;
   if(S.backupRemind&&live().length>3&&Date.now()-(S.lastBackup||0)>7*864e5)
@@ -1165,7 +1177,7 @@ async function nativeShow(it,b){
   render();
   try{const all=await IDB.all();items=new Map(all.map(r=>[r._id,r]))}catch(e){toast('تعذّر فتح بيانات الجهاز')}
   render();status();
-  setTimeout(()=>{if(!SYNC.user)migrateStatus()},8000);
+  setTimeout(()=>{if(!SYNC.user)migrateStatus().then(addKunnash).catch(()=>{})},8000);
   SYNC.start();
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').then(r=>{r.update();
