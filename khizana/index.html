@@ -86,8 +86,6 @@ h2.sec small{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-
 .pill.rev{background:#e3eefb;color:#1f5f9e} .pill.stop{background:#f8e3e1;color:#9b2c22}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.rev{background:#16263a;color:#8cbcf0} :root:not([data-theme="light"]) .pill.stop{background:#33191a;color:#f0a39b}}
 :root[data-theme="dark"] .pill.rev{background:#16263a;color:#8cbcf0} :root[data-theme="dark"] .pill.stop{background:#33191a;color:#f0a39b}
-/* في التطبيق الأصلي: هامش يسار ثابت لزر «تطبيقاتي» العائم فلا يغطي شيئًا */
-html.native .wrap{padding-left:max(64px,env(safe-area-inset-left,0px))}
 .actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .btn{border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 12px;font-size:.9rem;cursor:pointer;text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;gap:4px}
 .btn:focus-visible,.chip:focus-visible,.tab:focus-visible,.fab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -199,7 +197,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="2.2";
+const APP_VER="2.3";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
