@@ -174,6 +174,19 @@ nav.tabs{position:fixed;inset:auto 0 0 0;background:var(--paper);border-top:1px 
 .lock .link{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.9rem}
 body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 @media (max-width:460px){.stats{gap:5px}.stat span{font-size:.72rem}.prof .row{grid-template-columns:1fr;gap:0}}
+/* «أعمالي» مجلدات: شاشة أعمالك الرئيسية على الآيفون والآيباد والماك */
+.vbar{display:flex;gap:6px;margin:6px 0 10px}
+.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.fold{border:1px solid var(--line);background:var(--paper);border-radius:14px;padding:14px 10px 12px;display:grid;justify-items:center;gap:6px;text-align:center;cursor:pointer;color:var(--ink);font:inherit;transition:transform .12s,border-color .12s}
+.fold:hover{border-color:var(--gold);transform:translateY(-2px)}
+.fold:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.fold svg{width:64px;height:52px}
+.fold b{font-family:var(--f-title);font-size:1rem;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.fold small{color:var(--muted);font-size:.8rem}
+.frow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.frow:last-child{border-bottom:0}
+.frow .fn{flex:1;min-width:0;overflow-wrap:anywhere}
+@media (min-width:820px){.wrap{max-width:1180px}.folders{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}.fold svg{width:78px;height:64px}main .list{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
 @media (prefers-reduced-motion:no-preference){.overlay .sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(24px)}}}
 </style>
 </head>
@@ -197,7 +210,7 @@ body.locked .wrap,body.locked nav.tabs,body.locked .fab{visibility:hidden}
 <div id="layer"></div>
 
 <script>
-const APP_VER="2.3";
+const APP_VER="2.4";
 const FB_CONFIG={apiKey:"AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY",authDomain:"halaqa-23193.firebaseapp.com",projectId:"halaqa-23193",
   storageBucket:"halaqa-23193.firebasestorage.app",messagingSenderId:"929666546957",appId:"1:929666546957:web:4e48c19ade394722a1c444"};
 const FB_VER="10.14.1";
@@ -523,6 +536,7 @@ const IDB={
 };
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
 
+if(!S._home1){S._home1=1;S.start='work';S.workView='folders';saveS()}
 let items=new Map(); let tab=(S.start==='profile'||(KINDS[S.start]&&!S.hidden.includes(S.start)))?S.start:'profile'; let filter=''; let q='';
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function live(){return [...items.values()].filter(x=>!x.del)}
@@ -660,6 +674,8 @@ function render(){
   if(tab==='contact')h+=`<div class="actions" style="margin-bottom:10px">${NATIVE?'<button class="btn primary" data-act="pickContacts">اختر من جهات اتصال الآيفون</button><button class="btn" data-act="dedupe">تنظيف المكرر في جهات الآيفون</button>':''}<label class="btn" for="vcf">استيراد بطاقة اتصال (vCard)</label><button class="btn" data-act="pasteVcf">لصق جهة منسوخة</button><input id="vcf" type="file" accept=".vcf,text/vcard,text/x-vcard" multiple hidden></div>`;
   if(tab==='kunnash'&&!list.length&&!items.get('_kun1'))h+=`<div class="box"><p>جارٍ نقل الكناش إلى خزانتك…</p></div>`;
   if(used.length>1||favs)h+=`<div class="chips"><button class="chip" aria-pressed="${!filter}" data-filter="">الكل</button>${used.map(o=>`<button class="chip" aria-pressed="${filter===o}" data-filter="${esc(o)}">${esc(o)}</button>`).join('')}${favs?`<button class="chip" aria-pressed="${filter==='★'}" data-filter="★">★ المفضلة</button>`:''}</div>`;
+  if(tab==='work'&&list.length)h+=`<div class="vbar"><button class="chip" aria-pressed="${S.workView!=='list'}" data-act="wview" data-v="folders">▦ مجلدات</button><button class="chip" aria-pressed="${S.workView==='list'}" data-act="wview" data-v="list">☰ قائمة</button></div>`;
+  if(tab==='work'&&S.workView!=='list'&&shown.length){main.innerHTML=h+`<div class="folders">${shown.map(folderTile).join('')}</div>`;return}
   h+=shown.length?`<div class="list">${shown.map(card).join('')}</div>`:`<div class="empty">لا يوجد شيء هنا بعد.${tab==='file'?'':' اضغط «＋ إضافة» لتضيف '+K.one+'.'}</div>`;
   main.innerHTML=h;loadThumbs();
 }
@@ -701,6 +717,20 @@ function kunCard(it){
   return `<article class="card kun"><div class="head"><span class="pill">${esc(it.cat||'')}</span><button class="kfav" data-kfav="${it._id}" aria-pressed="${!!it.fav}" aria-label="${it.fav?'إزالة من المفضلة':'إضافة إلى المفضلة'}">${it.fav?'★':'☆'}</button></div>
   ${kunBody(it.title||'')}${it.source?`<div class="ksrc">— ${esc(it.source)}</div>`:''}
   <div class="actions"><button class="btn" data-copy="${esc(plain)}">نسخ</button><button class="btn" data-edit="${it._id}">تعديل</button></div></article>`;
+}
+const ST_COLOR={'منجز':'var(--ok)','قيد الإنجاز':'var(--warn)','في المراجعة':'#1f5f9e','متوقف':'#9b2c22'};
+function folderTile(w){
+  const n=filesOfWork(w).length,c=ST_COLOR[w.status]||'var(--gold)';
+  return `<button class="fold" data-folder="${w._id}" aria-label="${esc(w.title)}"><svg viewBox="0 0 64 52" aria-hidden="true"><path d="M3 9a4 4 0 0 1 4-4h15l6 6h29a4 4 0 0 1 4 4v29a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9Z" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/><path d="M3 18h58" stroke="var(--gold)" stroke-width="1.4"/><circle cx="52" cy="38" r="5" fill="${c}"/></svg><b>${esc(w.title)}</b><small>${[w.type,n?n+' '+(n===1?'ملف':n===2?'ملفان':n<11?'ملفات':'ملفًا'):'لا ملفات بعد'].filter(Boolean).join(' · ')}</small></button>`;
+}
+function openFolder(id){
+  const w=items.get(id);if(!w||w.del)return;const fs=filesOfWork(w);
+  const link=w.link&&/^https?:\/\//.test(w.link)?`<a class="btn" href="${esc(w.link)}" target="_blank" rel="noopener">فتح الرابط</a>`:'';
+  sheet(`<div class="head" style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start"><h3 style="margin:0;font-family:var(--f-title);font-size:1.3rem;line-height:1.45">${esc(w.title)}</h3>${w.status?`<span class="pill ${pillClass(w.status)}">${esc(w.status)}</span>`:''}</div>
+  ${KINDS.work.sub(w)?`<div class="meta">${esc(KINDS.work.sub(w))}</div>`:''}${w.notes?`<div class="notes" style="margin-top:6px">${esc(w.notes)}</div>`:''}
+  <h2 class="sec" style="font-size:1.15rem">ملفات المجلد<small>${fs.length}</small></h2>
+  ${fs.length?`<div>${fs.map(f=>`<div class="frow"><span aria-hidden="true">📄</span><span class="fn">${esc(f.fname||f.title)}<br><small class="meta">${esc(fmtSize(f.size))}</small></span><button class="btn primary" data-open="${f._id}">فتح</button><button class="btn" data-share="${f._id}">مشاركة</button></div>`).join('')}</div>`:`<div class="empty">لا ملفات في هذا المجلد بعد. أرسل الملف إلى «خزانتي» فيوضع هنا وحده إن كان اسمه من اسم العمل.</div>`}
+  ${siblingLinks(w)}<div class="actions" style="margin-top:12px">${link}<button class="btn" data-edit="${w._id}">تعديل</button><button class="btn" data-act="close">إغلاق</button></div>`);
 }
 function card(it){
   if(it.kind==='kunnash')return kunCard(it);
@@ -1009,17 +1039,19 @@ async function doImport(file){
 
 /* ---------- الأحداث ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook],[data-kfav]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
+  const t=e.target.closest('[data-tab],[data-filter],[data-edit],[data-copy],[data-act],[data-open],[data-share],[data-tobook],[data-kfav],[data-folder]');if(!t||t.closest('#frm')||t.closest('.viewer')||t.closest('#lock'))return;
   if(t.dataset.tab){tab=(t.dataset.tab==='settings'&&tab==='settings')?'profile':t.dataset.tab;filter='';q='';$('#q').value='';render();scrollTo(0,0)}
   else if(t.dataset.filter!==undefined){filter=t.dataset.filter;render()}
   else if(t.dataset.kfav){const it=items.get(t.dataset.kfav);if(it)await put(Object.assign({},it,{fav:!it.fav}))}
   else if(t.dataset.edit){const it=items.get(t.dataset.edit);openForm(it.kind,it)}
+  else if(t.dataset.folder)openFolder(t.dataset.folder);
   else if(t.dataset.open)openFile(t.dataset.open);
   else if(t.dataset.share)shareFile(t.dataset.share);
   else if(t.dataset.tobook){const it=items.get(t.dataset.tobook);if(it&&canBeBook(it))fileToBook(it)}
   else if(t.dataset.copy){try{await navigator.clipboard.writeText(t.dataset.copy);toast('نُسخ')}catch(_){toast('تعذّر النسخ')}}
   else{const a=t.dataset.act;
     if(a==='seed'){for(const [title,type,status,notes] of MY_WORKS)await save({_id:uid(),kind:'work',title,type,status,notes});await save({_id:'_seeded',kind:'meta'});render();toast('أُضيفت أعمالك')}
+    else if(a==='wview'){S.workView=t.dataset.v;saveS();render()}
     else if(a==='editProfile')openProfile();
     else if(a==='changePin')pinSheet('change');
     else if(a==='pickContacts'){
