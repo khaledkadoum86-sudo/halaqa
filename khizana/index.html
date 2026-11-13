@@ -449,7 +449,7 @@ async function tidyAll(show){
   const richer=(a,b)=>Object.values(a).filter(v=>v&&String(v).length).length>=Object.values(b).filter(v=>v&&String(v).length).length?[a,b]:[b,a];
   try{
     await sortWorks(true);
-    /* ١. الملفات المكررة: الاسم نفسه والحجم نفسه */
+    /* 1. الملفات المكررة: الاسم نفسه والحجم نفسه */
     const fg=new Map();
     for(const f of live())if(f.kind==='file'&&f.size){const k=dupKey(f.fname||f.title)+'|'+f.size;(fg.get(k)||fg.set(k,[]).get(k)).push(f)}
     for(const g of fg.values()){if(g.length<2)continue;
@@ -460,24 +460,24 @@ async function tidyAll(show){
         for(const w of live())if(w.kind==='work'&&(w.files||[]).includes(d._id))await save({...w,files:[...new Set(w.files.map(x=>x===d._id?keep._id:x))]});
         const b=bookOf(d._id);if(b){if(bookOf(keep._id))await kill(b._id);else await save({...b,fileId:keep._id})}
         await kill(d._id);R.dupFiles++}}
-    /* ٢. الكتب المكررة: العنوان نفسه (والمؤلف إن وُجد) */
+    /* 2. الكتب المكررة: العنوان نفسه (والمؤلف إن وُجد) */
     const bg=new Map();
     for(const b of live())if(b.kind==='book'){const k=dupKey(b.title)+'|'+(b.author?normAr(b.author).split(' ').slice(0,2).join(' '):'');(bg.get(k)||bg.set(k,[]).get(k)).push(b)}
     for(const g of bg.values()){if(g.length<2)continue;let keep=g.find(b=>b.fileId&&items.get(b.fileId)&&!items.get(b.fileId).del)||g[0];
       for(const d of g){if(d===keep)continue;const m={...d,...keep};
         for(const f of ['author','place','link','notes','cat'])if(!m[f]||m[f]==='أخرى')m[f]=d[f]||m[f];
         await save(m);keep=items.get(keep._id);await kill(d._id);R.dupBooks++}}
-    /* ٣. الأعمال المكررة: تُجمع ملفاتها في عمل واحد */
+    /* 3. الأعمال المكررة: تُجمع ملفاتها في عمل واحد */
     const wg=new Map();
     for(const w of live())if(w.kind==='work'){const k=dupKey(w.title);(wg.get(k)||wg.set(k,[]).get(k)).push(w)}
     for(const g of wg.values()){if(g.length<2)continue;g.sort((a,b)=>(b.files||[]).length-(a.files||[]).length||(MY_WORKS.some(m=>m[0]===b.title)?1:0)-(MY_WORKS.some(m=>m[0]===a.title)?1:0));
       const keep=g[0];let files=[...(keep.files||[])],notes=keep.notes||'';
       for(const d of g.slice(1)){files.push(...(d.files||[]));if(d.notes&&!notes.includes(d.notes))notes=[notes,d.notes].filter(Boolean).join('\n');await kill(d._id);R.dupWorks++}
       await save({...items.get(keep._id),files:[...new Set(files)],notes})}
-    /* ٤. المذكرات المكررة */
+    /* 4. المذكرات المكررة */
     const ng=new Set();
     for(const n of live().filter(x=>x.kind==='note').sort((a,b)=>(a.at||0)-(b.at||0))){const k=normAr(n.title)+'|'+normAr(n.body).slice(0,400);if(ng.has(k)){await kill(n._id);R.dupNotes++}else ng.add(k)}
-    /* ٥. جهات الاتصال المكررة داخل خزانتي (الرقم نفسه) تُدمج في بطاقة واحدة */
+    /* 5. جهات الاتصال المكررة داخل خزانتي (الرقم نفسه) تُدمج في بطاقة واحدة */
     const cg=new Map();
     for(const c of live())if(c.kind==='contact'){const k=phoneKey(c.phone)||phoneKey(c.whatsapp)||('n:'+normAr(c.title));if(k==='n:')continue;(cg.get(k)||cg.set(k,[]).get(k)).push(c)}
     for(const g of cg.values()){if(g.length<2)continue;let m={...g[0]};
@@ -485,13 +485,13 @@ async function tidyAll(show){
         if(d.notes&&!(m.notes||'').includes(d.notes))m.notes=[m.notes,d.notes].filter(Boolean).join('\n');
         if((d.title||'').length>(m.title||'').length)m.title=d.title;await kill(d._id);R.dupContacts++}
       await save(m)}
-    /* ٦. العناوين: بلا امتداد ولا «_» ولا «(1)» */
+    /* 6. العناوين: بلا امتداد ولا «_» ولا «(1)» */
     for(const it of live()){if(!['file','book','work'].includes(it.kind))continue;const c=cleanTitle(it.title);if(c!==it.title){await save({...it,title:c});R.titles++}}
-    /* ٧. كل كتاب في موضوعه */
+    /* 7. كل كتاب في موضوعه */
     for(const b of live()){if(b.kind!=='book')continue;let cat=OLD_CATS[b.cat]||b.cat;
       if(!cat||cat==='أخرى'||!BOOK_CATS.includes(cat)){const f=b.fileId&&items.get(b.fileId);const c=subjectOf((b.notes||'')+' '+(f&&f.notes||''),b.title+' '+(b.author||'')+' '+(f&&f.fname||''));if(c!=='أخرى'||!cat||!BOOK_CATS.includes(cat))cat=c}
       if(cat!==b.cat){await save({...b,cat});R.subjects++}}
-    /* ٨. كل ملف في نوعه */
+    /* 8. كل ملف في نوعه */
     for(const f of live()){if(f.kind!=='file')continue;let cat=f.cat;
       if(live().some(w=>w.kind==='work'&&(w.files||[]).includes(f._id)))cat='من أعمالي';
       else if(bookOf(f._id))cat='كتب PDF';
