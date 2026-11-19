@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://firestore.googleapis.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0e5a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="المساعد">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>المساعد — المدرسة القرءانية النموذجية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Reem+Kufi:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6f3;--surface:#fff;--soft:#eaefe9;--line:#d6ddd5;--ink:#16302b;--muted:#5d6f69;--accent:#0e5a4f;--gold:#b9852a;--ok:#1f7a4d;--okbg:#dff1e6;--bad:#b23b32;--badbg:#f8e1de;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1715;--surface:#16211e;--soft:#1d2b27;--line:#2b3c37;--ink:#e4ece9;--muted:#97aaa4;--accent:#3fb39d;--gold:#e0b25a;--ok:#5fd39a;--okbg:#173a2a;--bad:#f0857b;--badbg:#3f1f1c;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;font-size:16px;line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding:16px;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(28px,env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:2px solid var(--accent)}
+header img{width:58px;height:58px;border-radius:14px;object-fit:cover;border:1px solid var(--line)}
+header b{display:block;font-family:"Reem Kufi",sans-serif;font-size:1.25rem;color:var(--accent);line-height:1.3}
+header span{font-size:.85rem;color:var(--muted)}
+.hi{margin:16px 0 4px;font-size:1.05rem}.hi b{color:var(--accent)}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:12px}
+.card h2{margin:0 0 10px;font-size:1.05rem;color:var(--accent)}
+label{display:block;font-weight:600;font-size:.92rem;margin:12px 0 4px}
+label small{font-weight:400;color:var(--muted)}
+input[type=text],input[type=tel]{width:100%;min-height:48px;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.ltr{direction:ltr;text-align:right}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.sx{display:flex;gap:8px}.sx button{flex:1;min-height:48px;font:inherit;font-weight:600;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.sx button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn{display:block;width:100%;min-height:54px;margin-top:16px;font:inherit;font-weight:700;font-size:1.05rem;border:0;border-radius:14px;background:var(--accent);color:#fff}
+.btn:disabled{opacity:.6}
+.btn.light{background:var(--soft);color:var(--ink);font-weight:600;min-height:46px;font-size:.95rem}
+.msg{margin-top:12px;padding:10px 12px;border-radius:12px;font-size:.95rem}
+.msg.ok{background:var(--okbg);color:var(--ok)}.msg.bad{background:var(--badbg);color:var(--bad)}
+.done{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.done li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:6px 0;font-size:.92rem}
+.done li em{font-style:normal;color:var(--muted);font-size:.82rem}
+.done li .w{color:var(--gold)}
+.foot{margin-top:18px;text-align:center;color:var(--muted);font-size:.82rem}
+.center{text-align:center;padding:40px 10px}
+.tabs{display:flex;gap:6px;margin:12px 0 0;background:var(--soft);padding:4px;border-radius:14px}
+.tabs button{flex:1;min-height:46px;font:inherit;font-weight:700;border:0;border-radius:11px;background:transparent;color:var(--muted)}
+.tabs button.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.cnt{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-bottom:8px}
+.cnt div{border-radius:10px;padding:6px 2px;background:var(--soft);font-size:.78rem}.cnt b{display:block;font-size:1.25rem;line-height:1.2}
+.cnt .p{background:#dff1e6;color:#1f7a4d}.cnt .j{background:#f7ecd6;color:#a06a12}.cnt .a{background:#f8e1de;color:#b23b32}
+@media (prefers-color-scheme:dark){.cnt .p{background:#173a2a;color:#5fd39a}.cnt .j{background:#3a2e17;color:#e7b65a}.cnt .a{background:#3f1f1c;color:#f0857b}}
+.sh{margin:14px 0 4px;padding:6px 10px;border-radius:10px;background:var(--soft);font-weight:700;color:var(--accent);display:flex;justify-content:space-between}
+.st{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.st .nm{flex:1;min-width:0;font-weight:600}.st .nm small{display:block;font-weight:400;color:var(--muted);font-size:.75rem}
+.st button{width:46px;height:42px;font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--muted)}
+.st button.on.p{background:#1f7a4d;border-color:#1f7a4d;color:#fff}.st button.on.j{background:#c58a1d;border-color:#c58a1d;color:#fff}.st button.on.a{background:#b23b32;border-color:#b23b32;color:#fff}
+.srch{margin-bottom:6px}
+.sbar{position:sticky;top:0;z-index:2;background:var(--surface);padding-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="logo.webp" alt=""><div><b>المدرسة القرءانية النموذجية</b><span>مسجد القطب الأمير عبد القادر — قسنطينة</span></div></header>
+  <div id="out"><div class="center">جارٍ التحميل…</div></div>
+</div>
+<script>
+const PROJECT="halaqa-23193",API_KEY="AIzaSyBK_YYaKosnedg0B-gtb-tshf6j5I1gRCY";
+const key=(location.hash||"").replace(/^#/,"").replace(/[^A-Za-z0-9]/g,"");
+const BASE=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/helpers/${key}`;
+const QK="halaqa.musaid.q."+key, DK="halaqa.musaid.done."+key;
+const out=document.getElementById("out");
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rd=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(_){return[]}};
+const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
+/* any digits typed (Arabic-Indic or Persian) become Western digits */
+const dig=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/\D/g,"");
+let helper="",sex="",roster=null,perm={reg:true,att:true},tab=(()=>{try{return localStorage.getItem("halaqa.musaid.tab")||"att"}catch(_){return"att"}})(),q2="";
+const P="ح",J="ج",A="غ";
+const today=()=>{const t=new Date();return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")};
+function readRoster(f){try{const r=JSON.parse(f.r.stringValue);if(!r||!Array.isArray(r.list))return null;
+  return{d:String(r.d||""),upd:Number(r.upd)||0,teacher:String(r.teacher||"").slice(0,120),att:r.att&&typeof r.att==="object"?r.att:{},
+    list:r.list.slice(0,800).map(x=>({i:String(x&&x.i||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,40),n:String(x&&x.n||"").slice(0,120),f:x&&x.f?1:0})).filter(x=>x.i&&x.n)}}catch(_){return null}}
+function fail(t){out.innerHTML=`<div class="card center">${t}</div>`}
+async function start(){
+  if(!key||key.length<12){fail("الرابط ناقص. افتح الرابط كما وصلك من الأستاذ.");return}
+  let r;
+  try{r=await fetch(BASE+"?key="+API_KEY,{cache:"no-store"})}catch(_){if(rd(DK).length||rd(QK).length){helper=localStorage.getItem(QK+".n")||"";paint();return}fail("لا يوجد اتصال بالإنترنت. أعد المحاولة بعد قليل.");return}
+  if(r.status===404||r.status===403){fail("هذا الرابط غير صالح.<br>اطلب من الأستاذ الرابط الصحيح.");return}
+  if(!r.ok){fail("تعذّر التحميل، أعد المحاولة بعد قليل.");return}
+  let f;try{f=(await r.json()).fields||{}}catch(_){fail("تعذّر التحميل.");return}
+  if(!(f.on&&f.on.booleanValue)){fail("أوقف الأستاذ هذا الرابط.<br>جزاك الله خيرًا على مساعدتك.");return}
+  helper=String(f.name&&f.name.stringValue||"").slice(0,80);try{localStorage.setItem(QK+".n",helper)}catch(_){}
+  perm={reg:!(f.reg&&f.reg.booleanValue===false),att:!(f.att&&f.att.booleanValue===false)};
+  if(!perm.att)tab="reg";if(!perm.reg)tab="att";
+  roster=readRoster(f);paint();flush();
+}
+function paint(){
+  out.innerHTML=`<p class="hi">السلام عليكم ورحمة الله${helper?` يا <b>${esc(helper)}</b>`:""}</p>
+  <div class="tabs" ${perm.reg&&perm.att?"":"hidden"}><button type="button" data-tab="att" class="${tab==="att"?"on":""}">الحضور والغياب</button><button type="button" data-tab="reg" class="${tab==="reg"?"on":""}">تسجيل طالب جديد</button></div>
+  <div id="pAtt" ${tab==="att"?"":"hidden"}></div>
+  <div id="pReg" ${tab==="reg"?"":"hidden"}>
+  <p class="sub" style="margin-top:12px">املأ استمارة كل طالب جديد ثم اضغط «إرسال»، فتصل مباشرة إلى تطبيق المدرسة عند الأستاذ.</p>
+  <form class="card" id="f" autocomplete="off" novalidate>
+    <h2>استمارة تسجيل طالب</h2>
+    <label for="nm">1. اسم ولقب الطالب</label><input type="text" id="nm" maxlength="120" required>
+    <label>2. الجنس</label><div class="sx"><button type="button" data-sx="m">ذكر</button><button type="button" data-sx="f">أنثى</button></div>
+    <label>3. تاريخ الميلاد <small>(اليوم / الشهر / السنة)</small></label>
+    <div class="row"><input type="tel" id="bdd" placeholder="اليوم" maxlength="2" inputmode="numeric" style="text-align:center"><input type="tel" id="bdm" placeholder="الشهر" maxlength="2" inputmode="numeric" style="text-align:center"><input type="tel" id="bdy" placeholder="السنة" maxlength="4" inputmode="numeric" style="text-align:center;flex:1.6"></div>
+    <label for="bp">4. مكان الميلاد</label><input type="text" id="bp" maxlength="80">
+    <label for="ph">5. رقم هاتف الولي <small>(الذي يبقى في اتصال بالمدرسة)</small></label><input type="tel" id="ph" class="ltr" inputmode="tel" placeholder="0XXXXXXXXX" maxlength="16">
+    <label for="ph2">الهاتف الثاني <small>(إن وُجد)</small></label><input type="tel" id="ph2" class="ltr" inputmode="tel" placeholder="0XXXXXXXXX" maxlength="16">
+    <label for="ad">6. العنوان الشخصي</label><input type="text" id="ad" maxlength="160">
+    <label for="lv">7. المستوى الدراسي / المهنة</label><input type="text" id="lv" maxlength="80">
+    <div class="row"><div><label for="hz">8. الحزب الذي يحفظه الآن</label><input type="tel" id="hz" inputmode="numeric" maxlength="2" placeholder="1 – 60"></div>
+      <div><label for="bal">9. الرصيد من الحفظ <small>(حزبًا)</small></label><input type="tel" id="bal" inputmode="numeric" maxlength="2" placeholder="0 – 60"></div></div>
+    <div id="m"></div>
+    <button class="btn" type="submit" id="go">إرسال الاستمارة</button>
+  </form>
+  <div id="list"></div></div>
+  <div class="foot">هذا الرابط خاص بك، لا تنشره. ما ترسله يصل إلى الأستاذ وحده.<br>لإضافته إلى الشاشة الرئيسية: زر المشاركة ← «إضافة إلى الشاشة الرئيسية».</div>`;
+  document.querySelectorAll("[data-sx]").forEach(b=>b.onclick=()=>{sex=b.dataset.sx;document.querySelectorAll("[data-sx]").forEach(x=>x.classList.toggle("on",x===b))});
+  ["bdd","bdm","bdy","hz","bal"].forEach(id=>{const e=document.getElementById(id);e.addEventListener("input",()=>{const v=dig(e.value);if(v!==e.value)e.value=v;
+    if((id==="bdd"||id==="bdm")&&v.length===2)document.getElementById(id==="bdd"?"bdm":"bdy").focus()})});
+  ["ph","ph2"].forEach(id=>{const e=document.getElementById(id);e.addEventListener("input",()=>{const v=dig(e.value);if(v!==e.value)e.value=v})});
+  document.getElementById("f").addEventListener("submit",e=>{e.preventDefault();send()});
+  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;try{localStorage.setItem("halaqa.musaid.tab",tab)}catch(_){}
+    document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("on",x===b));document.getElementById("pAtt").hidden=tab!=="att";document.getElementById("pReg").hidden=tab!=="reg";if(tab==="att")paintAtt()});
+  paintList();paintAtt();
+}
+/* ---------- attendance ---------- */
+const MK="halaqa.musaid.att."+key;   // {d, m:{id:{v,at}}, out:{id:v}} marks made on this device today
+function marks(){let o=null;try{o=JSON.parse(localStorage.getItem(MK)||"null")}catch(_){}if(!o||o.d!==today())o={d:today(),m:{},out:{}};return o}
+function saveMarks(o){try{localStorage.setItem(MK,JSON.stringify(o))}catch(_){}}
+function stateOf(id,mk){const l=mk.m[id],fromT=roster&&roster.d===today()?roster.att[id]:undefined;
+  if(l&&(!roster||roster.d!==today()||l.at>roster.upd))return l.v;return fromT||""}
+function paintAtt(){
+  const el=document.getElementById("pAtt");if(!el||tab!=="att")return;
+  if(!roster||!roster.list.length){el.innerHTML=`<div class="card center">قائمة الطلبة لم تصل بعد.<br>تصل عندما يفتح الأستاذ تطبيق المدرسة بعد تحديثه.</div>`;return}
+  const mk=marks(),L=roster.list,c={p:0,j:0,a:0,n:0};
+  L.forEach(s=>{const v=stateOf(s.i,mk);if(v===P)c.p++;else if(v===J)c.j++;else if(v===A)c.a++;else c.n++});
+  const dl=new Date().toLocaleDateString("ar-DZ-u-nu-latn",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const qn=q2.trim(),vis=L.filter(s=>!qn||s.n.replace(/[أإآ]/g,"ا").includes(qn.replace(/[أإآ]/g,"ا")));
+  const pend=Object.keys(mk.out).length;
+  let h=`<section class="card"><div class="sbar"><h2 style="margin-bottom:6px">حصة اليوم · ${esc(dl)}</h2>
+    <div class="cnt"><div class="p"><b>${c.p}</b>حاضر</div><div class="j"><b>${c.j}</b>جزئي</div><div class="a"><b>${c.a}</b>غائب</div><div><b>${c.n}</b>لم يُسجَّل</div></div>
+    <input type="text" class="srch" id="q2" placeholder="بحث عن طالب…" value="${esc(q2)}">
+    <div class="sub" id="aState">${pend?"جارٍ الإرسال…":"كل ما تضغطه يُرسل إلى تطبيق المدرسة."}</div></div>`;
+  let lastF=-1;
+  vis.forEach(s=>{if(s.f!==lastF){lastF=s.f;const n=vis.filter(x=>x.f===s.f).length;h+=`<div class="sh"><span>${s.f?"قسم الإناث":"قسم الذكور"}</span><span>${n}</span></div>`}
+    const v=stateOf(s.i,mk);
+    h+=`<div class="st" data-id="${esc(s.i)}"><span class="nm">${esc(s.n)}</span>
+      <button type="button" data-v="ح" class="p ${v===P?"on":""}" aria-label="حاضر">ح</button><button type="button" data-v="ج" class="j ${v===J?"on":""}" aria-label="حضور جزئي">ج</button><button type="button" data-v="غ" class="a ${v===A?"on":""}" aria-label="غائب">غ</button></div>`});
+  if(!vis.length)h+=`<div class="center" style="padding:20px">لا يوجد طالب بهذا الاسم.</div>`;
+  h+=`<div class="sub" style="margin-top:10px">ح: حاضر · ج: حضور جزئي · غ: غائب. اضغط الحرف مرة ثانية لإلغائه.</div></section>`;
+  el.innerHTML=h;
+  const qi=document.getElementById("q2");qi.oninput=()=>{q2=qi.value;const pos=qi.selectionStart;paintAtt();const n=document.getElementById("q2");n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}};
+}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".st [data-v]");if(!b)return;
+  const id=b.closest(".st").dataset.id,mk=marks(),cur=stateOf(id,mk),v=cur===b.dataset.v?"":b.dataset.v;
+  mk.m[id]={v,at:Date.now()};mk.out[id]=v;saveMarks(mk);paintAtt();sendAttSoon()});
+let atT=null,atBusy=false;
+function sendAttSoon(ms){clearTimeout(atT);atT=setTimeout(sendAtt,ms==null?1200:ms)}
+async function sendAtt(){
+  if(atBusy){sendAttSoon(1500);return}const mk=marks(),m=Object.assign({},mk.out);if(!Object.keys(m).length)return;atBusy=true;let ok=false,code=0;
+  try{const r=await fetch(BASE+"/regs?key="+API_KEY,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({fields:{j:{stringValue:JSON.stringify({t:"att",d:mk.d,m})},at:{integerValue:String(Date.now())}}})});ok=r.ok;code=r.status}catch(_){}
+  finally{atBusy=false}
+  const st=document.getElementById("aState");
+  if(ok){const now=marks();for(const id in m)if(now.out[id]===m[id])delete now.out[id];saveMarks(now);if(st)st.textContent="✓ أُرسل إلى تطبيق المدرسة.";if(Object.keys(now.out).length)sendAttSoon(300)}
+  else if(code===403){if(st)st.textContent="لم يُرسل: الرابط موقوف. أخبر الأستاذ."}
+  else{if(st)st.textContent="لا يوجد اتصال الآن، سيُرسل وحده عند عودة الإنترنت.";sendAttSoon(15000)}
+}
+async function reloadRoster(){if(!key)return;try{const r=await fetch(BASE+"?key="+API_KEY,{cache:"no-store"});if(!r.ok)return;const f=(await r.json()).fields||{};
+  if(!(f.on&&f.on.booleanValue)){fail("أوقف الأستاذ هذا الرابط.<br>جزاك الله خيرًا على مساعدتك.");return}
+  const np={reg:!(f.reg&&f.reg.booleanValue===false),att:!(f.att&&f.att.booleanValue===false)};
+  if(np.reg!==perm.reg||np.att!==perm.att){perm=np;if(!perm.att)tab="reg";if(!perm.reg)tab="att";roster=readRoster(f);paint();return}
+  const nr=readRoster(f);if(nr){roster=nr;if(!document.activeElement||document.activeElement.id!=="q2")paintAtt()}}catch(_){}}
+function say(t,ok){document.getElementById("m").innerHTML=t?`<div class="msg ${ok?"ok":"bad"}">${t}</div>`:""}
+function tel(v){let d=dig(v);if(d.startsWith("213")&&d.length===12)d="0"+d.slice(3);if(d.length===9&&d[0]!=="0")d="0"+d;return d}
+function send(){
+  const g=id=>document.getElementById(id).value.replace(/\s+/g," ").trim();
+  const name=g("nm");if(!name){say("اكتب اسم ولقب الطالب.");document.getElementById("nm").focus();return}
+  if(!sex){say("اختر الجنس: ذكر أو أنثى.");return}
+  const d=dig(g("bdd")),m=dig(g("bdm")),y=dig(g("bdy"));let bd="";
+  if(d||m||y){const dd=+d,mm=+m,yy=+y,nowY=new Date().getFullYear();
+    if(!(dd>=1&&dd<=31&&mm>=1&&mm<=12&&y.length===4&&yy>=1930&&yy<=nowY)){say("أكمل تاريخ الميلاد صحيحًا (اليوم والشهر والسنة) أو اتركه فارغًا.");return}
+    bd=y+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0")}
+  const p1=tel(g("ph")),p2=tel(g("ph2"));
+  if(p1&&!(p1.length===10&&p1[0]==="0")){say("رقم الهاتف الأول يتكوّن من 10 أرقام ويبدأ بـ 0.");return}
+  if(p2&&!(p2.length===10&&p2[0]==="0")){say("رقم الهاتف الثاني يتكوّن من 10 أرقام ويبدأ بـ 0.");return}
+  const hz=dig(g("hz")),bal=dig(g("bal"));
+  if(hz&&!(+hz>=1&&+hz<=60)){say("الحزب بين 1 و 60.");return}
+  if(bal&&!(+bal>=0&&+bal<=60)){say("الرصيد بين 0 و 60.");return}
+  const rec={v:1,name,sex,birthDate:bd,birthPlace:g("bp"),phone:p1,phone2:p2,address:g("ad"),level:g("lv"),hz,hzBal:bal};
+  const q=rd(QK);q.push({at:Date.now(),rec});wr(QK,q);
+  document.getElementById("f").reset();sex="";document.querySelectorAll("[data-sx]").forEach(x=>x.classList.remove("on"));
+  say("جارٍ الإرسال…",true);try{document.getElementById("m").scrollIntoView({block:"center",behavior:"smooth"})}catch(_){}
+  flush(true);
+}
+let flushing=false;
+async function flush(fromSend){
+  if(flushing)return;flushing=true;let sent=0,bad=0;
+  try{
+    let q=rd(QK);
+    while(q.length){
+      const it=q[0];let r;
+      try{r=await fetch(BASE+"/regs?key="+API_KEY,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({fields:{j:{stringValue:JSON.stringify(it.rec)},at:{integerValue:String(it.at)}}})})}catch(_){break}
+      if(r.status===403){bad=403;break}
+      if(!r.ok){bad=r.status;break}
+      const dn=rd(DK);dn.unshift({at:it.at,name:it.rec.name,sex:it.rec.sex});wr(DK,dn.slice(0,200));
+      q=rd(QK);q.shift();wr(QK,q);sent++;
+    }
+    const left=rd(QK).length;
+    if(document.getElementById("m")){
+      if(bad===403)say("لم تُرسل الاستمارة: الرابط موقوف أو لم يُفعَّل بعد. أخبر الأستاذ.");
+      else if(left)say(`لا يوجد اتصال الآن. ${left===1?"الاستمارة محفوظة":"الاستمارات محفوظة"} على جهازك وستُرسل وحدها عند عودة الإنترنت.`);
+      else if(sent)say(sent===1?"✓ أُرسلت الاستمارة. جزاك الله خيرًا. يمكنك ملء استمارة الطالب التالي.":`✓ أُرسلت ${sent} استمارات. جزاك الله خيرًا.`,true);
+      else if(fromSend)say("");
+    }
+  }finally{flushing=false;paintList()}
+}
+function paintList(){
+  const el=document.getElementById("list");if(!el)return;
+  const q=rd(QK),dn=rd(DK);if(!q.length&&!dn.length){el.innerHTML="";return}
+  const t=x=>new Date(x).toLocaleString("ar-DZ-u-nu-latn",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
+  el.innerHTML=`<section class="card"><h2>ما سجّلتَه من هذا الجهاز (${q.length+dn.length})</h2><ul class="done">
+    ${q.map(x=>`<li><span>${esc(x.rec.name)}</span><em class="w">في انتظار الإرسال</em></li>`).join("")}
+    ${dn.map(x=>`<li><span>${esc(x.name)}</span><em>أُرسل ✓ · ${t(x.at)}</em></li>`).join("")}</ul></section>`;
+}
+start();
+addEventListener("online",()=>{flush();sendAttSoon(0)});
+setInterval(()=>{if(document.visibilityState==="visible")reloadRoster()},25000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){reloadRoster();sendAttSoon(0)}});
+setTimeout(()=>sendAttSoon(0),1500);
+setInterval(()=>{if(rd(QK).length)flush()},30000);
+window.addEventListener("hashchange",()=>location.reload());
+</script>
+</body>
+</html>
